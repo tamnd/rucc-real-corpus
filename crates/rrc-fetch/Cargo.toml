@@ -1,0 +1,15 @@
+[package]
+name = "rrc-fetch"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Fetching a pinned source archive, verifying it, and extracting it"
+
+[dependencies]
+rrc-manifest.workspace = true
+sha2.workspace = true
+
+[lints]
+workspace = true

@@ -1,5 +1,5 @@
 [workspace]
-members = ["crates/rrc-manifest"]
+members = ["crates/rrc-fetch", "crates/rrc-manifest"]
 resolver = "3"
 
 [workspace.package]
@@ -10,6 +10,7 @@ license = "Apache-2.0"
 repository = "https://github.com/tamnd/rucc-real-corpus"
 
 [workspace.dependencies]
+rrc-fetch = { path = "crates/rrc-fetch", version = "0.0.1" }
 rrc-manifest = { path = "crates/rrc-manifest", version = "0.0.1" }
 serde = { version = "1", features = ["derive"] }
 toml = "0.9"
