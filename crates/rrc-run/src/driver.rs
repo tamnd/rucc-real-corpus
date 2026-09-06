@@ -445,11 +445,7 @@ pub fn grade(manifest: &Manifest, trial: &Trial, reference: Option<&Trial>) -> G
 
     match declared {
         Oracle::Suite => grade_suite(manifest, trial, test),
-        Oracle::Recorded => match &manifest.test.expect_output {
-            Some(expected) if expected.trim() == test.stdout.trim() => used(Oracle::Recorded),
-            Some(_) => with(Outcome::WrongAnswer, Oracle::Recorded),
-            None => with(Outcome::NotCompared, Oracle::SelfChecking),
-        },
+        Oracle::Recorded => grade_recorded(manifest, test),
         Oracle::Differential => grade_differential(test, reference),
         Oracle::SelfChecking => {
             if test.ending.is_success() {
@@ -459,6 +455,42 @@ pub fn grade(manifest: &Manifest, trial: &Trial, reference: Option<&Trial>) -> G
             }
         }
     }
+}
+
+/// D1, where the expectation is upstream's and no second build is needed.
+///
+/// Two shapes of recorded expectation, and the whole output is the better one. `expect-output`
+/// compares everything the program said, which catches a program that got the right answer and
+/// also printed something it should not have. `expect-contains` is for output that cannot be
+/// compared whole because part of it is a timing or a path, and it is weaker in a specific way:
+/// it says the program printed its own verdict and says nothing about the rest of the stream.
+///
+/// A recorded oracle with neither is `not compared`, because there is nothing to compare against
+/// and reading the exit status instead would be the silent oracle weakening this whole module is
+/// arranged to prevent.
+fn grade_recorded(manifest: &Manifest, test: &Completed) -> Graded {
+    let with = |outcome, oracle| Graded {
+        outcome,
+        oracle_used: oracle,
+    };
+    let verdict = |held: bool| {
+        with(
+            if held {
+                Outcome::Passed
+            } else {
+                Outcome::WrongAnswer
+            },
+            Oracle::Recorded,
+        )
+    };
+
+    if let Some(expected) = &manifest.test.expect_output {
+        return verdict(expected.trim() == test.stdout.trim());
+    }
+    if let Some(marker) = &manifest.test.expect_contains {
+        return verdict(test.stdout.contains(marker.as_str()));
+    }
+    with(Outcome::NotCompared, Oracle::SelfChecking)
 }
 
 /// D3, which is the only oracle where a partial regression is visible.
@@ -833,6 +865,55 @@ int main(void){ printf("42\n"); return 0; }
         assert_eq!(
             run(&job(&f, &bad), Slot::A).unwrap().outcome,
             Outcome::WrongAnswer
+        );
+    }
+
+    /// The case `coremark` is admitted with, in miniature.
+    ///
+    /// A program that checks itself, prints a sentence saying so, and exits zero whichever way it
+    /// went. The exit status is not an oracle here and the whole output cannot be compared because
+    /// part of it is a measurement, so the sentence is the expectation.
+    #[test]
+    fn a_program_that_prints_its_own_verdict_is_graded_on_the_sentence() {
+        let source = r#"
+#include <stdio.h>
+int main(void){
+    printf("Total ticks      : 12249\n");
+    if (6 * 7 == 42) printf("Correct operation validated.\n");
+    else printf("Errors detected\n");
+    return 0;
+}
+"#;
+        let Some(f) = fixture("contains", source) else {
+            return;
+        };
+        let good = manifest(
+            "\noracle = \"recorded\"\nexpect-contains = \"Correct operation validated\"\n",
+        );
+        let record = run(&job(&f, &good), Slot::A).unwrap();
+        assert_eq!(record.outcome, Outcome::Passed);
+        assert_eq!(record.oracle_used, Oracle::Recorded);
+
+        let bad = manifest("\noracle = \"recorded\"\nexpect-contains = \"Errors detected\"\n");
+        assert_eq!(
+            run(&job(&f, &bad), Slot::A).unwrap().outcome,
+            Outcome::WrongAnswer,
+            "the exit status is zero either way, which is the whole reason this field exists"
+        );
+    }
+
+    #[test]
+    fn a_recorded_oracle_with_nothing_recorded_is_not_compared() {
+        let Some(f) = fixture("nothing-recorded", "int main(void){return 0;}\n") else {
+            return;
+        };
+        let manifest = manifest("\noracle = \"recorded\"\n");
+        let record = run(&job(&f, &manifest), Slot::A).unwrap();
+        assert_eq!(record.outcome, Outcome::NotCompared);
+        assert_eq!(
+            record.oracle_used,
+            Oracle::SelfChecking,
+            "the oracle column has to say the strongest thing that could actually be applied"
         );
     }
 

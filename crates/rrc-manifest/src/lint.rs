@@ -164,8 +164,25 @@ fn check_test(manifest: &Manifest, say: &mut Vec<String>) {
             say.push("a suite oracle has no baseline-tests, so a run that silently stops halfway would pass".into());
         }
     }
-    if manifest.test.oracle == Oracle::Recorded && manifest.test.expect_output.is_none() {
-        say.push("a recorded oracle has no expect-output to compare against".into());
+    if manifest.test.oracle == Oracle::Recorded
+        && manifest.test.expect_output.is_none()
+        && manifest.test.expect_contains.is_none()
+    {
+        say.push(
+            "a recorded oracle has neither expect-output nor expect-contains to compare against"
+                .into(),
+        );
+    }
+    if manifest.test.expect_output.is_some() && manifest.test.expect_contains.is_some() {
+        say.push("both expect-output and expect-contains are given, and only the first would be used, so one of them is a claim nothing checks".into());
+    }
+    if manifest.test.oracle != Oracle::Recorded
+        && (manifest.test.expect_output.is_some() || manifest.test.expect_contains.is_some())
+    {
+        say.push(
+            "an expectation is recorded and the oracle is not recorded, so it would be ignored"
+                .into(),
+        );
     }
     for skip in &manifest.test.skip_cases {
         if skip.asserts.trim().is_empty() {
@@ -303,6 +320,30 @@ kind = "standard"
         let text = SAMPLE.replace("pointer-arithmetic", "pointer-arithemtic");
         let findings = check(&corpus_of(&text));
         assert!(findings.iter().any(|f| f.what.contains("features.toml")));
+    }
+
+    #[test]
+    fn a_recorded_oracle_needs_one_expectation_and_not_two() {
+        let recorded = SAMPLE.replace("oracle = \"self-checking\"", "oracle = \"recorded\"");
+        let findings = check(&corpus_of(&recorded));
+        assert!(
+            findings.iter().any(|f| f.what.contains("expect-contains")),
+            "a recorded oracle with nothing recorded grades nothing: {findings:?}"
+        );
+
+        let both = format!("{recorded}\nexpect-output = \"42\"\nexpect-contains = \"4\"\n");
+        let findings = check(&corpus_of(&both));
+        assert!(
+            findings.iter().any(|f| f.what.contains("only the first")),
+            "one of the two would be a claim nothing checks: {findings:?}"
+        );
+
+        let stray = format!("{SAMPLE}\nexpect-contains = \"42\"\n");
+        let findings = check(&corpus_of(&stray));
+        assert!(
+            findings.iter().any(|f| f.what.contains("would be ignored")),
+            "an expectation under a self-checking oracle is never read: {findings:?}"
+        );
     }
 
     #[test]

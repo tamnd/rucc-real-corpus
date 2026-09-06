@@ -10,6 +10,8 @@ The governing observation: **a green result is worth exactly what its oracle is 
 
 **D1, recorded expectation.** The project ships an expected output and the harness compares against it. Stronger than D0 because the expectation is upstream's, not ours, and it does not require a second build. `tinf`, `duktape` and `c4` are graded this way.
 
+The expectation lives in the manifest as `test.expect-output`, the whole output compared against the whole output, or as `test.expect-contains`, one sentence that has to appear in the output. The second form is weaker and is there for a program whose output is partly a measurement, which is why CoreMark uses it: the sentence `Correct operation validated` is upstream's own verdict on its CRCs, and everything around it is a timing that changes every run. A recorded oracle with nothing recorded grades `not compared` rather than `passed`, on 8.3's rule.
+
 **D2, self-checking binary.** The project's own test program computes something it knows the answer to and exits non-zero when wrong. CoreMark's CRC over its intermediate state is the archetype: it was written by people who expected compilers to be wrong about exactly the things compilers are wrong about. Most of R0 and R1 sit here.
 
 **D3, a suite with a count.** A test suite that reports how many cases ran and how many passed, held to `baseline-tests` from document 06.2. This is the only oracle where a *partial* regression is visible: 4,812 of 4,819 passing is a finding, and every oracle below D3 renders it as either green or red.

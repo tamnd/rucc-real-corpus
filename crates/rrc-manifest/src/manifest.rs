@@ -208,9 +208,18 @@ pub struct Test {
     /// What has to be installed before the oracle can run at all.
     #[serde(default)]
     pub requires: Vec<Requirement>,
-    /// For a D1 oracle, the recorded expectation the output is compared against.
+    /// For a D1 oracle, the recorded expectation the whole output is compared against.
     #[serde(default)]
     pub expect_output: Option<String>,
+    /// For a D1 oracle whose output cannot be compared whole, the sentence the program prints
+    /// when it is satisfied with itself.
+    ///
+    /// `coremark` is why this exists. It validates its own CRCs, prints
+    /// `Correct operation validated`, and exits zero either way, so its exit status is not an
+    /// oracle and its output is not comparable because two thirds of it is a timing. The
+    /// expectation upstream ships is that one sentence, and this is the field that holds it.
+    #[serde(default)]
+    pub expect_contains: Option<String>,
     /// Tests disabled by name because they assert on GCC's code generation rather than on
     /// the program's behaviour. Section 9.3 case three, and the lint requires the assertion
     /// to be quoted.

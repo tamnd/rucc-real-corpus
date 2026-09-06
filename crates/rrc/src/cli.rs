@@ -27,6 +27,8 @@ pub enum Command {
     Fetch {
         /// These projects, or all of them.
         projects: Vec<String>,
+        /// Write what was fetched into `projects.lock`.
+        record: bool,
     },
     /// One project, one level, build only.
     Build {
@@ -162,9 +164,7 @@ fn command(args: &[String]) -> Result<Command, String> {
         "version" | "--version" | "-V" => Ok(Command::Version),
         "lint" => Ok(Command::Lint),
         "list" => list(&args[1..]),
-        "fetch" => Ok(Command::Fetch {
-            projects: positional(&args[1..])?,
-        }),
+        "fetch" => fetch(&args[1..]),
         "build" => one_project(&args[1..], "build")
             .map(|(project, level)| Command::Build { project, level }),
         "test" => {
@@ -176,6 +176,23 @@ fn command(args: &[String]) -> Result<Command, String> {
             "there is no `{other}` command, and `rrc help` lists the ones there are"
         )),
     }
+}
+
+/// `rrc fetch`, and the one flag that turns a download into a pin.
+///
+/// `--record` is how a hash gets into a manifest, per `spec/06-manifest.md` section 6.3: it is
+/// produced by fetching the bytes upstream actually serves, and never typed by hand.
+fn fetch(args: &[String]) -> Result<Command, String> {
+    let mut projects = Vec::new();
+    let mut record = false;
+    for arg in args {
+        match arg.as_str() {
+            "--record" => record = true,
+            other if other.starts_with('-') => return Err(unknown(other, "fetch")),
+            other => projects.push(other.to_string()),
+        }
+    }
+    Ok(Command::Fetch { projects, record })
 }
 
 fn list(args: &[String]) -> Result<Command, String> {
@@ -278,14 +295,6 @@ fn report(args: &[String]) -> Result<Command, String> {
     Ok(Command::Report { input, format })
 }
 
-/// Everything that is not a flag.
-fn positional(args: &[String]) -> Result<Vec<String>, String> {
-    if let Some(flag) = args.iter().find(|arg| arg.starts_with('-')) {
-        return Err(unknown(flag, "fetch"));
-    }
-    Ok(args.to_vec())
-}
-
 /// The value after a flag, advancing past it.
 fn value(args: &[String], index: &mut usize, flag: &str) -> Result<String, String> {
     *index += 1;
@@ -350,7 +359,7 @@ pub fn usage() -> String {
 rrc, the harness for rucc-real-corpus
 
   rrc list [--rung N,...] [--demands TAG]   what is on the list, filtered
-  rrc fetch [<project>...]                  populate the cache, verify hashes
+  rrc fetch [<project>...] [--record]       populate the cache, verify hashes
   rrc build <project> [--level O2]          one project, one level
   rrc test <project> [--level O2]           build then run the suite
   rrc run [--rung 0,1] [--levels O0,O2]     the scheduler, the normal entry point
@@ -369,6 +378,10 @@ Options for run:
   --twice         build everything twice into two roots and compare the bytes
   --out DIR       where the records and the report go, defaulting to runs/latest
 
+Options for fetch:
+
+  --record        write what was fetched into projects.lock, which is how a pin is made
+
 With no arguments, run covers rungs 0 and 1 at the four base levels, which is what the per
 commit budget admits. Everything wider is an argument, so the cheap thing is the default and
 the expensive thing is a decision.
@@ -386,6 +399,27 @@ mod tests {
 
     fn parsed(line: &str) -> Command {
         parse(&args(line)).unwrap().command
+    }
+
+    #[test]
+    fn fetch_takes_projects_and_the_flag_that_writes_the_pin() {
+        assert_eq!(
+            parsed("fetch"),
+            Command::Fetch {
+                projects: Vec::new(),
+                record: false
+            }
+        );
+        assert_eq!(
+            parsed("fetch jsmn --record c4"),
+            Command::Fetch {
+                projects: vec!["jsmn".to_string(), "c4".to_string()],
+                record: true
+            },
+            "the flag can sit anywhere, since nobody remembers where a flag has to go"
+        );
+        let why = parse(&args("fetch --recrod")).unwrap_err();
+        assert!(why.contains("--recrod"), "{why}");
     }
 
     #[test]
