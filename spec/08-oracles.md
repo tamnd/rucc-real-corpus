@@ -43,6 +43,8 @@ Parent document 20.10's taxonomy, adopted verbatim rather than reinvented, becau
 
 A parser that cannot find a count in output the suite produced yields `not compared`, never `passed`. This is the same rule as document 06.5's and for the same reason: silent oracle weakening is the failure mode this whole document exists to prevent.
 
+A count is three numbers, not two: what ran, what passed, and what the suite declined to judge. The third exists because a skip is not a failure and grading it as one would make the report depend on what is installed on the machine rather than on the compiler. automake is the parser that produces it, where `XFAIL` counts as a pass because upstream said the case would fail and it did, `XPASS` counts as a failure because upstream said so, and `SKIP` counts as run and as skipped and as neither. The thing that stops skips from becoming a hiding place is `baseline-tests`: a case that starts skipping is a case that stopped passing, so the passing count falls below the number a GCC 16 build reached and the cell is red whatever the exit status said. More than one summary block in the output is normal, because a recursive `make check` writes one per directory that has tests, and the blocks are summed.
+
 ## 8.4 Why every project runs at every level its rung requires
 
 The cheap position is to run each project at one representative level and save four fifths of the budget. It is wrong, for a reason that is empirical rather than theoretical.

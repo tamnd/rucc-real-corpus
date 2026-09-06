@@ -25,11 +25,11 @@ strip-components = 1
 url = "https://rucc-corpus-mirror.b-cdn.net/jansson-2.14.tar.gz"
 
 [build]
-system   = "autoconf"
-configure = ["--disable-shared"]
+system   = "configure"
+configure = []
+expect-configure = ["checking for gcc __atomic builtins... yes"]
 targets  = ["all"]
 parallel = true
-env      = { CFLAGS = "" }
 
 [test]
 command  = ["make", "check"]
@@ -59,6 +59,8 @@ Every field is either read by the harness or checked by `cargo xtask lint-projec
 **`baseline-tests`** is the observed passing count from a GCC 16 build of this exact pin on the reference machine, recorded at admission. Document 03.2 criterion 1 exists because of the failure mode where a suite quietly stops running: a build that emits `0 tests` and exits zero is a pass by exit status and a catastrophe by evidence. The harness compares the parsed count to this number and a shortfall is a failure even when the exit status is zero.
 
 **`test.expect-output`** and **`test.expect-contains`** are the two ways a D1 oracle from document 08.1 says what it expects, and exactly one of them is given. `expect-output` holds the whole output and is compared against the whole output with leading and trailing blank space ignored, which is the honest form and the one to reach for first. `expect-contains` holds one sentence that has to appear somewhere in the output, and it exists for the narrower case where the output cannot be compared whole because part of it is a measurement. CoreMark is that case: it validates its own CRCs and then exits zero whether or not the validation held, so its exit status is not an oracle, and two thirds of what it prints is a timing that differs on every run. The sentence its manifest checks is the final CRC line rather than the `Correct operation validated` that CoreMark prints when it is happy, because CoreMark counts a run shorter than ten seconds as an error of its own, and buying that sentence at every level on every host costs minutes for nothing the CRC does not already say. The lint refuses a recorded oracle with neither field, refuses both fields together, and refuses either field on an oracle that is not recorded, because all three are a claim nothing checks.
+
+**`build.expect-configure`** holds sentences that have to appear in what configure prints, and it exists because a configure script is allowed to ask a question, get the wrong answer, and carry on. libjansson is why it was added. Its atomics probe is an `AC_TRY_LINK` around `__atomic_load_n`, and a compiler that cannot link that gets `have_atomic_builtins=no` and a build that falls back to a lock, which then compiles, links, and passes the whole suite. That is a green cell for the one project in the corpus admitted specifically to answer whether the atomic builtins are right, and it is the exact failure this repository exists to avoid. So the manifest names the line it needs to see, the harness looks for each sentence in configure's stdout and stderr together, and a sentence that never appeared stops the trial at the configure step with `did-not-build` and the missing sentence as the first diagnostic. It is not a substitute for the suite and it is not a second oracle. It is the check that the thing under test was the thing that got built. The lint refuses the field on a build system that has no configure step, because nothing would ever look at it, and refuses an empty sentence, because every output contains one.
 
 **`levels.run`** defaults to the rung's set from document 04.7 and is present so that an individual project can be held back from a level with an exclusion rather than the whole rung being held back.
 
@@ -114,8 +116,8 @@ It exists so that a pin move is one reviewable diff with the hash in it, and so 
 
 ## 6.8 What the manifest deliberately cannot express
 
-**Arbitrary shell.** There is no `pre-build-script` field and there will not be one, because the first one added is the last day the corpus is declarative. A project that needs a step the schema cannot express is either a schema gap, in which case the schema grows a named field with a lint and a document section, or a patch, in which case document 09 governs it. `test.expect-contains` is the worked example of the first route, added because CoreMark could not be graded by any of the four oracles as they stood, and the alternative on offer was a special case in the harness keyed on a project name.
+**Arbitrary shell.** There is no `pre-build-script` field and there will not be one, because the first one added is the last day the corpus is declarative. A project that needs a step the schema cannot express is either a schema gap, in which case the schema grows a named field with a lint and a document section, or a patch, in which case document 09 governs it. `test.expect-contains` is the worked example of the first route, added because CoreMark could not be graded by any of the four oracles as they stood, and the alternative on offer was a special case in the harness keyed on a project name. `build.expect-configure` is the second worked example, added because libjansson's atomics probe is a silent fallback and the alternative on offer was to grep a log by hand after every run. Both grew the same way: a named field, a lint rule that refuses the ways of getting it wrong, a paragraph in section 6.2, and a motivating project in the same change.
 
-**Per-project compiler flags beyond the level.** `build.env.CFLAGS` exists and is empty in nearly every manifest. A project that needs a flag to build is a project telling us something, and burying that in a manifest turns a finding into a configuration. Where a flag is genuinely required by the project's own documentation (`DISPATCH=0` for `xxhash`, `LUA_USE_JUMPTABLE` for `lua`), it appears here with a comment naming why, and the lint requires the comment.
+**Per-project compiler flags beyond the level.** `build.env` exists and holds no `CFLAGS` in any manifest, because document 07's environment puts the level in `CFLAGS` and the manifest's entries are applied last and win, so a manifest that sets `CFLAGS` is a manifest that runs every level at the same one. A project that needs a flag to build is a project telling us something, and burying that in a manifest turns a finding into a configuration. Where a flag is genuinely required by the project's own documentation (`DISPATCH=0` for `xxhash`, `LUA_USE_JUMPTABLE` for `lua`), it appears here with a comment naming why, and the lint requires the comment.
 
 **Conditional logic.** No `if-host`, no `unless-level`. A project that behaves differently per host is two entries or an exclusion, because a manifest with branches is a program, and document 07's harness is the only program here.

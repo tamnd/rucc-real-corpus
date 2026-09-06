@@ -135,6 +135,13 @@ pub struct Build {
     /// Arguments passed to `configure` or to `cmake`.
     #[serde(default)]
     pub configure: Vec<String>,
+    /// Sentences that have to appear in what configure prints, one per line the answer matters
+    /// for. A probe that comes back the wrong way and is then silently worked around produces a
+    /// build that passes without doing the thing the project is on the list for, and this is how
+    /// a manifest refuses that build instead of reporting it green. `spec/06-manifest.md`
+    /// section 6.2.
+    #[serde(default)]
+    pub expect_configure: Vec<String>,
     /// Make targets, in order.
     #[serde(default)]
     pub targets: Vec<String>,

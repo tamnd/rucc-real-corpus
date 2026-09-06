@@ -129,6 +129,29 @@ fn check_build(manifest: &Manifest, say: &mut Vec<String>) {
                 .into(),
         );
     }
+    let configures = matches!(
+        manifest.build.system,
+        BuildSystem::Configure | BuildSystem::Autoconf | BuildSystem::Cmake
+    );
+    if !configures && !manifest.build.expect_configure.is_empty() {
+        say.push(
+            "expects something from configure and has no configure step, so nothing would check it"
+                .into(),
+        );
+    }
+    for expected in &manifest.build.expect_configure {
+        if expected.trim().is_empty() {
+            say.push(
+                "expects an empty sentence from configure, which every output contains".into(),
+            );
+        }
+    }
+    if manifest.build.env.contains_key("CFLAGS") {
+        say.push(
+            "sets CFLAGS, and the environment puts the level there and the manifest wins, so every level would build at whichever one this is"
+                .into(),
+        );
+    }
     for note in manifest
         .build
         .flags
@@ -389,6 +412,40 @@ kind = "standard"
             });
         let findings = check(&corpus);
         assert!(findings.iter().any(|f| f.what.contains("stale")));
+    }
+
+    #[test]
+    fn expecting_something_from_a_configure_that_does_not_exist_is_caught() {
+        let mut corpus = corpus_of(SAMPLE);
+        corpus.manifests[0].build.expect_configure = vec!["checking for atomics... yes".into()];
+        let findings = check(&corpus);
+        assert!(
+            findings
+                .iter()
+                .any(|f| f.what.contains("no configure step"))
+        );
+    }
+
+    #[test]
+    fn an_empty_sentence_expected_from_configure_is_caught() {
+        let mut corpus = corpus_of(SAMPLE);
+        corpus.manifests[0].build.system = BuildSystem::Configure;
+        corpus.manifests[0].build.expect_configure = vec!["   ".into()];
+        let findings = check(&corpus);
+        assert!(findings.iter().any(|f| f.what.contains("empty sentence")));
+    }
+
+    #[test]
+    fn a_manifest_that_sets_cflags_is_caught() {
+        // The level arrives through CFLAGS and the manifest's environment is applied last, so
+        // this would quietly build all four levels at the same one.
+        let mut corpus = corpus_of(SAMPLE);
+        corpus.manifests[0]
+            .build
+            .env
+            .insert("CFLAGS".into(), "-O2".into());
+        let findings = check(&corpus);
+        assert!(findings.iter().any(|f| f.what.contains("sets CFLAGS")));
     }
 
     #[test]

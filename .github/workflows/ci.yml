@@ -1,8 +1,9 @@
 # The per-commit gate. Everything here is required to merge.
 #
 # spec/12-ci-and-cost.md section 12.1 gives this tier a budget of fifteen minutes. Right now it
-# is well under that, because there are no projects to build yet. The budget is the reason the
-# rung 0 corpus run lands here later and the rest of the ladder does not.
+# is well under that, because nothing here builds a project: the corpus job checks that the
+# manifests agree with the lockfile and stops. The budget is the reason the rung 0 corpus run
+# lands here later and the rest of the ladder does not.
 #
 # Actions are pinned to a patch version rather than a major tag. A major tag is a moving
 # reference, and a corpus whose whole purpose is reproducing a result cannot have one in its
@@ -127,7 +128,7 @@ jobs:
   # this becomes the gate that says every project has a pin, a licence, a reason for being on
   # the list, and a feature tag that exists. It runs the lint's own tests and then the lint
   # itself, because the tests only prove the rules work on a corpus made up in a test and it is
-  # the eleven real manifests that a change is going to break.
+  # the real manifests that a change is going to break.
   corpus:
     name: the corpus agrees with itself
     needs: quick
