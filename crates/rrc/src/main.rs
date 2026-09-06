@@ -78,6 +78,7 @@ fn dispatch(invocation: Invocation) -> Result<Done, String> {
             commands::schedule::test(&open(&options)?, &options, &project, level)
         }
         Command::Run(plan) => commands::schedule::run(&open(&options)?, &options, &plan),
+        Command::Abi(plan) => commands::schedule::abi_only(&open(&options)?, &options, &plan),
     }
 }
 

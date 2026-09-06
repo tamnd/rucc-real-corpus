@@ -28,3 +28,7 @@ why = "the self tests include blake2-kat.h from there and the Makefile's own CFL
 [test]
 command = ["make", "check"]
 oracle = "self-checking"
+
+# No [abi] table. Each reference file carries its own main behind BLAKE2_SELFTEST, and the cross
+# check gives both halves the same flags, so turning the define on to get a driver turns it on for
+# the archive too and the link finds several mains.

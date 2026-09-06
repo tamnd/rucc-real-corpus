@@ -27,3 +27,9 @@ why = "the test includes tinycthread.h by bare name and the header sits beside t
 [test]
 command = ["./tinycthread-test"]
 oracle = "self-checking"
+
+# No [abi] table on purpose. The project divides the way the cross check wants, one file is the
+# implementation and the other calls it, but the test prints the wall clock and prints one dot per
+# turn of a condition variable, so it does not print the same thing twice in a row. The cross check
+# compares what four builds print, and a driver that disagrees with itself would make every one of
+# those comparisons read as an abi difference when the compilers had agreed about everything.

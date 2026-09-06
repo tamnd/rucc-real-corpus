@@ -70,6 +70,12 @@ This catches the class parent document 11 cares about and no single-compiler run
 
 It costs one extra build per R1 project and it is the cheapest strong result on this ladder. Document 03.1's C5 is the axis it measures, and it is the answer to the fact that no project below R5 links against a second toolchain naturally.
 
+**The crossing is over compilers and nothing else.** Same sources, same level, same flags, same archiver, and four sandbox paths of the same length, because a driver that prints part of `__FILE__` would otherwise differ between two pairings for a reason that has nothing to do with the ABI.
+
+**The driver has to print the same thing twice.** This was not in the first version of this document and the implementation found it. The harness runs the GCC baseline driver a second time before it crosses anything, and a driver whose two runs disagree makes the cell `not-compared` with a note saying so, rather than a finding. A wall clock, a pointer value, a thread id, or the order threads reported in all show up as a crossed pairing disagreeing with the baseline while the two compilers agreed about everything, which is the corpus inventing the exact class of result it exists to measure honestly. A `not-compared` cell is a finding against the corpus and does not fail the run.
+
+**What this means for the manifest.** A project earns a cross-check by having two lists of source files that divide into a library and a caller, and by shipping a caller that runs with no arguments and prints the same lines every time. Several R1 projects cannot: `tinycthread` and `libsir` print times, `lmdb` and `rpmalloc` seed themselves off the clock or off thread scheduling, `xxhash` includes its implementation rather than linking against it, `blake2` puts a `main` in every reference file, and `bzip2`, `uzlib` and `linenoise` need arguments or a second program the cross-check does not build. Each of those manifests says which one it is, in place, so the absence is a recorded decision rather than an oversight.
+
 ## 8.6 The mixed build
 
 Document 01.4's technique from Anthropic's compiler, made a first-class mode rather than a debugging habit.

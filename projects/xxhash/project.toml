@@ -23,3 +23,6 @@ DISPATCH = "0"
 [test]
 command = ["make", "test"]
 oracle = "self-checking"
+
+# No [abi] table. The sanity test includes the implementation with XXH_IMPLEMENTATION rather than
+# linking against it, so there is no call boundary between the two halves to cross a compiler over.

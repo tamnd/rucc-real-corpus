@@ -10,12 +10,13 @@
 //! is long enough that somebody stopping it halfway through is a normal event, and the records
 //! it had finished are worth keeping.
 
-use crate::cli::{Options, RunPlan};
+use crate::cli::{AbiPlan, Options, RunPlan};
 use crate::commands::{Done, fetch};
 use crate::corpus::Loaded;
 use rrc_fetch::{Cache, Downloader};
 use rrc_manifest::axes::Level;
 use rrc_manifest::manifest::Manifest;
+use rrc_run::abi::{self, AbiRecord};
 use rrc_run::driver::{self, Compiler, Job};
 use rrc_run::record::{Outcome, Provenance, RecordLog, RunRecord};
 use rrc_run::sandbox::Slot;
@@ -262,6 +263,203 @@ fn describe(record: &RunRecord) -> String {
     out
 }
 
+/// Cross check one project at one level, fetching it first if it is not already there.
+///
+/// `None` when the manifest has no `[abi]` table. Most of the corpus does not have one and never
+/// will, since a project has to divide into a library and a caller before there is anything to
+/// cross, and treating that as a missing result would put a permanent hole in every report.
+pub fn cross(
+    setup: &Setup,
+    loaded: &Loaded,
+    manifest: &Manifest,
+    level: Level,
+) -> Result<Option<AbiRecord>, String> {
+    if manifest.abi.is_none() {
+        return Ok(None);
+    }
+    let extracted = loaded.extracted(&manifest.project.name);
+    fetch::ensure(
+        manifest,
+        &setup.cache,
+        setup.downloader.as_ref(),
+        &extracted,
+    )?;
+    // Its own workspace, so that the four cross trees do not sit where the graded build's tree is
+    // about to be created and get deleted halfway through by a run of the ordinary kind.
+    let workspace = loaded.workspace().join("abi");
+    let job = job(setup, manifest, level, &extracted, &workspace);
+    abi::check(&job).map_err(|why| format!("{} at {}: {why}", manifest.project.name, level.name()))
+}
+
+/// `rrc abi`, the cross check on its own.
+///
+/// A command of its own as well as part of a run, because the cross check is the thing somebody
+/// reaches for when a struct passing bug is suspected, and making them run the whole corpus to get
+/// at it would mean they run it once.
+pub fn abi_only(loaded: &Loaded, options: &Options, plan: &AbiPlan) -> Result<Done, String> {
+    let chosen: Vec<&Manifest> = if plan.projects.is_empty() {
+        loaded
+            .corpus
+            .manifests
+            .iter()
+            .filter(|manifest| manifest.abi.is_some())
+            .collect()
+    } else {
+        plan.projects
+            .iter()
+            .map(|name| loaded.get(name))
+            .collect::<Result<Vec<_>, _>>()?
+    };
+    if chosen.is_empty() {
+        return Ok(Done::good(
+            "no project has a cross check, so nothing ran\n".to_string(),
+        ));
+    }
+
+    let out = absolute(loaded, &plan.out);
+    let setup = Setup::new(options);
+    let mut records = Vec::new();
+    for manifest in chosen {
+        for level in levels_asked(manifest, plan.levels.as_deref()) {
+            let Some(record) = cross(&setup, loaded, manifest, level)? else {
+                eprintln!(
+                    "{:<24} {:<4} no cross check in the manifest",
+                    manifest.project.name,
+                    level.name()
+                );
+                continue;
+            };
+            eprintln!(
+                "{:<24} {:<4} {}",
+                manifest.project.name,
+                level.name(),
+                record.summary()
+            );
+            records.push(record);
+        }
+    }
+
+    let written = write_abi(&out, &records)?;
+    let mut said = crossings(&records);
+    let _ = writeln!(said, "records  {}", written.display());
+    Ok(if records.iter().any(|one| one.outcome.is_failure()) {
+        Done::bad(said)
+    } else {
+        Done::good(said)
+    })
+}
+
+/// The levels one project is crossed at.
+///
+/// The same intersection rule the run uses. Asking for a level a project does not run at does not
+/// invent a result for it, because a cross check at `-O3` for a rung whose table stops at `-O2` is
+/// a number with nothing to compare it against.
+fn levels_asked(manifest: &Manifest, asked: Option<&[Level]>) -> Vec<Level> {
+    let mine = manifest.levels();
+    match asked {
+        None => mine,
+        Some(asked) => mine
+            .into_iter()
+            .filter(|level| asked.contains(level))
+            .collect(),
+    }
+}
+
+fn absolute(loaded: &Loaded, out: &std::path::Path) -> PathBuf {
+    if out.is_absolute() {
+        out.to_path_buf()
+    } else {
+        loaded.root.join(out)
+    }
+}
+
+/// Write the cross check records, which live beside the run's own and not in them.
+fn write_abi(out: &std::path::Path, records: &[AbiRecord]) -> Result<PathBuf, String> {
+    let at = out.join("abi.jsonl");
+    abi::write(&at, records).map_err(|why| format!("writing {}: {why}", at.display()))?;
+    Ok(at)
+}
+
+/// A count of cells with the noun after it, because a report that says `1 cells` reads like nobody
+/// looked at it.
+fn cells(how_many: usize) -> String {
+    if how_many == 1 {
+        "1 cell".to_string()
+    } else {
+        format!("{how_many} cells")
+    }
+}
+
+/// The cross check section, written whether or not anything is wrong with it.
+///
+/// A pairing that disagreed is named along with which two compilers were on which half, because
+/// that pair is the whole finding. `rucc archive with gcc driver` disagreeing and the reverse
+/// agreeing says the bug is in what we emit at the call boundary rather than in what we expect,
+/// and a report that says only that the cross check failed has thrown that away.
+fn crossings(records: &[AbiRecord]) -> String {
+    let mut out = String::from("\n## The abi cross check\n\n");
+    if records.is_empty() {
+        out.push_str("No project on this run has a cross check.\n");
+        return out;
+    }
+    let _ = writeln!(
+        out,
+        "The cross check covers {}, each built four ways, crossing the two compilers over the archive and the driver. This is the check of spec 8.5, and it is the only one on the ladder that a single compiler cannot pass by being wrong about the call boundary in a way it agrees with itself about.\n",
+        cells(records.len())
+    );
+
+    // The two lists are kept apart because they belong to different people. A disagreement is a
+    // compiler bug and goes to whoever owns the call boundary. A cell that could not be compared
+    // is a corpus bug, usually a driver that prints a time or races on the order its threads
+    // report, and goes to whoever wrote the manifest. Counting them together would let the second
+    // kind quietly inflate the first.
+    let disagreed: Vec<&AbiRecord> = records
+        .iter()
+        .filter(|one| one.outcome.is_failure())
+        .collect();
+    let unusable: Vec<&AbiRecord> = records
+        .iter()
+        .filter(|one| one.outcome == Outcome::NotCompared)
+        .collect();
+
+    if disagreed.is_empty() {
+        out.push_str("Every pairing printed the same thing as the two gcc halves.\n");
+    } else {
+        let _ = writeln!(
+            out,
+            "{} of them did not agree. A crossed pairing that fails to build, fails to run, or prints something the two gcc halves did not is a difference at the call boundary, which is struct passing, bit-field layout, the varargs save area, long double placement, or a struct returned wider than the register pair.\n",
+            disagreed.len()
+        );
+        for record in disagreed {
+            let _ = writeln!(
+                out,
+                "- {} at {}, {}",
+                record.project,
+                record.level.name(),
+                record.summary()
+            );
+        }
+    }
+
+    if !unusable.is_empty() {
+        let _ = writeln!(
+            out,
+            "\n{} could not be compared at all, which is a finding against the corpus and not against the compiler.\n",
+            cells(unusable.len())
+        );
+        for record in unusable {
+            let _ = writeln!(
+                out,
+                "- {} at {}, {}",
+                record.project,
+                record.level.name(),
+                record.summary()
+            );
+        }
+    }
+    out
+}
+
 /// `rrc run`, the scheduler.
 ///
 /// Progress goes to standard error and the report goes to standard output, so that piping the
@@ -272,11 +470,7 @@ pub fn run(loaded: &Loaded, options: &Options, plan: &RunPlan) -> Result<Done, S
         return Ok(Done::good("no projects matched, so nothing ran\n"));
     }
 
-    let out = if plan.out.is_absolute() {
-        plan.out.clone()
-    } else {
-        loaded.root.join(&plan.out)
-    };
+    let out = absolute(loaded, &plan.out);
     let records_at = out.join("records.jsonl");
     // Cleared rather than appended to, because a second run into the same directory that keeps
     // the first run's records produces a report that counts some cells twice.
@@ -287,6 +481,7 @@ pub fn run(loaded: &Loaded, options: &Options, plan: &RunPlan) -> Result<Done, S
     let setup = Setup::new(options);
     let mut records = Vec::new();
     let mut differences = Vec::new();
+    let mut crossed = Vec::new();
 
     for manifest in chosen {
         for level in levels_for(manifest, plan) {
@@ -307,13 +502,28 @@ pub fn run(loaded: &Loaded, options: &Options, plan: &RunPlan) -> Result<Done, S
                 });
             }
             records.push(cell.record);
+
+            // Spec 12.1 puts the cross check in the per commit budget rather than behind a flag,
+            // and a project pays for it only by having an `[abi]` table. It runs after the graded
+            // cell rather than before, so a project that does not build at all says so first.
+            if let Some(record) = cross(&setup, loaded, manifest, level)? {
+                eprintln!(
+                    "{:<24} {:<4} abi, {}",
+                    manifest.project.name,
+                    level.name(),
+                    record.summary()
+                );
+                crossed.push(record);
+            }
         }
     }
+    write_abi(&out, &crossed)?;
 
     let stale = staleness::check(&records, &loaded.corpus.exclusions);
     let report = rrc_report::Report::of(&records, &[]);
     let mut markdown = report.markdown();
     markdown.push_str(&register(&stale));
+    markdown.push_str(&crossings(&crossed));
     if plan.twice {
         markdown.push_str(&determinism(&differences));
     }
@@ -334,11 +544,15 @@ pub fn run(loaded: &Loaded, options: &Options, plan: &RunPlan) -> Result<Done, S
         let _ = writeln!(said, "register {how_many} what happens");
         said.push_str(&staleness::render(&stale));
     }
+    if !crossed.is_empty() {
+        let _ = writeln!(said, "{}", abi_line(&crossed));
+    }
     if plan.twice {
         let _ = writeln!(said, "{}", determinism_line(&differences));
     }
 
-    let failed = records.iter().any(|record| record.outcome.is_failure());
+    let crossings_failed = crossed.iter().any(|one| one.outcome.is_failure());
+    let failed = records.iter().any(|record| record.outcome.is_failure()) || crossings_failed;
     // A cell that differed only in the linker's build identity is reported and does not fail the
     // run. The compiler produced the same bytes twice, and failing on it would make the check
     // unusable on macOS for a reason that has nothing to do with the compiler.
@@ -421,6 +635,31 @@ fn determinism(differences: &[Diverged]) -> String {
 /// Whether a cell diverged in a way the compiler is answerable for.
 fn is_real(diverged: &Diverged) -> bool {
     diverged.products.iter().any(Difference::is_real)
+}
+
+/// The one line the cross check gets in the summary.
+fn abi_line(crossed: &[AbiRecord]) -> String {
+    let disagreed = crossed
+        .iter()
+        .filter(|one| one.outcome.is_failure())
+        .count();
+    let unusable = crossed
+        .iter()
+        .filter(|one| one.outcome == Outcome::NotCompared)
+        .count();
+    let total = cells(crossed.len());
+    match (disagreed, unusable) {
+        (0, 0) => format!("abi       {total} crossed four ways and every pairing agreed"),
+        (0, _) => format!(
+            "abi       {total} crossed four ways and every pairing agreed, {unusable} could not be compared"
+        ),
+        (_, 0) => {
+            format!("abi       {disagreed} of {total} crossed four ways and did not agree")
+        }
+        _ => format!(
+            "abi       {disagreed} of {total} crossed four ways and did not agree, {unusable} could not be compared"
+        ),
+    }
 }
 
 fn determinism_line(differences: &[Diverged]) -> String {

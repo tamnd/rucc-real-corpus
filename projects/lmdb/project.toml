@@ -31,3 +31,6 @@ why = "the Makefile builds CFLAGS out of THREADS, OPT, W and XCFLAGS, and OPT is
 [test]
 command = ["make", "test", "ILIBS2="]
 oracle = "self-checking"
+
+# No [abi] table. mtest is the only program here that runs with no arguments, and it seeds itself
+# with the clock, so the keys it writes and the order it prints them in change between runs.

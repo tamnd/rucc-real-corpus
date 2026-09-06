@@ -22,6 +22,7 @@ rrc fetch [<project>...]                populate the cache, verify hashes
 rrc build <project> --level O2          one project, one level
 rrc test <project> --level O2           build then run the suite
 rrc run --rung 0,1,2 --levels O0,O2     the scheduler; the normal entry point
+rrc abi [<project>...] [--levels O2]    the four way cross-check of 08.5, on its own
 rrc bisect <project> --level O2         the mixed build of document 08.6
 rrc report --format md|json|junit       render records
 rrc diff <run-a> <run-b>                what changed between two runs
@@ -29,6 +30,8 @@ rrc lint                                schema, vocabulary, licences, staleness
 ```
 
 `rrc run` with no arguments runs what document 12.1's per-commit budget admits, which is rungs 0 and 1 at four levels. Everything wider is an explicit argument, so the cheap thing is the default and the expensive thing is a decision.
+
+`rrc abi` is the cross-check on its own, for working on a single project without paying for the graded run beside it. Document 12.1 puts the cross-check inside the per-commit budget rather than behind a flag, so `rrc run` does it too, for every project whose manifest has an `[abi]` table. It writes its own `abi.jsonl` next to the run records and its own section in the report, because a crossed pairing that disagrees is a different kind of result from a project whose suite failed and putting them in one table loses that.
 
 **Document 02.4's one-command claim is `rrc run --rung 0,1,2`** on a machine with a Rust toolchain, GCC 16 and a network connection. If that sentence stops being true, claim four is falsified and document 12.4's release checklist is where it gets caught.
 

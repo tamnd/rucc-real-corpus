@@ -53,10 +53,13 @@ cargo run -p rrc -- fetch --record        the same, and write what it resolved i
 cargo run -p rrc -- build --project c4    build one project and stop at the binary
 cargo run -p rrc -- test --project c4     build one project and run its own suite
 cargo run -p rrc -- run                   rungs 0 and 1 at four optimization levels, which is the per commit budget
+cargo run -p rrc -- abi zlib              the four way abi cross check on one project, without the graded run beside it
 cargo run -p rrc -- report --input runs/latest/records.jsonl
 ```
 
 Point it at the two compilers with `--rucc` and `--gcc`, which default to `rucc` and `gcc` on the path. Every run writes `records.jsonl`, one JSON object per project per level, and the Markdown report is rendered from that file rather than kept alongside it. The report format will change and the records have to outlive it, so `rrc report` re-renders an old run without rebuilding anything.
+
+A project with an `[abi]` table also gets built four ways at every level it runs at, crossing the two compilers over a static archive and a program that calls into it. That is the one check on the ladder no single compiler run can do: a compiler can be self consistently wrong about struct passing, bit-field layout, the varargs save area or a struct returned wider than the register pair, and pass its own suite forever, because both halves of every call agree with each other. Those results go in `abi.jsonl` and get their own section in the report. `spec/08-oracles.md` section 8.5 has the reasoning, including why the driver has to print the same thing twice before anything is crossed.
 
 Exit codes are `0` when there is nothing for a person to look at, `1` when the run happened and something in it wants attention, and `2` when the run did not happen at all because the command line was wrong or the corpus would not load. A failing project and a broken invocation are different problems and CI should be able to tell them apart.
 

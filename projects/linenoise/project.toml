@@ -32,3 +32,8 @@ parser = "custom-regex"
 regex = "Tests passed: (\\d+)"
 baseline-tests = 102
 requires = ["sh"]
+
+# No [abi] table. The split looks right, one file is the editor and the other is the test, but the
+# test does its work by forking a shell that runs the example program and reading the pty back. The
+# cross check builds one archive and one driver, so the example is not there to be run, and what the
+# driver prints then depends on how far the shell got before the failure rather than on the compiler.

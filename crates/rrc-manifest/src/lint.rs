@@ -62,6 +62,7 @@ fn check_manifest(manifest: &Manifest, corpus: &Corpus, findings: &mut Vec<Findi
     check_project(manifest, corpus, &mut what);
     check_source(manifest, corpus, &mut what);
     check_build(manifest, &mut what);
+    check_abi(manifest, &mut what);
     check_test(manifest, &mut what);
     check_levels_and_limits(manifest, &mut what);
     findings.extend(what.into_iter().map(|what| Finding {
@@ -289,6 +290,75 @@ fn check_build(manifest: &Manifest, say: &mut Vec<String>) {
         if note.why.trim().is_empty() {
             say.push(format!(
                 "the flag `{}` has no reason, and section 9.3 is only not a patch because the reason is written down",
+                note.flag
+            ));
+        }
+    }
+}
+
+/// The ABI cross check, from `spec/08-oracles.md` section 8.5.
+///
+/// The rules are all about the same thing: the check is a comparison between four builds, and
+/// anything that makes one of them different for a reason other than the compiler makes the whole
+/// cell unreadable. A driver with no sources compiles nothing to compare. A driver that is also in
+/// the archive gets compiled twice and linked once, so the crossing does not happen. An archive
+/// that is not named like an archive gets handed to `ar` anyway and the link fails four ways at
+/// once, which reads as a compiler bug and is not one.
+fn check_abi(manifest: &Manifest, say: &mut Vec<String>) {
+    let Some(abi) = &manifest.abi else {
+        return;
+    };
+
+    if !std::path::Path::new(&abi.archive.output)
+        .extension()
+        .is_some_and(|suffix| suffix.eq_ignore_ascii_case("a"))
+    {
+        say.push(format!(
+            "the cross check archive is called `{}`, and it is a static archive, so it wants to end in .a",
+            abi.archive.output
+        ));
+    }
+    if abi.archive.sources.is_empty() {
+        say.push("the cross check archive names no sources, so there is nothing to cross".into());
+    }
+    if abi.driver.sources.is_empty() {
+        say.push(
+            "the cross check driver names no sources, so there is nothing to call across".into(),
+        );
+    }
+    if abi.driver.output.trim().is_empty() {
+        say.push("the cross check driver names no output, so there is nothing to run".into());
+    }
+    if abi.driver.output == abi.archive.output {
+        say.push("the cross check archive and driver are both written to the same file".into());
+    }
+
+    // The one that actually matters. A source in both halves is compiled by both compilers and
+    // linked once, and the linker takes the driver's copy, so the archive half of the crossing
+    // never reaches the program and the cell reports agreement it did not measure.
+    for source in &abi.driver.sources {
+        if abi.archive.sources.contains(source) {
+            say.push(format!(
+                "`{source}` is in both halves of the cross check, and the link would take the driver's copy, so nothing would actually cross"
+            ));
+        }
+    }
+
+    let mut seen: Vec<&str> = Vec::new();
+    for source in abi.archive.sources.iter().chain(&abi.driver.sources) {
+        if seen.contains(&source.as_str()) {
+            say.push(format!(
+                "`{source}` is named twice in the cross check, and it would be compiled twice"
+            ));
+        } else {
+            seen.push(source);
+        }
+    }
+
+    for note in &abi.flags {
+        if note.why.trim().is_empty() {
+            say.push(format!(
+                "the cross check flag `{}` has no reason, and both halves get it, so it is worth saying what it is for",
                 note.flag
             ));
         }

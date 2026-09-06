@@ -29,3 +29,9 @@ oracle = "suite"
 parser = "custom-regex"
 regex = "all (\\d+) "
 baseline-tests = 36
+
+# No [abi] table, which is a shame because this is the varargs project and varargs is half of what
+# the cross check is for. Every line the suite prints carries a timestamp, so the driver does not
+# print the same thing twice and there is nothing stable to cross it against. Getting one here means
+# a driver that calls the varargs entry points and prints what they formatted without the timestamp,
+# and the project does not ship one.

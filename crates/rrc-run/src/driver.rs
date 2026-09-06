@@ -11,6 +11,7 @@
 
 use rrc_manifest::axes::{BuildSystem, Level, Oracle, Requirement};
 use rrc_manifest::manifest::{Manifest, Program};
+use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
@@ -25,12 +26,46 @@ use crate::shim::{Shim, Toolchain};
 use crate::sizes::{self, Sizes};
 
 /// Which compiler a trial is being run with.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
 pub enum Compiler {
     /// The one being tested, which is the point.
     UnderTest,
     /// The real GCC, for the D0 differential's other half.
     Reference,
+}
+
+impl Compiler {
+    /// The name a record and a report print.
+    #[must_use]
+    pub const fn name(self) -> &'static str {
+        match self {
+            Self::UnderTest => "rucc",
+            Self::Reference => "gcc",
+        }
+    }
+
+    /// The one letter a sandbox path is named after.
+    ///
+    /// One letter in both cases, on purpose. The ABI cross check compares what four builds print,
+    /// and a program that embeds `__FILE__` prints part of its own sandbox path, so the four paths
+    /// have to be the same length for the comparison to be about the compiler.
+    #[must_use]
+    pub const fn letter(self) -> char {
+        match self {
+            Self::UnderTest => 't',
+            Self::Reference => 'r',
+        }
+    }
+
+    /// The compiler itself.
+    #[must_use]
+    pub fn path(self, toolchain: &Toolchain) -> PathBuf {
+        match self {
+            Self::UnderTest => toolchain.under_test.clone(),
+            Self::Reference => toolchain.reference.clone(),
+        }
+    }
 }
 
 /// Everything one run of one project needs.
@@ -380,7 +415,7 @@ fn direct_arguments(job: &Job<'_>, program: &Program) -> Vec<String> {
 /// Without it, `make test` re-reads the Makefile, decides the objects are out of date against
 /// flags it now names itself, and rebuilds the project at the level the Makefile prefers in the
 /// middle of grading it.
-fn resolve(program: &str, env: &BTreeMap<String, String>, workdir: &Path) -> PathBuf {
+pub(crate) fn resolve(program: &str, env: &BTreeMap<String, String>, workdir: &Path) -> PathBuf {
     if program.contains('/') {
         return workdir.join(program);
     }
@@ -650,7 +685,7 @@ fn record(job: &Job<'_>, trial: &Trial, graded: Graded) -> RunRecord {
 ///
 /// The record is what gets read at a glance and the log is what gets read when the record is
 /// surprising, and a corpus that keeps only the first is a corpus that cannot be investigated.
-fn log(
+pub(crate) fn log(
     sandbox: &Sandbox,
     name: &str,
     invocation: &Invocation,
