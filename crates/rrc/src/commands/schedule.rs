@@ -21,7 +21,7 @@ use rrc_run::record::{Outcome, Provenance, RecordLog, RunRecord};
 use rrc_run::sandbox::Slot;
 use rrc_run::shim::Toolchain;
 use rrc_run::staleness::{self, Stale};
-use rrc_run::twice::{self, Difference};
+use rrc_run::twice::{self, Difference, Kind};
 use std::fmt::Write as _;
 use std::path::PathBuf;
 
@@ -339,7 +339,11 @@ pub fn run(loaded: &Loaded, options: &Options, plan: &RunPlan) -> Result<Done, S
     }
 
     let failed = records.iter().any(|record| record.outcome.is_failure());
-    Ok(if failed || !differences.is_empty() || !stale.is_empty() {
+    // A cell that differed only in the linker's build identity is reported and does not fail the
+    // run. The compiler produced the same bytes twice, and failing on it would make the check
+    // unusable on macOS for a reason that has nothing to do with the compiler.
+    let diverged = differences.iter().any(is_real);
+    Ok(if failed || diverged || !stale.is_empty() {
         Done::bad(said)
     } else {
         Done::good(said)
@@ -399,14 +403,14 @@ fn determinism(differences: &[Diverged]) -> String {
         );
         return out;
     }
-    out.push_str("These built twice into different roots and did not produce the same bytes. A difference that survives the isolation in section 7.4 is the compiler being nondeterministic, which is a violation of the parent document 03 and a high severity issue.\n\n");
+    out.push_str("These built twice into different roots and did not produce the same bytes. A difference that survives the isolation in section 7.4 is the compiler being nondeterministic, which is a violation of the parent document 03 and a high severity issue. A product listed as the linker's build identity is the exception and is not that: the compiler emitted the same bytes twice and the linker stamped a fresh identity over them, which is what the macOS linker does at every link.\n\n");
     for diverged in differences {
         let _ = writeln!(out, "- {} at {}", diverged.project, diverged.level.name());
         for product in &diverged.products {
-            let how = if product.is_presence() {
-                "on one side only"
-            } else {
-                "different bytes"
+            let how = match product.kind {
+                Kind::Presence => "on one side only",
+                Kind::Contents => "different bytes",
+                Kind::BuildIdentity => "identical apart from the linker's build identity",
             };
             let _ = writeln!(out, "  - {}, {how}", product.path);
         }
@@ -414,15 +418,23 @@ fn determinism(differences: &[Diverged]) -> String {
     out
 }
 
+/// Whether a cell diverged in a way the compiler is answerable for.
+fn is_real(diverged: &Diverged) -> bool {
+    diverged.products.iter().any(Difference::is_real)
+}
+
 fn determinism_line(differences: &[Diverged]) -> String {
-    if differences.is_empty() {
-        "twice     every project produced the same bytes both times".to_string()
-    } else {
-        format!(
-            "twice     {} cells produced different bytes on the second build",
-            differences.len()
-        )
+    let real = differences.iter().filter(|d| is_real(d)).count();
+    let stamped = differences.len() - real;
+    if real == 0 && stamped == 0 {
+        return "twice     every project produced the same bytes both times".to_string();
     }
+    if real == 0 {
+        return format!(
+            "twice     every project produced the same bytes both times, {stamped} of them apart from the linker's build identity"
+        );
+    }
+    format!("twice     {real} cells produced different bytes on the second build")
 }
 
 #[cfg(test)]
@@ -497,11 +509,19 @@ command = ["./sample"]
                     path: "jsmn.o".to_string(),
                     first: Some("aa".to_string()),
                     second: Some("bb".to_string()),
+                    kind: Kind::Contents,
                 },
                 Difference {
                     path: "extra.o".to_string(),
                     first: Some("cc".to_string()),
                     second: None,
+                    kind: Kind::Presence,
+                },
+                Difference {
+                    path: "jsmn".to_string(),
+                    first: Some("dd".to_string()),
+                    second: Some("ee".to_string()),
+                    kind: Kind::BuildIdentity,
                 },
             ],
         }]);
@@ -513,9 +533,51 @@ command = ["./sample"]
         );
         assert!(found.contains("extra.o, on one side only"));
         assert!(
+            found.contains("jsmn, identical apart from the linker's build identity"),
+            "a stamped identity gets a verdict of its own rather than being called a difference \
+             or being hidden: {found}"
+        );
+        assert!(
             found.contains("high severity"),
             "a nondeterministic compiler is not a footnote"
         );
+    }
+
+    #[test]
+    fn a_stamped_build_identity_is_reported_and_does_not_make_the_run_say_it_failed() {
+        let stamped = Diverged {
+            project: "jsmn".to_string(),
+            level: Level::O0,
+            products: vec![Difference {
+                path: "jsmn".to_string(),
+                first: Some("aa".to_string()),
+                second: Some("bb".to_string()),
+                kind: Kind::BuildIdentity,
+            }],
+        };
+        assert!(!is_real(&stamped));
+        let line = determinism_line(std::slice::from_ref(&stamped));
+        assert!(
+            line.contains("the same bytes both times"),
+            "the compiler was deterministic and the line has to say so: {line}"
+        );
+        assert!(
+            line.contains("build identity"),
+            "and it still has to say what it is not counting: {line}"
+        );
+
+        let real = Diverged {
+            project: "jsmn".to_string(),
+            level: Level::O0,
+            products: vec![Difference {
+                path: "jsmn.o".to_string(),
+                first: Some("aa".to_string()),
+                second: Some("bb".to_string()),
+                kind: Kind::Contents,
+            }],
+        };
+        assert!(is_real(&real));
+        assert!(determinism_line(&[stamped, real]).contains("1 cells produced different bytes"));
     }
 
     #[test]

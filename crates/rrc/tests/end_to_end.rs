@@ -222,14 +222,13 @@ fn a_report_can_be_rendered_again_from_the_records_alone() {
     );
 }
 
-/// What `--twice` is wired to, and not what the host linker does with it.
+/// Two builds of one source at `-O0`, which now has to come out clean on both hosts.
 ///
-/// Whether two builds of one source agree is `rrc-run`'s question and it has its own test for it.
-/// The reason this one asks a weaker question is that the answer is not the compiler's alone: on
-/// macOS at `-O0` the system linker stamps a fresh `LC_UUID` into every link, so two byte
-/// identical builds of the same source come out different and it has nothing to do with the
-/// compiler under test. Asserting agreement here would make this test a report on whichever
-/// linker the runner happens to ship.
+/// This used to ask only that `--twice` was wired up, because on macOS the system linker stamps a
+/// fresh `LC_UUID` into every link at `-O0` and the ad hoc signature over it changes with it, so
+/// two builds from a deterministic compiler differ in forty eight bytes nobody chose. The
+/// comparison recognises that now and gives it a verdict of its own, so the strong assertion is
+/// back: the compiler produced the same bytes twice, and the run says so.
 #[test]
 fn asking_for_two_builds_gets_a_determinism_section_and_a_verdict() {
     let corpus = Corpus::new("twice");
@@ -249,9 +248,20 @@ fn asking_for_two_builds_gets_a_determinism_section_and_a_verdict() {
         out.stdout
     );
 
+    assert!(
+        out.stdout.contains("the same bytes both times"),
+        "the compiler is deterministic and the only thing that may differ is the linker's build \
+         identity: {}",
+        out.stdout
+    );
+
     let report =
         std::fs::read_to_string(corpus.root.join("runs/three/report.md")).expect("a report");
     assert!(report.contains("## Determinism"));
+    assert!(
+        !report.contains("different bytes"),
+        "nothing here is a real divergence: {report}"
+    );
 
     // Whichever way it went, the graded run is still there and still says what happened. The
     // determinism pass is a second pair of builds and it does not stand in for the first.

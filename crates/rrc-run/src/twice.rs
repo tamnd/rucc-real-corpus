@@ -10,14 +10,37 @@
 //! What gets compared is object files, archives and executables. Not every file, because a
 //! generated `Makefile` that stamps its own date is upstream's business and not the compiler's,
 //! and a check that shouts about it every run is a check people stop reading.
+//!
+//! One difference is told apart from the rest. On macOS the system linker writes a fresh
+//! `LC_UUID` into every link at `-O0`, and the ad hoc code signature that covers it changes with
+//! it, so two builds from a perfectly deterministic compiler differ in forty eight bytes that the
+//! compiler never chose. That is recognised structurally, by finding the load command and the
+//! signature blob it covers and comparing everything else, and it gets a verdict of its own. It is
+//! not folded into a pass, because a check that says byte identical when it means byte identical
+//! apart from something is the kind of claim this repository exists to avoid.
 
 use sha2::{Digest, Sha256};
 use std::collections::BTreeMap;
 use std::fmt::Write as _;
 use std::io::Read;
+use std::ops::Range;
 use std::path::Path;
 
 use crate::sandbox::Sandbox;
+
+/// What kind of disagreement two builds had about one file.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Kind {
+    /// One build produced the file and the other did not.
+    Presence,
+    /// The bytes differ somewhere the compiler chose them.
+    Contents,
+    /// The bytes differ only where the linker stamps a build identity.
+    ///
+    /// A Mach-O `LC_UUID` and the code signature blob that covers it. Nothing else in the file
+    /// moved, which means the compiler produced the same output twice and the linker did not.
+    BuildIdentity,
+}
 
 /// One file whose two builds do not agree.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -28,6 +51,8 @@ pub struct Difference {
     pub first: Option<String>,
     /// What the second build produced.
     pub second: Option<String>,
+    /// Which of the three things went wrong.
+    pub kind: Kind,
 }
 
 impl Difference {
@@ -38,7 +63,19 @@ impl Difference {
     /// different bytes for the same input.
     #[must_use]
     pub const fn is_presence(&self) -> bool {
-        self.first.is_none() || self.second.is_none()
+        matches!(self.kind, Kind::Presence)
+    }
+
+    /// Whether this is the linker's build identity rather than the compiler's output.
+    #[must_use]
+    pub const fn is_build_identity(&self) -> bool {
+        matches!(self.kind, Kind::BuildIdentity)
+    }
+
+    /// Whether this is a divergence the compiler is answerable for.
+    #[must_use]
+    pub const fn is_real(&self) -> bool {
+        !self.is_build_identity()
     }
 }
 
@@ -59,15 +96,128 @@ pub fn compare(first: &Sandbox, second: &Sandbox) -> std::io::Result<Vec<Differe
     for path in paths {
         let one = a.get(path);
         let two = b.get(path);
-        if one != two {
-            differences.push(Difference {
-                path: path.clone(),
-                first: one.cloned(),
-                second: two.cloned(),
-            });
+        if one == two {
+            continue;
         }
+        let kind = if one.is_none() || two.is_none() {
+            Kind::Presence
+        } else if only_build_identity(&first.source().join(path), &second.source().join(path))? {
+            Kind::BuildIdentity
+        } else {
+            Kind::Contents
+        };
+        differences.push(Difference {
+            path: path.clone(),
+            first: one.cloned(),
+            second: two.cloned(),
+            kind,
+        });
     }
     Ok(differences)
+}
+
+/// The largest product this will read whole to look for a build identity.
+///
+/// The comparison needs both files in memory and the hashes have already said they differ. Every
+/// product in this corpus is far under this, and a link that produced something bigger is one
+/// whose difference is worth reporting plainly rather than parsing.
+const MOST_BYTES: u64 = 256 * 1024 * 1024;
+
+/// Whether two products differ only where the linker stamps a build identity.
+///
+/// False for anything that is not a thin Mach-O, anything whose load commands do not parse, and
+/// anything whose two files disagree about where the identity is. The exception has to be narrow
+/// or it stops being an exception: what is allowed to differ is a fixed span inside a recognised
+/// load command, not a byte range that may move.
+fn only_build_identity(first: &Path, second: &Path) -> std::io::Result<bool> {
+    if first.metadata()?.len() > MOST_BYTES || second.metadata()?.len() > MOST_BYTES {
+        return Ok(false);
+    }
+    let a = std::fs::read(first)?;
+    let b = std::fs::read(second)?;
+    if a.len() != b.len() {
+        return Ok(false);
+    }
+    let (Some(regions), Some(other)) = (identity_regions(&a), identity_regions(&b)) else {
+        return Ok(false);
+    };
+    if regions.is_empty() || regions != other {
+        return Ok(false);
+    }
+    let mut at = 0;
+    for region in &regions {
+        if a[at..region.start] != b[at..region.start] {
+            return Ok(false);
+        }
+        at = region.end;
+    }
+    Ok(a[at..] == b[at..])
+}
+
+/// Where a Mach-O keeps the bytes the linker chose rather than the compiler.
+///
+/// The `LC_UUID` payload, and the code signature blob that `LC_CODE_SIGNATURE` points at. Returned
+/// in file order and without overlaps, or nothing at all if the file is not a Mach-O this
+/// understands. Fat binaries are not understood on purpose: they hold several Mach-O files at
+/// offsets of their own and getting that wrong would widen the exception rather than narrow it.
+fn identity_regions(bytes: &[u8]) -> Option<Vec<Range<usize>>> {
+    const LC_UUID: u32 = 0x1b;
+    const LC_CODE_SIGNATURE: u32 = 0x1d;
+
+    let magic: [u8; 4] = bytes.get(..4)?.try_into().ok()?;
+    let (wide, big) = match magic {
+        [0xcf, 0xfa, 0xed, 0xfe] => (true, false),
+        [0xce, 0xfa, 0xed, 0xfe] => (false, false),
+        [0xfe, 0xed, 0xfa, 0xcf] => (true, true),
+        [0xfe, 0xed, 0xfa, 0xce] => (false, true),
+        _ => return None,
+    };
+    let word = |at: usize| -> Option<u32> {
+        let four: [u8; 4] = bytes.get(at..at + 4)?.try_into().ok()?;
+        Some(if big {
+            u32::from_be_bytes(four)
+        } else {
+            u32::from_le_bytes(four)
+        })
+    };
+
+    let header = if wide { 32 } else { 28 };
+    let count = word(16)?;
+    let mut at = header;
+    let mut regions: Vec<Range<usize>> = Vec::new();
+    for _ in 0..count {
+        let cmd = word(at)?;
+        let size = word(at + 4)? as usize;
+        if size < 8 || at + size > bytes.len() {
+            return None;
+        }
+        if cmd == LC_UUID {
+            if size < 24 {
+                return None;
+            }
+            regions.push(at + 8..at + 24);
+        } else if cmd == LC_CODE_SIGNATURE {
+            if size < 16 {
+                return None;
+            }
+            let start = word(at + 8)? as usize;
+            let length = word(at + 12)? as usize;
+            let end = start.checked_add(length)?;
+            if end > bytes.len() {
+                return None;
+            }
+            if length > 0 {
+                regions.push(start..end);
+            }
+        }
+        at += size;
+    }
+
+    regions.sort_by_key(|region| region.start);
+    if regions.windows(2).any(|two| two[0].end > two[1].start) {
+        return None;
+    }
+    Some(regions)
 }
 
 /// Every build product under a tree, by relative path, with its hash.
@@ -259,6 +409,10 @@ mod tests {
     /// program embeds `__FILE__` on purpose, because that is the thing the equal length roots in
     /// [`Slot::name`] exist to make comparable, and a test that left it out would pass whether or
     /// not that decision was working. Skipped when there is no compiler on `PATH`.
+    ///
+    /// At `-O0`, which is where the macOS linker stamps a fresh `LC_UUID` into every link. That is
+    /// the level this has to run at for the exception to be exercised on a real product rather
+    /// than on one built by hand, and anything the exception does not cover still fails here.
     #[test]
     fn a_real_compiler_building_the_same_source_twice_agrees_with_itself() {
         let Some(cc) = crate::shim::on_path("cc") else {
@@ -315,7 +469,7 @@ oracle = "self-checking"
         let pin = "0".repeat(64);
         let job = crate::driver::Job {
             manifest: &manifest,
-            level: Level::O2,
+            level: Level::O0,
             extracted: &extracted,
             workspace: &base,
             toolchain: &toolchain,
@@ -334,12 +488,129 @@ oracle = "self-checking"
         );
 
         let differences = compare(&one.sandbox, &two.sandbox).unwrap();
-        assert_eq!(
-            differences,
-            Vec::new(),
-            "two builds of one source under the constructed environment have to agree"
+        let real: Vec<&Difference> = differences.iter().filter(|d| d.is_real()).collect();
+        assert!(
+            real.is_empty(),
+            "two builds of one source under the constructed environment have to agree apart from \
+             what the linker stamps: {real:?}"
         );
         std::fs::remove_dir_all(&base).ok();
+    }
+
+    /// A thin 64 bit Mach-O with one `LC_UUID` and one `LC_CODE_SIGNATURE`, built by hand.
+    ///
+    /// Built rather than fetched so the test runs on Linux too. What it is testing is the parse,
+    /// and the parse does not care that the rest of the file is filler.
+    fn macho(uuid: u8, signature: u8, body: u8) -> Vec<u8> {
+        const HEADER: u32 = 32;
+        const UUID_SIZE: u32 = 24;
+        const SIGNATURE_SIZE: u32 = 16;
+        const BLOB_AT: u32 = HEADER + UUID_SIZE + SIGNATURE_SIZE + 16;
+        const BLOB_LEN: u32 = 32;
+
+        let mut out = Vec::new();
+        out.extend_from_slice(&[0xcf, 0xfa, 0xed, 0xfe]);
+        out.extend_from_slice(&0x0100_000c_u32.to_le_bytes()); // cputype
+        out.extend_from_slice(&0_u32.to_le_bytes()); // cpusubtype
+        out.extend_from_slice(&2_u32.to_le_bytes()); // filetype
+        out.extend_from_slice(&2_u32.to_le_bytes()); // ncmds
+        out.extend_from_slice(&(UUID_SIZE + SIGNATURE_SIZE).to_le_bytes());
+        out.extend_from_slice(&0_u32.to_le_bytes()); // flags
+        out.extend_from_slice(&0_u32.to_le_bytes()); // reserved
+        assert_eq!(out.len(), HEADER as usize);
+
+        out.extend_from_slice(&0x1b_u32.to_le_bytes());
+        out.extend_from_slice(&UUID_SIZE.to_le_bytes());
+        out.extend_from_slice(&[uuid; 16]);
+
+        out.extend_from_slice(&0x1d_u32.to_le_bytes());
+        out.extend_from_slice(&SIGNATURE_SIZE.to_le_bytes());
+        out.extend_from_slice(&BLOB_AT.to_le_bytes());
+        out.extend_from_slice(&BLOB_LEN.to_le_bytes());
+
+        out.extend_from_slice(&[body; 16]);
+        assert_eq!(out.len(), BLOB_AT as usize);
+        out.extend_from_slice(&[signature; BLOB_LEN as usize]);
+        out.extend_from_slice(&[body; 64]);
+        out
+    }
+
+    fn write(sandbox: &Sandbox, name: &str, bytes: &[u8]) {
+        std::fs::write(sandbox.source().join(name), bytes).unwrap();
+    }
+
+    #[test]
+    fn two_links_that_differ_only_in_the_uuid_and_its_signature_are_not_a_compiler_difference() {
+        let t = two("identity");
+        write(&t.first, "sample", &macho(0x11, 0x22, 0x99));
+        write(&t.second, "sample", &macho(0x33, 0x44, 0x99));
+        let differences = compare(&t.first, &t.second).unwrap();
+        assert_eq!(differences.len(), 1, "it is still reported, not hidden");
+        assert_eq!(differences[0].kind, Kind::BuildIdentity);
+        assert!(!differences[0].is_real());
+    }
+
+    #[test]
+    fn a_byte_the_compiler_chose_is_still_a_difference_even_next_to_a_fresh_uuid() {
+        let t = two("identity-and-more");
+        write(&t.first, "sample", &macho(0x11, 0x22, 0x01));
+        write(&t.second, "sample", &macho(0x33, 0x44, 0x02));
+        let differences = compare(&t.first, &t.second).unwrap();
+        assert_eq!(differences.len(), 1);
+        assert_eq!(
+            differences[0].kind,
+            Kind::Contents,
+            "the exception covers the identity and nothing that happens to sit beside it"
+        );
+        assert!(differences[0].is_real());
+    }
+
+    #[test]
+    fn the_exception_is_only_for_a_mach_o_that_parses() {
+        let t = two("not-macho");
+        elf(&t.first, "sample", b"one");
+        elf(&t.second, "sample", b"two");
+        assert_eq!(
+            compare(&t.first, &t.second).unwrap()[0].kind,
+            Kind::Contents
+        );
+
+        let t = two("truncated");
+        let mut cut = macho(0x11, 0x22, 0x99);
+        cut.truncate(20);
+        let mut other = macho(0x33, 0x44, 0x99);
+        other.truncate(20);
+        other[19] = 0x77;
+        write(&t.first, "sample", &cut);
+        write(&t.second, "sample", &other);
+        assert_eq!(
+            compare(&t.first, &t.second).unwrap()[0].kind,
+            Kind::Contents,
+            "a header that does not parse is a plain difference and not an excuse"
+        );
+    }
+
+    #[test]
+    fn the_regions_found_are_the_uuid_payload_and_the_blob_the_signature_points_at() {
+        let bytes = macho(0x11, 0x22, 0x99);
+        let regions = identity_regions(&bytes).unwrap();
+        assert_eq!(regions.len(), 2);
+        assert_eq!(regions[0], 40..56, "the 16 bytes after the LC_UUID header");
+        assert_eq!(regions[1].len(), 32, "the signature blob");
+        assert!(regions[0].end <= regions[1].start, "in file order");
+    }
+
+    #[test]
+    fn a_file_of_a_different_length_is_never_only_a_build_identity() {
+        let t = two("length");
+        let mut longer = macho(0x11, 0x22, 0x99);
+        longer.push(0);
+        write(&t.first, "sample", &longer);
+        write(&t.second, "sample", &macho(0x11, 0x22, 0x99));
+        assert_eq!(
+            compare(&t.first, &t.second).unwrap()[0].kind,
+            Kind::Contents
+        );
     }
 
     #[test]

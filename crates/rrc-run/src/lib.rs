@@ -52,4 +52,4 @@ pub use record::{Outcome, Phase, Provenance, RecordLog, RunRecord, read_log};
 pub use sandbox::{Sandbox, Slot};
 pub use shim::{EntryKind, Shim, ShimEntry, Toolchain};
 pub use sizes::{Sizes, measure};
-pub use twice::{Difference, compare};
+pub use twice::{Difference, Kind, compare};
