@@ -1,0 +1,136 @@
+# The per-commit gate. Everything here is required to merge.
+#
+# spec/12-ci-and-cost.md section 12.1 gives this tier a budget of fifteen minutes. Right now it
+# is well under that, because there are no projects to build yet. The budget is the reason the
+# rung 0 corpus run lands here later and the rest of the ladder does not.
+#
+# Actions are pinned to a patch version rather than a major tag. A major tag is a moving
+# reference, and a corpus whose whole purpose is reproducing a result cannot have one in its
+# own pipeline.
+
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  merge_group:
+
+# A force push should cancel the run it replaced. The default branch is exempt, because a main
+# branch run is what the badge reads from.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: 0
+  RUSTFLAGS: -D warnings
+  RUSTDOCFLAGS: -D warnings
+
+jobs:
+  # Cheapest checks first, so a formatting mistake costs seconds rather than a full matrix.
+  quick:
+    name: format, lints and house rules
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: Swatinem/rust-cache@v2.9.2
+      - name: cargo fmt
+        run: cargo fmt --all --check
+      - name: cargo clippy
+        run: cargo clippy --workspace --all-targets --all-features
+      # The prose in this repository is the product as much as the code is: a project is
+      # admitted with a written reason, an exclusion is only an exclusion because somebody
+      # wrote down why, and both get read by people who were not there. The house style is
+      # plain English with no typographic dashes and no horizontal rules, and it is checked
+      # here because a style nobody enforces is a style that lasts about four weeks.
+      - name: prose style
+        run: ./scripts/style.sh
+
+  test:
+    name: test on ${{ matrix.name }}
+    needs: quick
+    runs-on: ${{ matrix.os }}
+    # Runner images are named explicitly rather than through `-latest`, so that an image
+    # rollout shows up as a commit rather than as yesterday's green run turning red.
+    #
+    # No Windows row. The corpus builds other people's C projects with their own makefiles and
+    # configure scripts, so a POSIX host is a premise rather than a preference. The three hosts
+    # of spec/12-ci-and-cost.md section 12.2 are Linux x86-64, Linux arm64 and macOS arm64, and
+    # the arm64 Linux row arrives with the nightly tier.
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: linux x86-64, debug
+            os: ubuntu-24.04
+            profile: dev
+          - name: linux x86-64, release
+            os: ubuntu-24.04
+            profile: release
+          - name: macos arm64
+            os: macos-26
+            profile: dev
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: Swatinem/rust-cache@v2.9.2
+        with:
+          key: ${{ matrix.profile }}
+      - name: cargo build
+        run: cargo build --workspace --all-features --profile ${{ matrix.profile }}
+      # The extraction tests build real tarballs and unpack them with the system tar, so this
+      # is also where a difference between GNU tar and bsdtar would show up. That is deliberate.
+      # Both are hosts the corpus claims to run on.
+      - name: cargo test
+        run: cargo test --workspace --all-features --profile ${{ matrix.profile }}
+
+  docs:
+    name: documentation
+    needs: quick
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: Swatinem/rust-cache@v2.9.2
+      # Every public item carries the section of the specification it comes from, which is only
+      # useful if the links resolve. A broken intra-doc link is a broken link on docs.rs.
+      - name: cargo doc
+        run: cargo doc --workspace --all-features --no-deps
+
+  msrv:
+    name: minimum supported rust version
+    needs: quick
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - name: read the floor from Cargo.toml
+        id: msrv
+        run: |
+          set -euo pipefail
+          v=$(grep -m1 '^rust-version' Cargo.toml | cut -d'"' -f2)
+          echo "version=$v" >> "$GITHUB_OUTPUT"
+      - name: install
+        run: rustup toolchain install ${{ steps.msrv.outputs.version }} --profile minimal
+      - uses: Swatinem/rust-cache@v2.9.2
+        with:
+          key: msrv
+      # The floor is raised in a commit, deliberately, and not by accident in a dependency bump.
+      - name: cargo check
+        run: cargo +${{ steps.msrv.outputs.version }} check --workspace --all-features
+
+  # The lockfile and the manifests have to agree with each other, and the check costs a second.
+  # It is a separate job from the tests because it is the one that will grow: as projects land,
+  # this becomes the gate that says every project has a pin, a licence, a reason for being on
+  # the list, and a feature tag that exists.
+  corpus:
+    name: the corpus agrees with itself
+    needs: quick
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: Swatinem/rust-cache@v2.9.2
+      - name: cargo test, the lint
+        run: cargo test -p rrc-manifest --all-features
