@@ -1,0 +1,19 @@
+# The compiler this repository is built with, stated rather than inherited.
+#
+# Without this file every job takes whatever Rust its runner image happens to ship, which is not
+# the same number on every host and not the same number from one week to the next. That is the
+# moving reference the ci.yml header objects to for actions, and it bites the same way: a build
+# that passed in the morning fails in the afternoon because a different machine answered.
+#
+# The version is the one in `rust-version`, so the floor and the ceiling are the same number.
+# That is on purpose for now. A corpus that exists to reproduce results has no use for a
+# toolchain that drifts, and raising it should be a commit somebody wrote, with the clippy churn
+# that comes with it, rather than something that happens on its own.
+#
+# The minimum supported rust version job passes an explicit `+version` and is therefore not
+# affected by this file, which is what makes it a real check rather than a restatement.
+
+[toolchain]
+channel = "1.98"
+components = ["clippy", "rustfmt"]
+profile = "minimal"
