@@ -1,0 +1,17 @@
+[package]
+name = "rrc"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "The harness command line, which walks the corpus and writes the records"
+
+[dependencies]
+rrc-fetch.workspace = true
+rrc-manifest.workspace = true
+rrc-report.workspace = true
+rrc-run.workspace = true
+
+[lints]
+workspace = true

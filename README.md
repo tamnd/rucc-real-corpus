@@ -41,6 +41,24 @@ A third party file goes to rucc-compat. A third party project goes here.
 
 A rung is climbed only when every project on it and on every rung below it passes on the same commit. A rung with one project red is not a climbed rung with an exception.
 
+## Running it
+
+The harness is one binary, `rrc`, and it is run from anywhere inside the repository because it walks up looking for the corpus the way cargo walks up looking for a manifest.
+
+```
+cargo run -p rrc -- list                  what is on the corpus and what each project is admitted for
+cargo run -p rrc -- lint                  check the manifests, the vocabulary, the lockfile and the exclusions
+cargo run -p rrc -- fetch                 download and verify every pin
+cargo run -p rrc -- build --project c4    build one project and stop at the binary
+cargo run -p rrc -- test --project c4     build one project and run its own suite
+cargo run -p rrc -- run                   rungs 0 and 1 at four optimization levels, which is the per commit budget
+cargo run -p rrc -- report --input runs/latest/records.jsonl
+```
+
+Point it at the two compilers with `--rucc` and `--gcc`, which default to `rucc` and `gcc` on the path. Every run writes `records.jsonl`, one JSON object per project per level, and the Markdown report is rendered from that file rather than kept alongside it. The report format will change and the records have to outlive it, so `rrc report` re-renders an old run without rebuilding anything.
+
+Exit codes are `0` when there is nothing for a person to look at, `1` when the run happened and something in it wants attention, and `2` when the run did not happen at all because the command line was wrong or the corpus would not load. A failing project and a broken invocation are different problems and CI should be able to tell them apart.
+
 ## The specification
 
 Sixteen documents under `spec/`. Start with `spec/00-README.md`.
@@ -49,7 +67,7 @@ Sixteen documents under `spec/`. Start with `spec/00-README.md`.
 
 ## Status
 
-Nothing is built yet. The milestones are RC0 to RC5 in `spec/14-milestones.md`, tracked as issues, and RC5's exit criterion is the compiler's own M5 exit criterion. RC2 is a deliberate decision point: if the ladder turns out not to reach what SQLite needs, it gets cut there and the remaining effort goes straight at the amalgamation.
+The harness runs and the corpus is empty. Manifests, pinned fetching, the sandbox, the driver, the report and the `rrc` binary are all in, so a project added to `projects/` is built, tested and graded from there on. What is not in yet is any project. The milestones are RC0 to RC5 in `spec/14-milestones.md`, tracked as issues, and RC5's exit criterion is the compiler's own M5 exit criterion. RC2 is a deliberate decision point: if the ladder turns out not to reach what SQLite needs, it gets cut there and the remaining effort goes straight at the amalgamation.
 
 ## Licence
 

@@ -1,0 +1,526 @@
+//! The command line of `spec/07-harness.md` section 7.2.
+//!
+//! Parsed by hand rather than with an argument library. The surface is nine commands and a
+//! handful of flags, it is fixed by the spec rather than growing on demand, and the rules worth
+//! getting right are things like `--rung 0,1,2` and `--levels O0,O2` that a library would not
+//! check anyway. Against that, an argument crate is a dependency tree in a repository whose
+//! whole claim is that its results can be reproduced years from now.
+//!
+//! The one rule that comes from the spec rather than from taste: `rrc run` with no arguments
+//! runs what the per commit budget in section 12.1 admits, which is rungs 0 and 1 at four
+//! levels. The cheap thing is the default and the expensive thing is a decision somebody typed.
+
+use rrc_manifest::axes::{Level, Rung};
+use std::path::PathBuf;
+
+/// What the user asked for.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Command {
+    /// What is on the list, filtered.
+    List {
+        /// Only these rungs, or all of them.
+        rungs: Vec<Rung>,
+        /// Only projects admitted for this feature tag.
+        demands: Option<String>,
+    },
+    /// Populate the cache and verify hashes.
+    Fetch {
+        /// These projects, or all of them.
+        projects: Vec<String>,
+    },
+    /// One project, one level, build only.
+    Build {
+        /// The project.
+        project: String,
+        /// The level.
+        level: Level,
+    },
+    /// One project, one level, build and then run the suite.
+    Test {
+        /// The project.
+        project: String,
+        /// The level.
+        level: Level,
+    },
+    /// The scheduler, which is the normal entry point.
+    Run(RunPlan),
+    /// Schema, vocabulary and lockfile agreement.
+    Lint,
+    /// Render records that already exist.
+    Report {
+        /// The JSON Lines log to read.
+        input: PathBuf,
+        /// Markdown or the status line.
+        format: Format,
+    },
+    /// Print the usage text.
+    Help,
+    /// Print the version.
+    Version,
+}
+
+/// What a scheduled run covers.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RunPlan {
+    /// The rungs to walk.
+    pub rungs: Vec<Rung>,
+    /// The levels to walk, or nothing to take each rung's required levels.
+    pub levels: Option<Vec<Level>>,
+    /// Only these projects, whatever rung they are on.
+    pub projects: Vec<String>,
+    /// Build everything twice and compare the bytes.
+    pub twice: bool,
+    /// Where the records and the report go.
+    pub out: PathBuf,
+}
+
+impl Default for RunPlan {
+    /// Rungs 0 and 1 at the four base levels, which is what the per commit budget admits.
+    fn default() -> Self {
+        Self {
+            rungs: vec![Rung::R0, Rung::R1],
+            levels: None,
+            projects: Vec::new(),
+            twice: false,
+            out: PathBuf::from("runs/latest"),
+        }
+    }
+}
+
+/// How a report is rendered.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Format {
+    /// The document of section 11.7.
+    Markdown,
+    /// The one line the badge reads.
+    Status,
+}
+
+/// Everything that is not specific to one command.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Options {
+    /// The corpus root, which holds `projects/`, `features.toml` and the rest.
+    pub corpus: PathBuf,
+    /// The compiler under test.
+    pub under_test: PathBuf,
+    /// The reference compiler.
+    pub reference: PathBuf,
+}
+
+impl Default for Options {
+    fn default() -> Self {
+        Self {
+            corpus: PathBuf::from("."),
+            under_test: PathBuf::from("rucc"),
+            reference: PathBuf::from("gcc"),
+        }
+    }
+}
+
+/// A parsed command line.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Invocation {
+    /// The command.
+    pub command: Command,
+    /// The options that apply to all of them.
+    pub options: Options,
+}
+
+/// Parse the arguments, without the program name.
+///
+/// The error is a sentence meant to be printed on its own. A usage message that says only
+/// "invalid argument" makes the reader run the command again with `--help` to learn what they
+/// already tried to say, so each one here names the thing it did not understand.
+pub fn parse(args: &[String]) -> Result<Invocation, String> {
+    let mut options = Options::default();
+    let mut rest = Vec::new();
+
+    let mut index = 0;
+    while index < args.len() {
+        let arg = args[index].as_str();
+        match arg {
+            "--corpus" => options.corpus = value(args, &mut index, "--corpus")?.into(),
+            "--rucc" => options.under_test = value(args, &mut index, "--rucc")?.into(),
+            "--gcc" => options.reference = value(args, &mut index, "--gcc")?.into(),
+            _ => rest.push(arg.to_string()),
+        }
+        index += 1;
+    }
+
+    let command = command(&rest)?;
+    Ok(Invocation { command, options })
+}
+
+/// The command and its own flags.
+fn command(args: &[String]) -> Result<Command, String> {
+    let Some(name) = args.first().map(String::as_str) else {
+        return Ok(Command::Help);
+    };
+
+    match name {
+        "help" | "--help" | "-h" => Ok(Command::Help),
+        "version" | "--version" | "-V" => Ok(Command::Version),
+        "lint" => Ok(Command::Lint),
+        "list" => list(&args[1..]),
+        "fetch" => Ok(Command::Fetch {
+            projects: positional(&args[1..])?,
+        }),
+        "build" => one_project(&args[1..], "build")
+            .map(|(project, level)| Command::Build { project, level }),
+        "test" => {
+            one_project(&args[1..], "test").map(|(project, level)| Command::Test { project, level })
+        }
+        "run" => run(&args[1..]).map(Command::Run),
+        "report" => report(&args[1..]),
+        other => Err(format!(
+            "there is no `{other}` command, and `rrc help` lists the ones there are"
+        )),
+    }
+}
+
+fn list(args: &[String]) -> Result<Command, String> {
+    let mut rungs = Vec::new();
+    let mut demands = None;
+    let mut index = 0;
+    while index < args.len() {
+        match args[index].as_str() {
+            "--rung" => rungs = parse_rungs(&value(args, &mut index, "--rung")?)?,
+            "--demands" => demands = Some(value(args, &mut index, "--demands")?),
+            other => return Err(unknown(other, "list")),
+        }
+        index += 1;
+    }
+    Ok(Command::List { rungs, demands })
+}
+
+fn one_project(args: &[String], what: &str) -> Result<(String, Level), String> {
+    let mut project = None;
+    let mut level = Level::O2;
+    let mut index = 0;
+    while index < args.len() {
+        let arg = args[index].as_str();
+        if arg == "--level" {
+            level = parse_level(&value(args, &mut index, "--level")?)?;
+        } else if arg.starts_with('-') {
+            return Err(unknown(arg, what));
+        } else if project.is_some() {
+            return Err(format!(
+                "`rrc {what}` takes one project at a time, and it was given `{arg}` as well"
+            ));
+        } else {
+            project = Some(arg.to_string());
+        }
+        index += 1;
+    }
+    project
+        .map(|project| (project, level))
+        .ok_or_else(|| format!("`rrc {what}` needs a project to {what}"))
+}
+
+fn run(args: &[String]) -> Result<RunPlan, String> {
+    let mut plan = RunPlan::default();
+    let mut rungs_given = false;
+    let mut index = 0;
+    while index < args.len() {
+        match args[index].as_str() {
+            "--rung" | "--rungs" => {
+                plan.rungs = parse_rungs(&value(args, &mut index, "--rung")?)?;
+                rungs_given = true;
+            }
+            "--level" | "--levels" => {
+                plan.levels = Some(parse_levels(&value(args, &mut index, "--levels")?)?);
+            }
+            "--project" => plan.projects.push(value(args, &mut index, "--project")?),
+            "--out" => plan.out = value(args, &mut index, "--out")?.into(),
+            "--twice" => plan.twice = true,
+            other => return Err(unknown(other, "run")),
+        }
+        index += 1;
+    }
+
+    // Naming projects and naming rungs together reads as a contradiction, and guessing which one
+    // the user meant is how a run quietly does something other than what was asked.
+    if rungs_given && !plan.projects.is_empty() {
+        return Err(
+            "`--project` and `--rung` cannot both be given, since one names the list and the \
+             other filters it"
+                .to_string(),
+        );
+    }
+    if !plan.projects.is_empty() {
+        plan.rungs = Rung::ALL.to_vec();
+    }
+    Ok(plan)
+}
+
+fn report(args: &[String]) -> Result<Command, String> {
+    let mut input = PathBuf::from("runs/latest/records.jsonl");
+    let mut format = Format::Markdown;
+    let mut index = 0;
+    while index < args.len() {
+        match args[index].as_str() {
+            "--input" => input = value(args, &mut index, "--input")?.into(),
+            "--format" => {
+                format = match value(args, &mut index, "--format")?.as_str() {
+                    "md" | "markdown" => Format::Markdown,
+                    "status" => Format::Status,
+                    other => {
+                        return Err(format!(
+                            "`{other}` is not a format, and the ones there are are `md` and `status`"
+                        ));
+                    }
+                };
+            }
+            other => return Err(unknown(other, "report")),
+        }
+        index += 1;
+    }
+    Ok(Command::Report { input, format })
+}
+
+/// Everything that is not a flag.
+fn positional(args: &[String]) -> Result<Vec<String>, String> {
+    if let Some(flag) = args.iter().find(|arg| arg.starts_with('-')) {
+        return Err(unknown(flag, "fetch"));
+    }
+    Ok(args.to_vec())
+}
+
+/// The value after a flag, advancing past it.
+fn value(args: &[String], index: &mut usize, flag: &str) -> Result<String, String> {
+    *index += 1;
+    args.get(*index)
+        .cloned()
+        .ok_or_else(|| format!("`{flag}` needs a value after it"))
+}
+
+fn unknown(arg: &str, command: &str) -> String {
+    format!("`rrc {command}` does not take `{arg}`")
+}
+
+/// A comma separated list of rung numbers.
+fn parse_rungs(text: &str) -> Result<Vec<Rung>, String> {
+    let mut rungs = Vec::new();
+    for piece in text.split(',').map(str::trim).filter(|s| !s.is_empty()) {
+        let number: u8 = piece
+            .trim_start_matches(['r', 'R'])
+            .parse()
+            .map_err(|_| format!("`{piece}` is not a rung number"))?;
+        rungs.push(Rung::try_from(number)?);
+    }
+    if rungs.is_empty() {
+        return Err("no rungs were named after `--rung`".to_string());
+    }
+    rungs.sort_unstable_by_key(|rung| rung.as_u8());
+    rungs.dedup();
+    Ok(rungs)
+}
+
+/// A comma separated list of levels.
+fn parse_levels(text: &str) -> Result<Vec<Level>, String> {
+    let mut levels = Vec::new();
+    for piece in text.split(',').map(str::trim).filter(|s| !s.is_empty()) {
+        levels.push(parse_level(piece)?);
+    }
+    if levels.is_empty() {
+        return Err("no levels were named after `--levels`".to_string());
+    }
+    Ok(levels)
+}
+
+fn parse_level(text: &str) -> Result<Level, String> {
+    let wanted = text.trim_start_matches('-');
+    Level::ALL
+        .into_iter()
+        .find(|level| level.name().eq_ignore_ascii_case(wanted))
+        .ok_or_else(|| {
+            let names = Level::ALL
+                .iter()
+                .map(|level| level.name())
+                .collect::<Vec<_>>()
+                .join(", ");
+            format!("`{text}` is not a level, and the ones there are are {names}")
+        })
+}
+
+/// The usage text.
+#[must_use]
+pub fn usage() -> String {
+    "\
+rrc, the harness for rucc-real-corpus
+
+  rrc list [--rung N,...] [--demands TAG]   what is on the list, filtered
+  rrc fetch [<project>...]                  populate the cache, verify hashes
+  rrc build <project> [--level O2]          one project, one level
+  rrc test <project> [--level O2]           build then run the suite
+  rrc run [--rung 0,1] [--levels O0,O2]     the scheduler, the normal entry point
+  rrc lint                                  schema, vocabulary and lockfile agreement
+  rrc report [--input FILE] [--format md]   render records that already exist
+
+Options that apply to all of them:
+
+  --corpus DIR    where projects/ and features.toml live, defaulting to the working directory
+  --rucc PATH     the compiler under test, defaulting to rucc on PATH
+  --gcc PATH      the reference compiler, defaulting to gcc on PATH
+
+Options for run:
+
+  --project NAME  one project by name, repeatable, and it walks every rung
+  --twice         build everything twice into two roots and compare the bytes
+  --out DIR       where the records and the report go, defaulting to runs/latest
+
+With no arguments, run covers rungs 0 and 1 at the four base levels, which is what the per
+commit budget admits. Everything wider is an argument, so the cheap thing is the default and
+the expensive thing is a decision.
+"
+    .to_string()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn args(line: &str) -> Vec<String> {
+        line.split_whitespace().map(ToString::to_string).collect()
+    }
+
+    fn parsed(line: &str) -> Command {
+        parse(&args(line)).unwrap().command
+    }
+
+    #[test]
+    fn run_with_no_arguments_is_the_cheap_thing() {
+        let Command::Run(plan) = parsed("run") else {
+            panic!("run did not parse as a run");
+        };
+        assert_eq!(
+            plan.rungs,
+            vec![Rung::R0, Rung::R1],
+            "the per commit budget admits rungs 0 and 1, and anything wider is a decision \
+             somebody has to type"
+        );
+        assert_eq!(
+            plan.levels, None,
+            "each rung brings its own required levels"
+        );
+        assert!(!plan.twice);
+    }
+
+    #[test]
+    fn rungs_and_levels_come_in_as_lists() {
+        let Command::Run(plan) = parsed("run --rung 0,1,2 --levels O0,O2") else {
+            panic!("not a run");
+        };
+        assert_eq!(plan.rungs, vec![Rung::R0, Rung::R1, Rung::R2]);
+        assert_eq!(plan.levels, Some(vec![Level::O0, Level::O2]));
+    }
+
+    #[test]
+    fn a_rung_can_be_written_with_or_without_its_letter() {
+        let Command::Run(plan) = parsed("run --rung R1,2") else {
+            panic!("not a run");
+        };
+        assert_eq!(plan.rungs, vec![Rung::R1, Rung::R2]);
+    }
+
+    #[test]
+    fn naming_projects_and_rungs_at_once_is_refused_rather_than_guessed() {
+        let why = parse(&args("run --project jsmn --rung 3")).unwrap_err();
+        assert!(
+            why.contains("cannot both be given"),
+            "guessing which one was meant is how a run quietly does something else"
+        );
+    }
+
+    #[test]
+    fn naming_a_project_widens_the_rungs_rather_than_filtering_them_away() {
+        let Command::Run(plan) = parsed("run --project sqlite") else {
+            panic!("not a run");
+        };
+        assert_eq!(plan.projects, vec!["sqlite"]);
+        assert_eq!(
+            plan.rungs,
+            Rung::ALL.to_vec(),
+            "a named project runs wherever it lives"
+        );
+    }
+
+    #[test]
+    fn a_level_is_accepted_with_or_without_its_dash_and_in_any_case() {
+        for text in [
+            "build jsmn --level O0",
+            "build jsmn --level -O0",
+            "build jsmn --level o0",
+        ] {
+            let Command::Build { level, .. } = parsed(text) else {
+                panic!("not a build");
+            };
+            assert_eq!(level, Level::O0);
+        }
+    }
+
+    #[test]
+    fn build_defaults_to_o2_because_that_is_where_the_optimizer_is() {
+        let Command::Build { project, level } = parsed("build coremark") else {
+            panic!("not a build");
+        };
+        assert_eq!(project, "coremark");
+        assert_eq!(level, Level::O2);
+    }
+
+    #[test]
+    fn build_takes_one_project_and_says_so_when_given_two() {
+        let why = parse(&args("build a b")).unwrap_err();
+        assert!(why.contains("one project at a time"));
+    }
+
+    #[test]
+    fn a_flag_with_no_value_says_which_flag() {
+        let why = parse(&args("run --rung")).unwrap_err();
+        assert!(
+            why.contains("--rung"),
+            "the message has to name the flag: {why}"
+        );
+    }
+
+    #[test]
+    fn a_level_that_does_not_exist_lists_the_ones_that_do() {
+        let why = parse(&args("build jsmn --level O9")).unwrap_err();
+        assert!(why.contains("O0") && why.contains("lto"));
+    }
+
+    #[test]
+    fn an_unknown_command_points_at_the_help_rather_than_just_complaining() {
+        let why = parse(&args("frobnicate")).unwrap_err();
+        assert!(why.contains("rrc help"));
+    }
+
+    #[test]
+    fn the_global_options_can_appear_anywhere_on_the_line() {
+        let invocation = parse(&args("--corpus /tmp/c run --twice")).unwrap();
+        assert_eq!(invocation.options.corpus, PathBuf::from("/tmp/c"));
+        let Command::Run(plan) = invocation.command else {
+            panic!("not a run");
+        };
+        assert!(plan.twice);
+
+        let after = parse(&args("run --twice --corpus /tmp/c")).unwrap();
+        assert_eq!(after.options.corpus, PathBuf::from("/tmp/c"));
+    }
+
+    #[test]
+    fn no_arguments_at_all_prints_the_usage_rather_than_running_something() {
+        assert_eq!(parse(&[]).unwrap().command, Command::Help);
+    }
+
+    #[test]
+    fn every_command_in_the_spec_table_is_in_the_usage_text() {
+        let usage = usage();
+        for command in ["list", "fetch", "build", "test", "run", "lint", "report"] {
+            assert!(
+                usage.contains(&format!("rrc {command}")),
+                "{command} is undocumented"
+            );
+        }
+    }
+}
