@@ -10,7 +10,7 @@
 //! diff somebody can argue with.
 
 use rrc_manifest::axes::{BuildSystem, Level, Oracle, Requirement};
-use rrc_manifest::manifest::Manifest;
+use rrc_manifest::manifest::{Manifest, Program};
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
@@ -173,7 +173,7 @@ pub fn attempt(job: &Job<'_>, slot: Slot, compiler: Compiler) -> std::io::Result
     for step in build_steps(job, &env, &workdir) {
         let completed = exec::run(&step.invocation)?;
         trial.build_seconds += completed.seconds;
-        log(&trial.sandbox, step.name, &step.invocation, &completed)?;
+        log(&trial.sandbox, &step.name, &step.invocation, &completed)?;
         let finished = completed.ending.is_success();
         if trial.first_diagnostic.is_none() {
             trial.first_diagnostic = normalizer.first(&completed.stderr);
@@ -196,8 +196,8 @@ pub fn attempt(job: &Job<'_>, slot: Slot, compiler: Compiler) -> std::io::Result
         }
     }
 
-    if let Some(output) = job.manifest.build.output.as_ref() {
-        trial.sizes = sizes::measure(&workdir.join(output));
+    if let Some(measured) = job.manifest.build.measured(&job.manifest.test.command) {
+        trial.sizes = sizes::measure(&workdir.join(measured));
     }
 
     let Some(invocation) = test_invocation(job, &env, &workdir) else {
@@ -235,7 +235,7 @@ fn toolchain_for(toolchain: &Toolchain, compiler: Compiler) -> Toolchain {
 /// One command in a build, and the phase reaching the end of it proves.
 #[derive(Debug)]
 struct Step {
-    name: &'static str,
+    name: String,
     reaches: Phase,
     invocation: Invocation,
 }
@@ -266,8 +266,8 @@ fn build_steps(job: &Job<'_>, env: &BTreeMap<String, String>, workdir: &Path) ->
         }
         args
     };
-    let at = |name: &'static str, reaches: Phase, program: &str, args: Vec<String>| Step {
-        name,
+    let at = |name: &str, reaches: Phase, program: &str, args: Vec<String>| Step {
+        name: name.to_string(),
         reaches,
         invocation: Invocation {
             program: resolve(program, env, workdir),
@@ -279,7 +279,24 @@ fn build_steps(job: &Job<'_>, env: &BTreeMap<String, String>, workdir: &Path) ->
     };
 
     match build.system {
-        BuildSystem::Direct => vec![at("compile", Phase::Linked, "cc", direct_arguments(job))],
+        BuildSystem::Direct => {
+            let programs = build.direct_programs();
+            let one = programs.len() == 1;
+            programs
+                .iter()
+                .map(|program| {
+                    // One program keeps the log file it has always had. Several get one log each,
+                    // named after the program, because a build that fails halfway needs to say
+                    // which half.
+                    let name = if one {
+                        "compile".to_string()
+                    } else {
+                        format!("compile-{}", program.output)
+                    };
+                    at(&name, Phase::Linked, "cc", direct_arguments(job, program))
+                })
+                .collect()
+        }
         BuildSystem::Make | BuildSystem::Recursive => {
             vec![at("make", Phase::Linked, "make", make())]
         }
@@ -333,7 +350,11 @@ fn build_steps(job: &Job<'_>, env: &BTreeMap<String, String>, workdir: &Path) ->
 /// The level, then the manifest's own flags with their reasons, then the sources, then the
 /// output, then whatever has to go at the end of the link line. Nothing else is added, which is
 /// the same rule the shim follows and for the same reason.
-fn direct_arguments(job: &Job<'_>) -> Vec<String> {
+///
+/// A build that produces several programs runs this once per program. The level and the
+/// manifest's flags are the same every time, because they are properties of the project and not
+/// of one of its binaries.
+fn direct_arguments(job: &Job<'_>, program: &Program) -> Vec<String> {
     let build = &job.manifest.build;
     let mut args: Vec<String> = job
         .level
@@ -342,12 +363,10 @@ fn direct_arguments(job: &Job<'_>) -> Vec<String> {
         .map(str::to_string)
         .collect();
     args.extend(build.flags.iter().map(|note| note.flag.clone()));
-    args.extend(build.sources.clone());
-    if let Some(output) = &build.output {
-        args.push("-o".to_string());
-        args.push(output.clone());
-    }
-    args.extend(build.link.clone());
+    args.extend(program.sources.clone());
+    args.push("-o".to_string());
+    args.push(program.output.clone());
+    args.extend(program.link.clone());
     args
 }
 
@@ -765,6 +784,53 @@ oracle = "self-checking"
             extra_path: &[],
             pin_sha256: &fixture.pin,
         }
+    }
+
+    /// A test that only passes if a second binary was built beside it.
+    ///
+    /// This is `linenoise` in miniature: the program that gets graded is not the only program the
+    /// project produces, and it drives the other one. A build that produced only the first would
+    /// fail here rather than pass quietly.
+    const DRIVES_A_SECOND_PROGRAM: &str =
+        "#include <stdlib.h>\nint main(void){\n  return system(\"./helper\") == 0 ? 0 : 1;\n}\n";
+
+    /// The sample manifest with its one output replaced by a list of two programs.
+    fn two_program_manifest() -> Manifest {
+        let text = MANIFEST.replace(
+            "sources = [\"main.c\"]\noutput = \"sample\"\n",
+            "\n[[build.program]]\noutput = \"helper\"\nsources = [\"helper.c\"]\n\n[[build.program]]\noutput = \"sample\"\nsources = [\"main.c\"]\n",
+        );
+        Manifest::from_str_named(&text, Path::new("test/project.toml")).unwrap()
+    }
+
+    #[test]
+    fn a_direct_build_can_produce_the_second_program_its_test_drives() {
+        let Some(f) = fixture("two-programs", DRIVES_A_SECOND_PROGRAM) else {
+            return;
+        };
+        std::fs::write(
+            f.extracted.join("helper.c"),
+            "int main(void){ return 0; }\n",
+        )
+        .unwrap();
+        let manifest = two_program_manifest();
+        let record = run(&job(&f, &manifest), Slot::A).unwrap();
+        assert_eq!(record.outcome, Outcome::Passed);
+        assert!(
+            record.binary_bytes.is_some_and(|bytes| bytes > 0),
+            "the size recorded should be the program the suite ran"
+        );
+    }
+
+    #[test]
+    fn a_direct_build_stops_at_the_first_program_that_does_not_compile() {
+        let Some(f) = fixture("two-programs-broken", DRIVES_A_SECOND_PROGRAM) else {
+            return;
+        };
+        std::fs::write(f.extracted.join("helper.c"), "int main(void){ return }\n").unwrap();
+        let manifest = two_program_manifest();
+        let record = run(&job(&f, &manifest), Slot::A).unwrap();
+        assert_eq!(record.outcome, Outcome::DidNotBuild);
     }
 
     /// A Makefile that assigns `CFLAGS` outright, and a program that answers which level it was

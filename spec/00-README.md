@@ -86,7 +86,7 @@ Read 01 first. It is the only document here that is evidence rather than design,
 
 **Not a benchmark.** Parent document 16 owns performance and document 11 here reports code size and build time per project only as a tracked number with the methodology deferred to 16. A project that passes slowly passes.
 
-**Not a replacement for `rucc-compat`.** The file-level corpora keep doing what they do. This repository takes over exactly one thing from it, which is the SQLite entry, because SQLite is a project and belongs where projects are. Document 07.9 specifies that migration.
+**Not a replacement for `rucc-compat`.** The file-level corpora keep doing what they do. This repository takes over exactly one thing from it, which is the SQLite entry, because SQLite is a project and belongs where projects are. Document 07.10 specifies that migration.
 
 **Not a distribution.** We do not package anything, we do not install anything into a prefix that another project then finds, and we do not attempt a self-hosting userland. Kefir and slimcc both do the bootstrap-a-chroot exercise and it is a genuinely stronger result than anything here; it is also a different project, and document 15 records it as a question rather than a plan.
 

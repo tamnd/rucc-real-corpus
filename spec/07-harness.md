@@ -113,7 +113,19 @@ Section 7.7 says the level arrives through `CFLAGS` in the environment. That is 
 
 **It is opt in and the lint is strict about it.** A manifest that names no variable gets the old behaviour, a manifest that names one on a direct build is a finding because nothing would read it, a variable that is not a make variable name is a finding because it is going on a command line as one, and a missing reason is a finding because the reason is the line of the Makefile that makes the whole thing necessary.
 
-## 7.9 Migrating SQLite out of `rucc-compat`
+## 7.9 The direct build that produces more than one program
+
+A direct build is the harness writing the compiler command line itself, and section 7.8 is why some projects end up there: the Makefile could not be told the level, so the Makefile went away. That answer assumed one command line produces one program, and linenoise is the project where it does not. Its suite is a program called `linenoise-test` that forks and execs a second program called `linenoise-example`, so a build that produced only the graded binary would fail at the first test with nothing useful to say. Its Makefile writes `-Os` straight into the recipe rather than into a variable, so `build.level-flags` cannot reach it and A1 is not available either.
+
+**So a direct build is a list of programs and one program is the short spelling of a list of one.** The manifest gives an `output`, a list of `sources` and an optional `link` for each, in `[[build.program]]` tables, and the harness runs one compiler invocation per program in the order they were listed. This stays inside document 06.8's rule that a manifest cannot express arbitrary shell: it is still only compiler invocations that the harness composes, and the manifest chose none of the words on them except the file names.
+
+**A build stops at the first program that fails**, which is the same rule make follows without `-k` and it keeps the first diagnostic the first diagnostic. Each program gets its own log named after it, because a project with two programs that fails at the build step has to say which one. The flags in `build.flags` go on every program, since a flag with a reason written next to it is a statement about the project rather than about one of its binaries.
+
+**The size in the record is the size of the program the suite runs.** The harness matches the first word of `test.command` against the outputs and measures that one, falling back to the last program built when the suite is not one of them. Recording the largest binary or the last one linked would put a number in the code size column that nothing else in the row is about.
+
+**This is also the shape document 08.5 needs.** The ABI cross-check builds an archive and a driver and links them four ways, which is two artifacts from one project's sources before any of the crossing starts. Getting the schema to a list of artifacts first means that work adds a compiler choice per artifact rather than a second way to describe a build.
+
+## 7.10 Migrating SQLite out of `rucc-compat`
 
 `rucc-compat/corpus/sqlite/` today holds a `corpus.toml` with two exclusions: the amalgamation on `__atomic_load_n` having no lowering, and `shell.c` on `__builtin_ceil` and `__builtin_floor`, both `E0686`, both with issue numbers. That entry is a file-level compile check, which is the right shape for `rucc-compat` and the wrong shape for what M5 needs.
 
