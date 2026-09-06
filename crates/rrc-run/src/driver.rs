@@ -712,6 +712,12 @@ oracle = "self-checking"
         );
     }
 
+    /// Calling a function that is not there, which fails at a different place on different hosts.
+    ///
+    /// A compiler that follows C23 rejects the implicit declaration outright, and an older one
+    /// warns and then fails at the link. Either is fine and the assertion holds for both, because
+    /// what is being checked is that the diagnostic names `nonesuch` rather than reporting the
+    /// summary line that only says a tool returned non zero.
     #[test]
     fn a_program_that_does_not_compile_did_not_build_and_says_why() {
         let Some(f) = fixture("broken", "int main(void){ return nonesuch(); }\n") else {

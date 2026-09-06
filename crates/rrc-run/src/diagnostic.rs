@@ -17,13 +17,33 @@ use std::sync::OnceLock;
 /// The words that mark a line as the one worth keeping.
 ///
 /// In priority order. A crash beats an error, because a compiler that dies has one bug and the
-/// errors printed before it are usually the same bug wearing a different hat.
-const MARKERS: [&str; 4] = [
+/// errors printed before it are usually the same bug wearing a different hat. A compile error
+/// beats a link error for the same reason, since a link that never got its object file is
+/// downstream of whatever stopped the compile.
+const MARKERS: [&str; 5] = [
     "internal compiler error",
     "fatal error:",
     "error:",
     "undefined reference to",
+    "symbol(s) not found",
 ];
+
+/// Lines that report that a tool failed without saying why.
+///
+/// These have to be kept out of the way because they contain the word `error:` and would
+/// therefore outrank the line that names the missing symbol. Letting `collect2: error: ld
+/// returned 1 exit status` win would file every link failure in the corpus under one row, which
+/// is exactly the merge the module comment above says is worse than a split.
+const SUMMARIES: [&str; 3] = [
+    "ld returned",
+    "linker command failed",
+    "compilation terminated",
+];
+
+/// Whether a line only says that something failed.
+fn is_summary(line: &str) -> bool {
+    SUMMARIES.iter().any(|summary| line.contains(summary))
+}
 
 /// Everything that gets removed before two diagnostics are compared.
 #[derive(Debug)]
@@ -53,11 +73,21 @@ impl Normalizer {
     /// Nothing is a real answer. A build system that swallows the compiler's output, or a make
     /// that failed on a missing header before the compiler ran, leaves no diagnostic, and an
     /// invented one would be worse than an empty field.
+    ///
+    /// The search runs twice. The first pass ignores the lines that only report that a tool
+    /// failed, so that a cause always beats a summary. The second pass allows them, because when
+    /// a summary is all the build printed, saying that the linker failed is still more use than
+    /// saying the build printed nothing.
     #[must_use]
     pub fn first(&self, text: &str) -> Option<String> {
-        for marker in MARKERS {
-            if let Some(line) = text.lines().find(|line| line.contains(marker)) {
-                return Some(self.normalize(line));
+        for allow_summaries in [false, true] {
+            for marker in MARKERS {
+                let found = text
+                    .lines()
+                    .find(|line| line.contains(marker) && (allow_summaries || !is_summary(line)));
+                if let Some(line) = found {
+                    return Some(self.normalize(line));
+                }
             }
         }
         None
@@ -160,6 +190,28 @@ a.c:2:1: internal compiler error: in lower_call, at codegen.rs:914
             first.contains("internal compiler error"),
             "a crash is the bug and the errors before it are usually the same bug"
         );
+    }
+
+    #[test]
+    fn a_link_failure_names_the_symbol_and_not_the_line_that_says_the_linker_failed() {
+        let text = "\
+/usr/bin/ld: /tmp/ccQ8Xz1a.o: in function `main':
+main.c:(.text+0x9): undefined reference to `nonesuch'
+collect2: error: ld returned 1 exit status
+";
+        let first = Normalizer::bare().first(text).unwrap();
+        assert!(
+            first.contains("nonesuch"),
+            "the collect2 line contains the word error and would otherwise win, which would file \
+             every link failure in the corpus under one row"
+        );
+    }
+
+    #[test]
+    fn a_summary_is_still_better_than_nothing_when_it_is_all_there_is() {
+        let text = "collect2: error: ld returned 1 exit status\n";
+        let first = Normalizer::bare().first(text).unwrap();
+        assert!(first.contains("ld returned"));
     }
 
     #[test]
