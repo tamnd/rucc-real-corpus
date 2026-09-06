@@ -1,1 +1,4 @@
 target/
+# Where fetch extracts and where the runs happen. Everything under it is reproducible from
+# projects.lock, so none of it belongs in the history.
+work/
