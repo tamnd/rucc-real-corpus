@@ -1,5 +1,5 @@
 [workspace]
-members = ["crates/rrc-fetch", "crates/rrc-manifest", "crates/rrc-run"]
+members = ["crates/rrc-fetch", "crates/rrc-manifest", "crates/rrc-report", "crates/rrc-run"]
 resolver = "3"
 
 [workspace.package]
@@ -12,6 +12,7 @@ repository = "https://github.com/tamnd/rucc-real-corpus"
 [workspace.dependencies]
 rrc-fetch = { path = "crates/rrc-fetch", version = "0.0.3" }
 rrc-manifest = { path = "crates/rrc-manifest", version = "0.0.3" }
+rrc-report = { path = "crates/rrc-report", version = "0.0.3" }
 rrc-run = { path = "crates/rrc-run", version = "0.0.3" }
 regex = "1"
 serde = { version = "1", features = ["derive"] }

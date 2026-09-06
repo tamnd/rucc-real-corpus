@@ -1,0 +1,16 @@
+[package]
+name = "rrc-report"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Rendering run records into the summary, the clusters and the cost table"
+
+[dependencies]
+rrc-manifest.workspace = true
+rrc-run.workspace = true
+serde_json.workspace = true
+
+[lints]
+workspace = true
