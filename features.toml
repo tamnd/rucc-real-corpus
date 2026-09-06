@@ -1,0 +1,132 @@
+# The closed vocabulary from `spec/10-feature-demand.md` section 10.2.
+# Every `demands` entry in every manifest draws from this file and the lint rejects anything else.
+# The `diagnostic` lists are what turn a failed build into a feature name without anybody reading
+# a log, so an entry with an empty list is an entry nothing can classify yet, and filling it in is
+# a change worth making the first time rucc prints something for it.
+
+[always-inline]
+summary = "__attribute__((always_inline)) honoured rather than treated as a hint"
+kind = "gnu-extension"
+standard = "GNU extension with no portable spelling"
+
+[atomic-builtins]
+summary = "__atomic_load_n and __atomic_store_n at relaxed ordering"
+kind = "gnu-builtin"
+diagnostic = ["E0686"]
+rucc-issue = "https://github.com/tamnd/rucc/issues/311"
+standard = "GNU extension; C11 <stdatomic.h> is the portable spelling"
+
+[autoconf-probes]
+summary = "the compiler answers a generated configure script the way autoconf expects"
+kind = "driver"
+
+[bit-builtins]
+summary = "__builtin_clz, __builtin_ctz, __builtin_popcount and their l and ll forms"
+kind = "gnu-builtin"
+diagnostic = ["E0686"]
+rucc-issue = "https://github.com/tamnd/rucc/issues/310"
+standard = "GNU extension; C23 <stdbit.h> is the portable spelling"
+
+[bit-manipulation]
+summary = "shifts, masks and bit level packing across byte boundaries"
+kind = "standard"
+
+[computed-goto]
+summary = "labels as values, goto *"
+kind = "gnu-extension"
+diagnostic = ["no rule lowers a block_addr"]
+
+[deep-macros]
+summary = "macros expanding through several layers, including __VA_ARGS__ forwarding"
+kind = "preprocessor"
+
+[double-formatting]
+summary = "printf and strtod round tripping a double without losing a digit"
+kind = "standard"
+
+[driver-print-dirs]
+summary = "-print-search-dirs, -print-libgcc-file-name and the rest of what a build system asks the driver"
+kind = "driver"
+
+[flexible-array-member]
+summary = "a struct ending in an incomplete array, allocated with the header in front of it"
+kind = "standard"
+
+[float-arithmetic]
+summary = "float and double arithmetic in volume, without contraction changing the answer"
+kind = "standard"
+
+[function-pointers]
+summary = "calls through a pointer, including pointers to library functions"
+kind = "standard"
+
+[inline-asm]
+summary = "__asm__ at file scope, including .incbin and hand written section directives"
+kind = "gnu-extension"
+
+[integer-conversion]
+summary = "the integer types are the widths the standard says they are, and conversions between them keep their values"
+kind = "standard"
+
+[large-switch]
+summary = "a switch with hundreds of cases, where the jump table decision is the compiler's"
+kind = "standard"
+
+[libm-builtins]
+summary = "__builtin_ceil, __builtin_floor and the rest of the libm shaped builtins"
+kind = "gnu-builtin"
+rucc-issue = "https://github.com/tamnd/rucc/issues/226"
+
+[long-double]
+summary = "long double at the 80 bit x86-64 format"
+kind = "standard"
+
+[lto]
+summary = "link time optimization across translation units"
+kind = "lto"
+
+[overflow-builtins]
+summary = "__builtin_add_overflow, __builtin_sub_overflow and __builtin_mul_overflow"
+kind = "gnu-builtin"
+standard = "GNU extension; C23 <stdckdint.h> is the portable spelling"
+
+[pointer-arithmetic]
+summary = "arithmetic on object interiors, one past the end comparisons, and pointer differences"
+kind = "standard"
+
+[recursion-depth]
+summary = "recursion deep enough that the frame layout and the tail call decision both matter"
+kind = "standard"
+
+[setjmp-longjmp]
+summary = "setjmp and longjmp as an error mechanism, which constrains what the optimizer may keep in a register"
+kind = "standard"
+
+[stdckdint]
+summary = "<stdckdint.h> and ckd_add, ckd_sub and ckd_mul"
+kind = "standard"
+standard = "C23"
+
+[struct-layout]
+summary = "struct offsets, padding and alignment as the ABI states them"
+kind = "abi"
+
+[switch-dispatch]
+summary = "a state machine written as a switch, with deliberate fall through between cases"
+kind = "standard"
+
+[thread-local]
+summary = "_Thread_local and __thread"
+kind = "standard"
+
+[unaligned-access]
+summary = "loads and stores through pointers the compiler cannot prove are aligned"
+kind = "standard"
+
+[varargs-depth]
+summary = "varargs forwarded through several layers of function"
+kind = "standard"
+
+[visibility-attributes]
+summary = "__attribute__((visibility)) on functions and on objects"
+kind = "gnu-extension"

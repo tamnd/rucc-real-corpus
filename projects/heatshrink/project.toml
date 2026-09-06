@@ -1,0 +1,30 @@
+[project]
+name = "heatshrink"
+rung = 0
+upstream = "https://github.com/atomicobject/heatshrink"
+licence = "ISC"
+licence-file = "LICENSE"
+description = "an lzss compressor written as a state machine for machines with no allocator"
+demands = ["switch-dispatch", "bit-manipulation"]
+
+[source]
+url = "https://codeload.github.com/atomicobject/heatshrink/tar.gz/7d419e1fa4830d0b919b9b6a91fe2fb786cf3280"
+sha256 = "b18a1b7ad6f51eac7ac1a81ca072703bd21d6d8727c05cd505843643705af65d"
+
+[build]
+system = "direct"
+sources = [
+  "test_heatshrink_dynamic.c",
+  "heatshrink_encoder.c",
+  "heatshrink_decoder.c",
+]
+output = "heatshrink-test"
+
+# Twelve thousand cases from a greatest suite, which makes this the widest oracle on rung zero by
+# some distance. It does not run at -O0, and exclusions.toml says why.
+[test]
+command = ["./heatshrink-test"]
+oracle = "suite"
+parser = "custom-regex"
+regex = "Pass: (\\d+), fail"
+baseline-tests = 12282

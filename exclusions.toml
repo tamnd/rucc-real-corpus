@@ -1,0 +1,23 @@
+# The register from `spec/09-patches-and-exclusions.md` section 9.4.
+# Every entry names an issue, because an exclusion with no issue is a project quietly removed from
+# the denominator. Both entries here are upstream failures found while recording the gcc 16
+# baselines, which is to say neither of them is about rucc and both of them would be a false red
+# against it. The upstream prefix says whose bug it is and the url behind it is our own tracking
+# issue, because neither has been reported to its project yet and a register that points at an issue
+# nobody filed is worse than one that points at a note somebody wrote.
+
+[[exclude]]
+project = "heatshrink"
+case = "heatshrink"
+level = "O0"
+issue = "upstream:https://github.com/tamnd/rucc-real-corpus/issues/21"
+why = "decoder_sink_should_reject_null_input_pointer allocates with a lookahead equal to the window size, which heatshrink_decoder_alloc is documented to reject, and then calls heatshrink_decoder_free on the null it got back. The free reads hsd->window_sz2 to compute a size its allocator does not use, so the test segfaults. At -O1 and above the read is dead and gcc deletes it, which is the only reason the other three levels pass, and that is worth remembering before reading a failure here at -O2 as a miscompilation."
+since = "2026-09-07"
+
+[[exclude]]
+project = "incbin"
+case = "incbin"
+level = "O1,O2,Os"
+issue = "upstream:https://github.com/tamnd/rucc-real-corpus/issues/22"
+why = "the assertion that &gLoremData[gLoremSize] equals &gLoremEnd fails with gcc 16 on linux x86-64 and on macos arm64 alike, at every level above -O0, while a translation unit with a single INCBIN in it still lays the symbols out adjacently. The header's own arithmetic is right and the placement stops being right once there are several of them, so this is a header and toolchain disagreement rather than anything the compiler under test did."
+since = "2026-09-07"

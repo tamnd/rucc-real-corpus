@@ -1,0 +1,30 @@
+[project]
+name = "parson"
+rung = 0
+upstream = "https://github.com/kgabis/parson"
+licence = "MIT"
+licence-file = "LICENSE"
+description = "a json library whose suite pushes doubles through printf and strtod and back"
+demands = ["double-formatting", "recursion-depth"]
+
+[source]
+url = "https://codeload.github.com/kgabis/parson/tar.gz/ba29f4eda9ea7703a9f6a9cf2b0532a2605723c3"
+sha256 = "d311cd3d051965485bff1c89a3980df7ad0ee3f9c0f33c18964d8c1cc32ef2cf"
+
+[build]
+system = "direct"
+sources = ["tests.c", "parson.c"]
+# Not `tests`, because the fixtures the suite reads live in a directory of that name and the link
+# would land on top of them.
+output = "parson-tests"
+
+[[build.flags]]
+flag = "-DTESTS_MAIN"
+why = "tests.c guards its main behind it so that the file can also be included, and without it the link has no entry point"
+
+[test]
+command = ["./parson-tests"]
+oracle = "suite"
+parser = "custom-regex"
+regex = "Tests passed: (\\d+)"
+baseline-tests = 349

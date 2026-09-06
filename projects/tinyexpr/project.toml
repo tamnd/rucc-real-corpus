@@ -1,0 +1,31 @@
+[project]
+name = "tinyexpr"
+rung = 0
+upstream = "https://github.com/codeplea/tinyexpr"
+licence = "Zlib"
+licence-file = "LICENSE"
+description = "an expression evaluator that dispatches to libm through function pointers"
+demands = ["libm-builtins", "function-pointers"]
+
+[source]
+url = "https://codeload.github.com/codeplea/tinyexpr/tar.gz/6d2233ce14dca063994708a91b3b98e24e8aa0c3"
+sha256 = "cdeaf4bbd89d00e70a2423fd96d069918c1d2eeca13c0924c6b3cb91c527603f"
+
+[build]
+system = "direct"
+sources = ["smoke.c", "tinyexpr.c"]
+output = "smoke"
+link = ["-lm"]
+
+# The regex matches the failing line as well as the passing one, so a run that loses cases is a
+# shortfall against the baseline rather than a parser that found nothing.
+#
+# The baseline is the count without the locale block. That block runs seven more cases where the C
+# library has a de_DE locale installed and skips them where it does not, so 10087 is what a
+# developer sees on a desktop and 10080 is the floor that holds everywhere.
+[test]
+command = ["./smoke"]
+oracle = "suite"
+parser = "custom-regex"
+regex = "TESTS (?:PASSED|FAILED) \\((\\d+)/(\\d+)\\)"
+baseline-tests = 10080

@@ -1,0 +1,26 @@
+[project]
+name = "incbin"
+rung = 0
+upstream = "https://github.com/graphitemaster/incbin"
+licence = "Unlicense"
+licence-file = "UNLICENSE"
+description = "a header that pulls a file into the binary through file scope inline assembly"
+demands = ["inline-asm"]
+
+[source]
+url = "https://codeload.github.com/graphitemaster/incbin/tar.gz/22061f51fe9f2f35f061f85c2b217b55dd75310d"
+sha256 = "5e98934364bbb09fa1c0cc46b612f22c87cc9d1df80dd8ea15078a69cf82cfff"
+
+[build]
+system = "direct"
+# The .incbin directive names its file relative to wherever the assembler is standing, so the build
+# has to happen in the directory the fixtures are in rather than at the root with a path in front.
+subdir = "test"
+sources = ["asserts.c"]
+output = "asserts"
+
+# Passes at -O0 and aborts everywhere above it, on both hosts, with gcc 16. exclusions.toml says
+# what it aborts on.
+[test]
+command = ["./asserts"]
+oracle = "self-checking"
