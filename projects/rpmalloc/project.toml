@@ -1,0 +1,54 @@
+[project]
+name = "rpmalloc"
+rung = 1
+upstream = "https://github.com/mjansson/rpmalloc"
+licence = "MIT"
+licence-file = "LICENSE"
+description = "a lock free allocator built on count leading zeros and the atomic builtins"
+demands = ["bit-builtins", "atomic-builtins"]
+
+# Spec 5.2 pins this at 1.4.5. That version's own suite trips its `Memory leak detected` assertion
+# in rpmalloc_finalize about one run in six on this machine, at every level including -O0, which
+# section 3.2 says is a project removed rather than retried. 2.0.1 does not, so the pin moved
+# instead. Thirty runs of 1.4.5 at -Os failed five times; fifteen runs of this failed none.
+[source]
+url = "https://codeload.github.com/mjansson/rpmalloc/tar.gz/5dacae8ba4ec31100dd2ed4bffd552abbd3cb29f"
+sha256 = "0c05238dc530accc386b7c25c17cd0d4a8a02177e5398b1212df27a370826f0d"
+
+# The project's own build is a python generator over ninja, which is a build system this harness
+# does not carry and would not learn anything from. The defines and the include paths are what
+# `configure.py` passes for its `rpmalloc-test-nooverride` binary, which is the C only one.
+[build]
+system = "direct"
+sources = ["rpmalloc/rpmalloc.c", "test/main.c", "test/thread.c"]
+output = "rpmalloc-test"
+link = ["-lpthread"]
+
+[[build.flags]]
+flag = "-Irpmalloc"
+why = "the test includes rpmalloc.h by bare name and the header sits beside the allocator"
+
+[[build.flags]]
+flag = "-Itest"
+why = "main.c includes thread.h by bare name from the same directory the harness is not building in"
+
+[[build.flags]]
+flag = "-DENABLE_OVERRIDE=0"
+why = "the overriding build pulls in main-override.cc, and a C++ translation unit is not what this project is on the list for"
+
+[[build.flags]]
+flag = "-DENABLE_ASSERTS=1"
+why = "configure.py builds the test binary with this and the allocator's own assertions are most of the oracle"
+
+[[build.flags]]
+flag = "-DENABLE_STATISTICS=1"
+why = "configure.py builds the test binary with this, and without it rpmalloc_finalize does not call the configured error callback, so the leak detection test fails on a correct build"
+
+[[build.flags]]
+flag = "-DRPMALLOC_FIRST_CLASS_HEAPS=1"
+why = "configure.py builds the test binary with this and the heap tests do not compile without it"
+
+# Every test prints a line and the program returns nonzero at the first one that does not hold.
+[test]
+command = ["./rpmalloc-test"]
+oracle = "self-checking"

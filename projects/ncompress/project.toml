@@ -1,0 +1,30 @@
+[project]
+name = "ncompress"
+rung = 1
+upstream = "https://github.com/vapier/ncompress"
+licence = "Unlicense"
+licence-file = "LICENSE.txt"
+description = "the original lzw compress, written in the c that came before the standard"
+demands = ["k-and-r-idioms", "pointer-arithmetic"]
+
+[source]
+url = "https://codeload.github.com/vapier/ncompress/tar.gz/e77a84ca5a69f01ccfe149e48d10ac563e6c375b"
+sha256 = "0905f89daa94853c4c75bfe7fc9b7636a70afd7d84abdd10ee944349de3117b1"
+
+[build]
+system = "make"
+targets = ["compress"]
+
+[build.level-flags]
+variable = "CFLAGS"
+why = "the Makefile assigns CFLAGS outright, so the environment never gets a say"
+
+[[build.flags]]
+flag = "-std=gnu17"
+why = "compress.c passes a handler to signal through a pointer type C23 no longer allows, and GCC 16 defaults to C23 and calls it an error, so the project is being asked for the language it was written in rather than being patched"
+
+# The check target compresses and decompresses generated files and diffs them, in shell.
+[test]
+command = ["make", "check"]
+oracle = "self-checking"
+requires = ["sh"]

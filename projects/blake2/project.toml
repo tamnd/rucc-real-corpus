@@ -1,0 +1,30 @@
+[project]
+name = "blake2"
+rung = 1
+upstream = "https://github.com/BLAKE2/BLAKE2"
+licence = "CC0-1.0"
+licence-file = "COPYING"
+description = "the reference blake2, rotate and mix chains at four widths"
+demands = ["rotate-idioms", "integer-conversion"]
+
+[source]
+url = "https://codeload.github.com/BLAKE2/BLAKE2/tar.gz/ed1974ea83433eba7b2d95c5dcd9ac33cb847913"
+sha256 = "e1d1194cde9fec0f150961cca8f3d9bdf7c5a5cbe020d1cdfb962b4887793124"
+
+[build]
+system = "make"
+subdir = "ref"
+targets = ["blake2s", "blake2b", "blake2sp", "blake2bp", "blake2xs", "blake2xb"]
+
+[build.level-flags]
+variable = "CFLAGS"
+why = "the reference Makefile assigns CFLAGS outright, so the environment never gets a say"
+
+[[build.flags]]
+flag = "-I../testvectors"
+why = "the self tests include blake2-kat.h from there and the Makefile's own CFLAGS carried the path that replacing it drops"
+
+# Each binary hashes the shipped known answer vectors and returns nonzero on the first mismatch.
+[test]
+command = ["make", "check"]
+oracle = "self-checking"

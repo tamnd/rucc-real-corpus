@@ -1,0 +1,25 @@
+[project]
+name = "xxhash"
+rung = 1
+upstream = "https://github.com/Cyan4973/xxHash"
+licence = "BSD-2-Clause"
+licence-file = "LICENSE"
+description = "a non cryptographic hash built out of rotates and multiply chains"
+demands = ["rotate-idioms", "integer-conversion"]
+
+[source]
+url = "https://codeload.github.com/Cyan4973/xxHash/tar.gz/c0b5ea995d66691734b1a79ad89e73a0d2fd5a53"
+sha256 = "6b49e0f12bad8b6fdb1037e0f251c39a0f9bd39c3d756a12ccb1dcf31e5419fa"
+
+[build]
+system = "make"
+
+# DISPATCH=0 keeps the build off the runtime cpu feature dispatch path, which is what spec 5.2 asks
+# for: with it on, what runs depends on the machine rather than on the compiler.
+[build.env]
+DISPATCH = "0"
+
+# The suite hashes known inputs and compares against the vectors it ships, so it grades itself.
+[test]
+command = ["make", "test"]
+oracle = "self-checking"

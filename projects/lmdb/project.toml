@@ -1,0 +1,33 @@
+[project]
+name = "lmdb"
+rung = 1
+upstream = "https://github.com/LMDB/lmdb"
+licence = "OLDAP-2.8"
+licence-file = "libraries/liblmdb/LICENSE"
+description = "a memory mapped b-tree key value store written for the compiler to leave alone"
+demands = ["integer-conversion", "pointer-arithmetic", "struct-layout"]
+
+[source]
+url = "https://codeload.github.com/LMDB/lmdb/tar.gz/6f0a32496a5aadee15a5e5103c479bd3355ae273"
+sha256 = "a828943d5ea975e4c6322f3e6f59fd1df3cc372ae731349f5152bc37210fa5a3"
+
+[build]
+system = "make"
+subdir = "libraries/liblmdb"
+# Not `all`, because the shared library target passes -Wl,-soname, which the macOS linker does not
+# take, and the Makefile ships the macOS alternative commented out. Spec 09.3 does not cover
+# editing somebody's Makefile, so the manifest asks for the targets that build everywhere instead.
+targets = ["liblmdb.a", "mtest", "mdb_stat"]
+
+# CFLAGS here is `$(THREADS) $(OPT) $(W) $(XCFLAGS)`, so overriding CFLAGS would drop -pthread and
+# the build would fail rather than change level. OPT is the part that carries the level.
+[build.level-flags]
+variable = "OPT"
+why = "the Makefile builds CFLAGS out of THREADS, OPT, W and XCFLAGS, and OPT is the piece holding the optimization level"
+
+# ILIBS2= empties the extra link libraries the test target wants, which on this Makefile is -lrt,
+# a library macOS does not have and this test does not use. The target also creates ./testdb,
+# which mtest needs and nothing else makes.
+[test]
+command = ["make", "test", "ILIBS2="]
+oracle = "self-checking"

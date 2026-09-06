@@ -1,0 +1,32 @@
+[project]
+name = "bzip2"
+rung = 1
+upstream = "https://sourceware.org/bzip2/"
+licence = "bzip2-1.0.6"
+licence-file = "LICENSE"
+description = "a block sorting compressor, eight thousand lines of bit manipulation"
+demands = ["bit-manipulation", "pointer-arithmetic"]
+
+[source]
+url = "https://sourceware.org/pub/bzip2/bzip2-1.0.8.tar.gz"
+sha256 = "ab5a03176ee106d3f0fa90e381da478ddae405918153cca248e682cd0c4a2269"
+
+[build]
+system = "make"
+targets = ["bzip2", "libbz2.a", "bzip2recover"]
+
+# The Makefile says `CFLAGS=-Wall -Winline -O2 -g $(BIGFILES)`, a plain assignment, so every level
+# would build at -O2 without this. Spec 07.8 is the mechanism.
+[build.level-flags]
+variable = "CFLAGS"
+why = "line 24 of the Makefile assigns CFLAGS outright, so the environment never gets a say"
+
+[[build.flags]]
+flag = "-D_FILE_OFFSET_BITS=64"
+why = "the Makefile's own CFLAGS carried this through BIGFILES and replacing CFLAGS drops it, which would change which file sizes bzip2 handles"
+
+# `make test` compresses and decompresses six reference files and diffs the results against the
+# originals, so the project grades itself and the exit status is the answer.
+[test]
+command = ["make", "test"]
+oracle = "self-checking"

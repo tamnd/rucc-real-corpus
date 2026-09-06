@@ -1,0 +1,31 @@
+[project]
+name = "libsir"
+rung = 1
+upstream = "https://github.com/aremmell/libsir"
+licence = "MIT"
+licence-file = "LICENSE"
+description = "a logging library that forwards varargs through several layers of macro"
+demands = ["varargs-depth", "deep-macros", "thread-local"]
+
+[source]
+url = "https://codeload.github.com/aremmell/libsir/tar.gz/0ae01738c93ee6784c431ac70f6322b55e7aacc0"
+sha256 = "34a510bc44c20cfe5177c477487ae48e4a5e7e5f153ba4560ebd20e90b3c18a9"
+
+[build]
+system = "make"
+
+# The Makefile does `SIR_CFLAGS := $(CFLAGS)` and then `SIR_CFLAGS += $(OPTFLAGS) -DNDEBUG`, so the
+# level from the environment arrives and is then overtaken by OPTFLAGS on the same command line.
+# OPTFLAGS is the variable that decides.
+[build.level-flags]
+variable = "OPTFLAGS"
+why = "the Makefile appends OPTFLAGS after the CFLAGS it took from the environment, so OPTFLAGS is the last -O on the command line"
+
+# The count sits between ANSI escapes, which is why the pattern stops at the space after the digits
+# rather than matching the word that follows.
+[test]
+command = ["./build/bin/sirtests"]
+oracle = "suite"
+parser = "custom-regex"
+regex = "all (\\d+) "
+baseline-tests = 36

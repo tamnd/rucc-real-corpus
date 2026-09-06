@@ -1,0 +1,29 @@
+[project]
+name = "zlib"
+rung = 1
+upstream = "https://github.com/madler/zlib"
+licence = "Zlib"
+licence-file = "LICENSE"
+description = "the reference deflate implementation, and the reference case for pointer arithmetic"
+demands = ["pointer-arithmetic", "function-pointers"]
+
+# Spec 5.2 pins this at v1.3.2, which does not exist. v1.3.1 is the latest release and this is its
+# commit. The pin moves when upstream tags again.
+[source]
+url = "https://codeload.github.com/madler/zlib/tar.gz/51b7f2abdade71cd9bb0e7a373ef2610ec6f9daf"
+sha256 = "d9e270d46252734aa49770fbc544125391617956266f220bd63216c834f3a522"
+
+[build]
+system = "configure"
+configure = ["--static"]
+targets = ["static"]
+
+# No level-flags. zlib's configure is hand written, it reads CFLAGS out of the environment, and it
+# writes what it read into the generated Makefile, so the level arrives the ordinary way.
+
+# Spec 5.2 has this down as a d3 suite. It is a d2, because `make teststatic` runs example and
+# minigzip, both of which check their own round trips and exit nonzero when one does not hold, and
+# neither of them reports a count for a suite oracle to compare.
+[test]
+command = ["make", "teststatic"]
+oracle = "self-checking"
