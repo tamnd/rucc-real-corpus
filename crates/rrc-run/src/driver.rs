@@ -258,6 +258,9 @@ fn build_steps(job: &Job<'_>, env: &BTreeMap<String, String>, workdir: &Path) ->
     let limit = Duration::from_secs(job.manifest.limits.build_seconds);
     let make = || -> Vec<String> {
         let mut args = build.targets.clone();
+        if let Some(assignment) = build.level_assignment(job.level) {
+            args.push(assignment);
+        }
         if build.parallel {
             args.push("-j4".to_string());
         }
@@ -353,6 +356,11 @@ fn direct_arguments(job: &Job<'_>) -> Vec<String> {
 /// A relative program has to be made absolute against the build directory. `Command` resolves a
 /// relative program against the harness's own working directory and not against the one it is
 /// about to change into, which is a trap that would make `./jsmn_test` mean the wrong thing.
+///
+/// A test command that is itself a make invocation gets the same level assignment the build got.
+/// Without it, `make test` re-reads the Makefile, decides the objects are out of date against
+/// flags it now names itself, and rebuilds the project at the level the Makefile prefers in the
+/// middle of grading it.
 fn resolve(program: &str, env: &BTreeMap<String, String>, workdir: &Path) -> PathBuf {
     if program.contains('/') {
         return workdir.join(program);
@@ -370,9 +378,15 @@ fn test_invocation(
     workdir: &Path,
 ) -> Option<Invocation> {
     let (program, args) = job.manifest.test.command.split_first()?;
+    let mut args = args.to_vec();
+    if program == "make"
+        && let Some(assignment) = job.manifest.build.level_assignment(job.level)
+    {
+        args.push(assignment);
+    }
     Some(Invocation {
         program: resolve(program, env, workdir),
-        args: args.to_vec(),
+        args,
         cwd: workdir.to_path_buf(),
         env: env.clone(),
         timeout: Duration::from_secs(job.manifest.limits.test_seconds),
@@ -751,6 +765,67 @@ oracle = "self-checking"
             extra_path: &[],
             pin_sha256: &fixture.pin,
         }
+    }
+
+    /// A Makefile that assigns `CFLAGS` outright, and a program that answers which level it was
+    /// compiled at.
+    ///
+    /// `__OPTIMIZE__` is defined at every level except `-O0`, so this program exits zero only
+    /// when the level the harness asked for actually reached the compiler. Run through the
+    /// Makefile's own `-O2` it exits one, and the self checking oracle calls that a wrong answer.
+    const HARD_CODED_MAKEFILE: &str =
+        "CFLAGS = -O2\n\nsample: main.c\n\t$(CC) $(CFLAGS) -o sample main.c\n";
+
+    const ASKS_ITS_LEVEL: &str =
+        "int main(void){\n#ifdef __OPTIMIZE__\n  return 1;\n#else\n  return 0;\n#endif\n}\n";
+
+    fn make_manifest() -> Manifest {
+        let text = MANIFEST
+            .replace("system = \"direct\"\nsources = [\"main.c\"]\noutput = \"sample\"\n", "system = \"make\"\n")
+            .replace(
+                "[test]",
+                "[build.level-flags]\nvariable = \"CFLAGS\"\nwhy = \"the Makefile assigns CFLAGS outright, so the environment never gets a say\"\n\n[test]",
+            );
+        Manifest::from_str_named(&text, Path::new("test/project.toml")).unwrap()
+    }
+
+    #[test]
+    fn a_makefile_that_assigns_cflags_outright_still_gets_the_level_it_was_asked_for() {
+        let Some(f) = fixture("level-through-make", ASKS_ITS_LEVEL) else {
+            return;
+        };
+        std::fs::write(f.extracted.join("Makefile"), HARD_CODED_MAKEFILE).unwrap();
+        let manifest = make_manifest();
+        let mut job = job(&f, &manifest);
+        job.level = Level::O0;
+        let record = run(&job, Slot::A).unwrap();
+        assert_eq!(
+            record.outcome,
+            Outcome::Passed,
+            "built at the Makefile's level rather than the one asked for"
+        );
+    }
+
+    #[test]
+    fn a_makefile_that_assigns_cflags_outright_is_left_at_its_own_level_when_nothing_says_otherwise()
+     {
+        let Some(f) = fixture("level-not-forced", ASKS_ITS_LEVEL) else {
+            return;
+        };
+        std::fs::write(f.extracted.join("Makefile"), HARD_CODED_MAKEFILE).unwrap();
+        let text = MANIFEST.replace(
+            "system = \"direct\"\nsources = [\"main.c\"]\noutput = \"sample\"\n",
+            "system = \"make\"\n",
+        );
+        let manifest = Manifest::from_str_named(&text, Path::new("test/project.toml")).unwrap();
+        let mut job = job(&f, &manifest);
+        job.level = Level::O0;
+        let record = run(&job, Slot::A).unwrap();
+        assert_eq!(
+            record.outcome,
+            Outcome::WrongAnswer,
+            "the level reached a Makefile that assigns its own flags, which it cannot"
+        );
     }
 
     #[test]
