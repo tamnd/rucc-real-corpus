@@ -1,0 +1,38 @@
+[project]
+name = "uzlib"
+rung = 1
+upstream = "https://github.com/pfalcon/uzlib"
+licence = "Zlib"
+licence-file = "LICENSE"
+description = "a second inflate implementation, so that a zlib failure is attributable"
+demands = ["bit-manipulation", "pointer-arithmetic"]
+
+[source]
+url = "https://codeload.github.com/pfalcon/uzlib/tar.gz/ae6dbe4582247076efe1b940d1dc7bc9e52d9779"
+sha256 = "7630a4c58bb2e5bf85bc3ada6a07ffcc387a729b89911e4fd1ab189214790a42"
+
+# The Makefile archives with `ar -frs`, which macOS ar rejects, and the library is eight files. The
+# harness compiles them rather than the manifest working around another toolchain's ar.
+[build]
+system = "direct"
+sources = [
+  "examples/tgunzip/tgunzip.c",
+  "src/adler32.c",
+  "src/crc32.c",
+  "src/defl_static.c",
+  "src/genlz77.c",
+  "src/tinfgzip.c",
+  "src/tinflate.c",
+  "src/tinfzlib.c",
+]
+output = "tgunzip"
+
+[[build.flags]]
+flag = "-Isrc"
+why = "the example includes uzlib.h by bare name and the header sits beside the sources"
+
+# tgunzip checks the crc32 and the length the gzip trailer claims against what it actually decoded,
+# and returns nonzero when either disagrees.
+[test]
+command = ["./tgunzip", "tests/corpus.tar.gz", "corpus-out.tar"]
+oracle = "self-checking"

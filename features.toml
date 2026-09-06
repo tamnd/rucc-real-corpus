@@ -36,6 +36,10 @@ summary = "labels as values, goto *"
 kind = "gnu-extension"
 diagnostic = ["no rule lowers a block_addr"]
 
+[constant-time]
+summary = "arithmetic written to take the same time whatever the secret is, which the optimizer must not turn back into a branch"
+kind = "standard"
+
 [deep-macros]
 summary = "macros expanding through several layers, including __VA_ARGS__ forwarding"
 kind = "preprocessor"
@@ -68,6 +72,11 @@ kind = "gnu-extension"
 summary = "the integer types are the widths the standard says they are, and conversions between them keep their values"
 kind = "standard"
 
+[k-and-r-idioms]
+summary = "declarations and calls in the shape C had before it was standardised, which a compiler defaulting to C23 rejects"
+kind = "standard"
+standard = "old style definitions and implicit int were removed in C23; -std=gnu17 and earlier accept them"
+
 [large-switch]
 summary = "a switch with hundreds of cases, where the jump table decision is the compiler's"
 kind = "standard"
@@ -85,6 +94,11 @@ kind = "standard"
 summary = "link time optimization across translation units"
 kind = "lto"
 
+[memcpy-idioms]
+summary = "__builtin_memcpy and __builtin_memset expanded inline at a size the compiler can see"
+kind = "gnu-builtin"
+standard = "GNU builtin; the portable spelling is a call to memcpy that the compiler is expected to recognise"
+
 [overflow-builtins]
 summary = "__builtin_add_overflow, __builtin_sub_overflow and __builtin_mul_overflow"
 kind = "gnu-builtin"
@@ -96,6 +110,10 @@ kind = "standard"
 
 [recursion-depth]
 summary = "recursion deep enough that the frame layout and the tail call decision both matter"
+kind = "standard"
+
+[rotate-idioms]
+summary = "a shift left or-ed with a shift right recognised as one rotate instruction"
 kind = "standard"
 
 [setjmp-longjmp]

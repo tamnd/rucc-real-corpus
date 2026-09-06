@@ -2,6 +2,22 @@
 # A pin move is a diff in this file with the hash in it.
 
 [[project]]
+name = "blake2"
+url = "https://codeload.github.com/BLAKE2/BLAKE2/tar.gz/ed1974ea83433eba7b2d95c5dcd9ac33cb847913"
+sha256 = "e1d1194cde9fec0f150961cca8f3d9bdf7c5a5cbe020d1cdfb962b4887793124"
+bytes = 908956
+licence-sha256 = "a2010f343487d3f7618affe54f789f5487602331c0a8d03f49e9a7c547cf0499"
+verified = "2026-09-06"
+
+[[project]]
+name = "bzip2"
+url = "https://sourceware.org/pub/bzip2/bzip2-1.0.8.tar.gz"
+sha256 = "ab5a03176ee106d3f0fa90e381da478ddae405918153cca248e682cd0c4a2269"
+bytes = 810029
+licence-sha256 = "c6dbbf828498be844a89eaa3b84adbab3199e342eb5cb2ed2f0d4ba7ec0f38a3"
+verified = "2026-09-06"
+
+[[project]]
 name = "c4"
 url = "https://codeload.github.com/rswier/c4/tar.gz/2feb8c0a142b2e513be69442c24af82dbaf41a25"
 sha256 = "f9c601a370c4932969aa8ded5cec403258e708ed8a4ff6037069083e45c2238e"
@@ -58,11 +74,67 @@ licence-sha256 = "150d90904cd8de73609bb177b42edd3867b07b4b7b786dbba319f30de39fcd
 verified = "2026-09-06"
 
 [[project]]
+name = "libsir"
+url = "https://codeload.github.com/aremmell/libsir/tar.gz/0ae01738c93ee6784c431ac70f6322b55e7aacc0"
+sha256 = "34a510bc44c20cfe5177c477487ae48e4a5e7e5f153ba4560ebd20e90b3c18a9"
+bytes = 2858121
+licence-sha256 = "62288e34a3c175dd5497ccd2e5f3eac20b4477a3f2066d5892d0f320ddb60c1c"
+verified = "2026-09-06"
+
+[[project]]
+name = "linenoise"
+url = "https://codeload.github.com/antirez/linenoise/tar.gz/a473823d74b93eab2ba83480df16ed37617493f2"
+sha256 = "3db03aba739bc96f3da3133b9615ccc43246ba2c3628b403b00a470abd3b6a8d"
+bytes = 44714
+licence-sha256 = "efe1692aa5b869edaa0ac88f95eb0276c1125304ffc636a299db3ebbab47f62b"
+verified = "2026-09-06"
+
+[[project]]
 name = "llama2.c"
 url = "https://codeload.github.com/karpathy/llama2.c/tar.gz/350e04fe35433e6d2941dce5a1f53308f87058eb"
 sha256 = "9210e104192375f2c156fd24a84d2692c6b199f8ebbc2337551842c03cc1ddce"
 bytes = 700335
 licence-sha256 = "e87b912002f04cdfa837eaf7f70548ab79b9cb62a285495edf575f3da875aec4"
+verified = "2026-09-06"
+
+[[project]]
+name = "lmdb"
+url = "https://codeload.github.com/LMDB/lmdb/tar.gz/6f0a32496a5aadee15a5e5103c479bd3355ae273"
+sha256 = "a828943d5ea975e4c6322f3e6f59fd1df3cc372ae731349f5152bc37210fa5a3"
+bytes = 178727
+licence-sha256 = "310fe25c858a9515fc8c8d7d1f24a67c9496f84a91e0a0e41ea9975b1371e569"
+verified = "2026-09-06"
+
+[[project]]
+name = "lz4"
+url = "https://codeload.github.com/lz4/lz4/tar.gz/ebb370ca83af193212df4dcbadcc5d87bc0de2f0"
+sha256 = "eb1a93e934d4fd29df6e2061ba0bf447568561764d758f4a5662c0e29370ffa9"
+bytes = 387536
+licence-sha256 = "4bc9c403f6b679cc076dee210e0e21c27b4e8f6d3fb43d85364c76657bfaaac5"
+verified = "2026-09-06"
+
+[[project]]
+name = "minunit"
+url = "https://codeload.github.com/siu/minunit/tar.gz/a0586569bd8abfb7a37390d670484c201e9173bf"
+sha256 = "3e3ecbcdc4e166c782dcd1d9c1f80ce14297d948695089521a2a7769224507b9"
+bytes = 6008
+licence-sha256 = "5b65d2fb2bd2f2d28729e4193b32d6b977d7239ce43b1b8298e1ec8362c08dfc"
+verified = "2026-09-06"
+
+[[project]]
+name = "monocypher"
+url = "https://monocypher.org/download/monocypher-4.0.2.tar.gz"
+sha256 = "38d07179738c0c90677dba3ceb7a7b8496bcfea758ba1a53e803fed30ae0879c"
+bytes = 939996
+licence-sha256 = "5f8360e4c06ddcc584bdb4b210c6af824c4bb301e6a9a521869b6d90795ca4b3"
+verified = "2026-09-06"
+
+[[project]]
+name = "ncompress"
+url = "https://codeload.github.com/vapier/ncompress/tar.gz/e77a84ca5a69f01ccfe149e48d10ac563e6c375b"
+sha256 = "0905f89daa94853c4c75bfe7fc9b7636a70afd7d84abdd10ee944349de3117b1"
+bytes = 34218
+licence-sha256 = "d402c89370da74ffa591e911f7fd6de640a5c1ceecaf230eaa8c9a7c132f1403"
 verified = "2026-09-06"
 
 [[project]]
@@ -88,6 +160,14 @@ sha256 = "b7dae81c4dc20019c9e465d055c55e3a2963ada9433fc6e90fe15d1b70d2fa62"
 bytes = 1495
 
 [[project]]
+name = "rpmalloc"
+url = "https://codeload.github.com/mjansson/rpmalloc/tar.gz/5dacae8ba4ec31100dd2ed4bffd552abbd3cb29f"
+sha256 = "0c05238dc530accc386b7c25c17cd0d4a8a02177e5398b1212df27a370826f0d"
+bytes = 2075883
+licence-sha256 = "0100518799526908a06f4ba93b97a438362b589124c0081ba57dd4bfd7998a84"
+verified = "2026-09-06"
+
+[[project]]
 name = "sds"
 url = "https://codeload.github.com/antirez/sds/tar.gz/5347739b1581fcba74fd5cab1fc21d2aef317d71"
 sha256 = "37a4afd7d2b766609dfb0c2e3da84eaec74d00302165c0d04a0f42b204dfb295"
@@ -104,9 +184,41 @@ licence-sha256 = "f39b507b81b9ba1edce7fe742bbd68fda4b852063ce7299274ae97991d4881
 verified = "2026-09-06"
 
 [[project]]
+name = "tinycthread"
+url = "https://codeload.github.com/tinycthread/tinycthread/tar.gz/8d1608be0e9b47d7d80c1ce28efa5608da5fd1b5"
+sha256 = "11b6a6c747a1d1b3a6f788ab6d9814923a7e2eb46cbaa3abfb4c63fa77fed0fa"
+bytes = 29413
+licence-sha256 = "9f31950578209cf172952215a12371102f09dc554d71bc643ff232b8414b814b"
+verified = "2026-09-06"
+
+[[project]]
 name = "tinyexpr"
 url = "https://codeload.github.com/codeplea/tinyexpr/tar.gz/6d2233ce14dca063994708a91b3b98e24e8aa0c3"
 sha256 = "cdeaf4bbd89d00e70a2423fd96d069918c1d2eeca13c0924c6b3cb91c527603f"
 bytes = 43757
 licence-sha256 = "d5c1816fe55f43fe3f3224755d3d2808817d44e80c4538ef48c1d43b34ceb7db"
+verified = "2026-09-06"
+
+[[project]]
+name = "uzlib"
+url = "https://codeload.github.com/pfalcon/uzlib/tar.gz/ae6dbe4582247076efe1b940d1dc7bc9e52d9779"
+sha256 = "7630a4c58bb2e5bf85bc3ada6a07ffcc387a729b89911e4fd1ab189214790a42"
+bytes = 65440
+licence-sha256 = "71e4932b2b9a6f6d43a2dd4bf962bbc71bc9f39d7a446ca855054fb639adbb6f"
+verified = "2026-09-06"
+
+[[project]]
+name = "xxhash"
+url = "https://codeload.github.com/Cyan4973/xxHash/tar.gz/c0b5ea995d66691734b1a79ad89e73a0d2fd5a53"
+sha256 = "6b49e0f12bad8b6fdb1037e0f251c39a0f9bd39c3d756a12ccb1dcf31e5419fa"
+bytes = 1155739
+licence-sha256 = "6ffedbc0f7878612d2b23589f1ff2ab15633e1df7963a5d9fc750ec5500c7e7a"
+verified = "2026-09-06"
+
+[[project]]
+name = "zlib"
+url = "https://codeload.github.com/madler/zlib/tar.gz/51b7f2abdade71cd9bb0e7a373ef2610ec6f9daf"
+sha256 = "d9e270d46252734aa49770fbc544125391617956266f220bd63216c834f3a522"
+bytes = 1572004
+licence-sha256 = "845efc77857d485d91fb3e0b884aaa929368c717ae8186b66fe1ed2495753243"
 verified = "2026-09-06"

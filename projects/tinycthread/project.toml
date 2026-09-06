@@ -1,0 +1,29 @@
+[project]
+name = "tinycthread"
+rung = 1
+upstream = "https://github.com/tinycthread/tinycthread"
+licence = "Zlib"
+licence-file = "README.txt"
+description = "the c11 threads interface implemented over pthreads, the smallest concurrency demand here"
+demands = ["thread-local", "function-pointers"]
+
+[source]
+url = "https://codeload.github.com/tinycthread/tinycthread/tar.gz/8d1608be0e9b47d7d80c1ce28efa5608da5fd1b5"
+sha256 = "11b6a6c747a1d1b3a6f788ab6d9814923a7e2eb46cbaa3abfb4c63fa77fed0fa"
+
+# The project's Makefile hard codes its own CFLAGS and links -lrt, which macOS does not have. The
+# build is two files, so the harness compiles them itself rather than the manifest naming a
+# variable that has to work around a link line as well.
+[build]
+system = "direct"
+sources = ["test/test.c", "source/tinycthread.c"]
+output = "tinycthread-test"
+link = ["-lpthread"]
+
+[[build.flags]]
+flag = "-Isource"
+why = "the test includes tinycthread.h by bare name and the header sits beside the implementation"
+
+[test]
+command = ["./tinycthread-test"]
+oracle = "self-checking"

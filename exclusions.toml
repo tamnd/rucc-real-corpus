@@ -21,3 +21,11 @@ level = "O1,O2,Os"
 issue = "upstream:https://github.com/tamnd/rucc-real-corpus/issues/22"
 why = "the assertion that &gLoremData[gLoremSize] equals &gLoremEnd fails with gcc 16 on linux x86-64 and on macos arm64 alike, at every level above -O0, while a translation unit with a single INCBIN in it still lays the symbols out adjacently. The header's own arithmetic is right and the placement stops being right once there are several of them, so this is a header and toolchain disagreement rather than anything the compiler under test did."
 since = "2026-09-07"
+
+[[exclude]]
+project = "xxhash"
+case = "xxhash"
+level = "O1"
+issue = "upstream:https://github.com/tamnd/rucc-real-corpus/issues/41"
+why = "gcc 16.2.0 on aarch64 apple darwin gives an internal compiler error, in aarch64_function_arg_alignment at config/aarch64/aarch64.cc:7524, compiling XXH3_len_0to16_64b inlined into XXH3_64bits at -O1. The crash is in the back end and the other three levels build and pass, so this is a gcc bug on this host and criterion 3 of section 3.2 says a cell gcc cannot produce is not evidence about us. The entry is written against the level and not against the host because this register has no host field, which makes it wider than the failure it is for."
+since = "2026-09-07"

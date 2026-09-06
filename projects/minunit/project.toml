@@ -1,0 +1,30 @@
+[project]
+name = "minunit"
+rung = 1
+upstream = "https://github.com/siu/minunit"
+licence = "MIT"
+licence-file = "MIT-LICENSE.txt"
+description = "a test framework that is one header, compiled here as the program it ships"
+demands = ["deep-macros", "float-arithmetic"]
+
+[source]
+url = "https://codeload.github.com/siu/minunit/tar.gz/a0586569bd8abfb7a37390d670484c201e9173bf"
+sha256 = "3e3ecbcdc4e166c782dcd1d9c1f80ce14297d948695089521a2a7769224507b9"
+
+[build]
+system = "direct"
+sources = ["minunit_example.c"]
+output = "minunit-example"
+link = ["-lm"]
+
+[[build.flags]]
+flag = "-I."
+why = "the example includes minunit.h by bare name from the directory it sits in"
+
+# The example fails six of its own assertions on purpose, to show what a failure looks like, and
+# exits with that count. So the exit status is not an oracle and the recorded line is: a run that
+# reports a different number of failures is a run where something changed.
+[test]
+command = ["./minunit-example"]
+oracle = "recorded"
+expect-contains = "11 tests, 11 assertions, 6 failures"

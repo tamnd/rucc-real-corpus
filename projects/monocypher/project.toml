@@ -1,0 +1,29 @@
+[project]
+name = "monocypher"
+rung = 1
+upstream = "https://monocypher.org/"
+licence = "CC0-1.0 OR BSD-2-Clause"
+licence-file = "LICENCE.md"
+description = "a compact crypto library written to run in constant time whatever the key is"
+demands = ["constant-time", "integer-conversion"]
+
+# The release tarball rather than a commit archive, because the GitHub archive does not carry
+# tests/vectors.h and `make test` then asks for libsodium to generate one.
+[source]
+url = "https://monocypher.org/download/monocypher-4.0.2.tar.gz"
+sha256 = "38d07179738c0c90677dba3ceb7a7b8496bcfea758ba1a53e803fed30ae0879c"
+
+[build]
+system = "make"
+# `static-library` rather than the default `all`, because `all` also links the shared object with
+# -Wl,-soname, which the macOS linker does not take. The test target does not need it.
+targets = ["static-library"]
+
+# No level-flags. The Makefile says `CFLAGS ?= -O3`, which is the conditional form, so the level
+# from the environment is the one that survives.
+
+# The suite runs the shipped vectors through every primitive and diffs the results, so the exit
+# status is the answer and the last line says so.
+[test]
+command = ["make", "test"]
+oracle = "self-checking"
