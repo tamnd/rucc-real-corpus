@@ -5,9 +5,10 @@ edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
-description = "The run record, the sandbox, the environment and the driver shim"
+description = "Building and testing one project at one level, and the record that comes out"
 
 [dependencies]
+regex.workspace = true
 rrc-manifest.workspace = true
 serde.workspace = true
 serde_json.workspace = true
