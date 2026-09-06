@@ -74,6 +74,20 @@ licence-sha256 = "1654be3a1c88c6ae90f1c25ec880ef80076d05910199688dd9853f27d1e894
 verified = "2026-09-06"
 
 [[project]]
+name = "picohttpparser"
+url = "https://codeload.github.com/h2o/picohttpparser/tar.gz/539bb9f510f5aefc8efda53aaf822a21ecae2832"
+sha256 = "f6da62f0b983cb2359a580a9b6408b31cea562ce307daf838ca7291c0046b96c"
+bytes = 18686
+licence-sha256 = "108520e1661d2526e92efce34f3935c998d8a3d2e2a19d9a5c12e2532f05af55"
+verified = "2026-09-06"
+
+[[project.submodule]]
+path = "picotest"
+url = "https://codeload.github.com/h2o/picotest/tar.gz/70b9797596d81896cba49e5918fd5b1edf57269b"
+sha256 = "b7dae81c4dc20019c9e465d055c55e3a2963ada9433fc6e90fe15d1b70d2fa62"
+bytes = 1495
+
+[[project]]
 name = "sds"
 url = "https://codeload.github.com/antirez/sds/tar.gz/5347739b1581fcba74fd5cab1fc21d2aef317d71"
 sha256 = "37a4afd7d2b766609dfb0c2e3da84eaec74d00302165c0d04a0f42b204dfb295"

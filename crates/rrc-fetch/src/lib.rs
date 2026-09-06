@@ -30,4 +30,4 @@ pub use digest::{sha256_bytes, sha256_file};
 pub use download::{Curl, Downloader, Offline};
 pub use error::FetchError;
 pub use extract::{ArchiveKind, extract};
-pub use fetch::{Fetched, Provenance, fetch, fetch_and_extract};
+pub use fetch::{Fetched, Provenance, Whole, fetch, fetch_and_extract};

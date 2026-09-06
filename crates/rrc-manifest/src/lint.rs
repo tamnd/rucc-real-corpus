@@ -104,6 +104,33 @@ fn check_source(manifest: &Manifest, corpus: &Corpus, say: &mut Vec<String>) {
             say.push("a mirror repeats the primary url, which buys nothing".into());
         }
     }
+    let mut seen = std::collections::BTreeSet::new();
+    for submodule in &manifest.source.submodules {
+        if !submodule.path_is_contained() {
+            say.push(format!(
+                "the submodule path `{}` is not a plain relative path inside the tree, and this is where bytes off the network land",
+                submodule.path
+            ));
+        }
+        if !seen.insert(submodule.path.as_str()) {
+            say.push(format!(
+                "two submodules are unpacked into `{}`, so one of them would be the one that survives",
+                submodule.path
+            ));
+        }
+        if !is_sha256(&submodule.sha256) {
+            say.push(format!(
+                "the submodule at `{}` has a sha256 that is not 64 hex characters",
+                submodule.path
+            ));
+        }
+        if !submodule.url.starts_with("https://") {
+            say.push(format!(
+                "the submodule at `{}` has a url that is not https",
+                submodule.path
+            ));
+        }
+    }
     match corpus.lockfile.get(&manifest.project.name) {
         None => {
             say.push("has no entry in projects.lock, so nothing can be fetched for it".into());
@@ -111,7 +138,38 @@ fn check_source(manifest: &Manifest, corpus: &Corpus, say: &mut Vec<String>) {
         Some(entry) if entry.sha256 != manifest.source.sha256 => {
             say.push("the lockfile hash and the manifest hash disagree, so the pin moved in one file and not the other".into());
         }
-        Some(_) => {}
+        Some(entry) => {
+            for submodule in &manifest.source.submodules {
+                match entry
+                    .submodules
+                    .iter()
+                    .find(|locked| locked.path == submodule.path)
+                {
+                    None => say.push(format!(
+                        "the submodule at `{}` has no entry in projects.lock",
+                        submodule.path
+                    )),
+                    Some(locked) if locked.sha256 != submodule.sha256 => say.push(format!(
+                        "the submodule at `{}` is pinned to different hashes in the manifest and the lockfile",
+                        submodule.path
+                    )),
+                    Some(_) => {}
+                }
+            }
+            for locked in &entry.submodules {
+                if !manifest
+                    .source
+                    .submodules
+                    .iter()
+                    .any(|submodule| submodule.path == locked.path)
+                {
+                    say.push(format!(
+                        "projects.lock pins a submodule at `{}` that the manifest no longer asks for",
+                        locked.path
+                    ));
+                }
+            }
+        }
     }
 }
 
@@ -332,6 +390,17 @@ kind = "standard"
                 bytes: 1,
                 licence_sha256: "ab".repeat(32),
                 verified: "2026-09-06".into(),
+                submodules: manifest
+                    .source
+                    .submodules
+                    .iter()
+                    .map(|sub| crate::lockfile::LockSubmodule {
+                        path: sub.path.clone(),
+                        url: sub.url.clone(),
+                        sha256: sub.sha256.clone(),
+                        bytes: 1,
+                    })
+                    .collect(),
             }],
         };
         Corpus {
@@ -446,6 +515,67 @@ kind = "standard"
             .insert("CFLAGS".into(), "-O2".into());
         let findings = check(&corpus);
         assert!(findings.iter().any(|f| f.what.contains("sets CFLAGS")));
+    }
+
+    #[test]
+    fn a_submodule_path_that_leaves_the_tree_is_caught() {
+        let mut corpus = corpus_of(SAMPLE);
+        corpus.manifests[0]
+            .source
+            .submodules
+            .push(crate::manifest::Submodule {
+                path: "../../etc".into(),
+                url: "https://example.invalid/f.tar.gz".into(),
+                sha256: "ab".repeat(32),
+                strip_components: 1,
+                mirrors: Vec::new(),
+            });
+        let findings = check(&corpus);
+        assert!(
+            findings
+                .iter()
+                .any(|f| f.what.contains("not a plain relative path"))
+        );
+    }
+
+    #[test]
+    fn a_submodule_with_no_entry_in_the_lockfile_is_caught() {
+        let mut corpus = corpus_of(SAMPLE);
+        corpus.manifests[0]
+            .source
+            .submodules
+            .push(crate::manifest::Submodule {
+                path: "test/framework".into(),
+                url: "https://example.invalid/f.tar.gz".into(),
+                sha256: "ab".repeat(32),
+                strip_components: 1,
+                mirrors: Vec::new(),
+            });
+        let findings = check(&corpus);
+        assert!(
+            findings
+                .iter()
+                .any(|f| f.what.contains("no entry in projects.lock"))
+        );
+    }
+
+    #[test]
+    fn a_submodule_the_manifest_dropped_is_caught_in_the_lockfile() {
+        let mut corpus = corpus_of(SAMPLE);
+        corpus.lockfile.projects[0]
+            .submodules
+            .push(crate::lockfile::LockSubmodule {
+                path: "test/framework".into(),
+                url: "https://example.invalid/f.tar.gz".into(),
+                sha256: "ab".repeat(32),
+                bytes: 1,
+            });
+        let findings = check(&corpus);
+        assert!(
+            findings
+                .iter()
+                .any(|f| f.what.contains("no longer asks for"))
+        );
     }
 
     #[test]

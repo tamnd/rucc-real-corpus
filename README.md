@@ -68,7 +68,7 @@ Sixteen documents under `spec/`. Start with `spec/00-README.md`.
 
 ## Status
 
-The harness runs and rung zero is full. Manifests, pinned fetching, the sandbox, the driver, the report and the `rrc` binary are all in, and the corpus holds the eleven rung zero projects plus `libjansson`, which is admitted early out of rung order because it is the smallest project that asks for the atomic builtins. Against GCC 16 on both reference hosts every cell passes except two that GCC 16 fails on its own, which are on the exclusion register with an issue each. The milestones are RC0 to RC5 in `spec/14-milestones.md`, tracked as issues, and RC5's exit criterion is the compiler's own M5 exit criterion. RC2 is a deliberate decision point: if the ladder turns out not to reach what SQLite needs, it gets cut there and the remaining effort goes straight at the amalgamation.
+The harness runs and rung zero is full. Manifests, pinned fetching, the sandbox, the driver, the report and the `rrc` binary are all in, and the corpus holds all twelve rung zero projects plus `libjansson`, which is admitted early out of rung order because it is the smallest project that asks for the atomic builtins. Against GCC 16 on both reference hosts every cell passes except two that GCC 16 fails on its own, which are on the exclusion register with an issue each. The milestones are RC0 to RC5 in `spec/14-milestones.md`, tracked as issues, and RC5's exit criterion is the compiler's own M5 exit criterion. RC2 is a deliberate decision point: if the ladder turns out not to reach what SQLite needs, it gets cut there and the remaining effort goes straight at the amalgamation.
 
 ## Licence
 

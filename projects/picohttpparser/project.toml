@@ -1,0 +1,59 @@
+[project]
+name = "picohttpparser"
+rung = 0
+upstream = "https://github.com/h2o/picohttpparser"
+licence = "MIT"
+# Upstream ships no separate licence file. The full MIT text is the comment block at the top of
+# picohttpparser.h, and README.md says the software is dual licensed under the Perl License or the
+# MIT License, so MIT is the one recorded here. The pinned picotest carries the same MIT text at
+# the top of picotest.c and picotest.h.
+licence-file = "picohttpparser.h"
+description = "an http request parser that is one file of byte scanning, and the closest thing on this list to a pure code generation test"
+# The parser walks a buffer against a one past the end pointer for its whole length, the chunked
+# decoder is a switch on a stored state with gotos out of it, and the scanning is written as macros
+# that expand through three layers into an unrolled block. Those are the three things it asks for.
+demands = ["pointer-arithmetic", "switch-dispatch", "deep-macros"]
+
+# The pin is the commit the v1.2 tag points at rather than the tag name, because a tag can move and
+# a commit cannot. codeload serves the tree as a tarball with a single wrapper directory, hence the
+# strip.
+[source]
+url = "https://codeload.github.com/h2o/picohttpparser/tar.gz/539bb9f510f5aefc8efda53aaf822a21ecae2832"
+sha256 = "f6da62f0b983cb2359a580a9b6408b31cea562ce307daf838ca7291c0046b96c"
+strip-components = 1
+
+# picotest is a git submodule, and a codeload tarball of a commit does not carry submodules, so
+# every snapshot of this project has an empty picotest directory and no way to build the suite.
+# This is the whole reason the manifest grew source.submodule in spec 6.3. The commit below is the
+# gitlink the pinned tree records, so the pair is exactly the tree upstream tested.
+[[source.submodule]]
+path = "picotest"
+url = "https://codeload.github.com/h2o/picotest/tar.gz/70b9797596d81896cba49e5918fd5b1edf57269b"
+sha256 = "b7dae81c4dc20019c9e465d055c55e3a2963ada9433fc6e90fe15d1b70d2fa62"
+strip-components = 1
+
+# Direct rather than the shipped Makefile, for two reasons that both matter. The Makefile assigns
+# CFLAGS outright instead of appending, so it would build every level at whichever one it names and
+# the four cells would be four copies of one measurement. It also drives the suite through prove,
+# which is perl, and spec 3.1's axis E puts rung zero at E0.
+[build]
+system = "direct"
+sources = ["picohttpparser.c", "picotest/picotest.c", "test.c"]
+output = "test-bin"
+
+# picotest emits TAP, one plan per subtest block and a top level plan of 8. The baseline is the
+# number of ok lines a gcc 16 build produces, and the reason to pin it rather than trust the exit
+# status is that the test driver walks tables of requests and a miscompiled scan can quietly stop
+# short and still finish clean. Counted at 299 with gcc 16.2.0 at all four levels, byte identical
+# output each time.
+[test]
+command = ["./test-bin"]
+oracle = "suite"
+parser = "tap"
+baseline-tests = 299
+
+# One translation unit each and a test binary that finishes in well under a second, so these limits
+# are slack for a slow compiler rather than a real bound.
+[limits]
+build-seconds = 300
+test-seconds = 60

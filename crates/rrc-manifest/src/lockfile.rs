@@ -71,6 +71,27 @@ pub struct LockEntry {
     pub licence_sha256: String,
     /// The date the pin was last verified against upstream.
     pub verified: String,
+    /// One entry per submodule the manifest names, in the order the manifest names them.
+    #[serde(default, rename = "submodule", skip_serializing_if = "Vec::is_empty")]
+    pub submodules: Vec<LockSubmodule>,
+}
+
+/// One submodule's resolved pin.
+///
+/// Separate from `LockEntry` because a submodule has no licence file of its own to hash and no
+/// verification date of its own: it is pinned as part of the project that needs it, and it moves
+/// when that project's pin moves.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields, rename_all = "kebab-case")]
+pub struct LockSubmodule {
+    /// Where it was unpacked, relative to the root of the extracted tree.
+    pub path: String,
+    /// The URL the bytes actually came from.
+    pub url: String,
+    /// The SHA-256 of the archive.
+    pub sha256: String,
+    /// The size of the archive in bytes.
+    pub bytes: u64,
 }
 
 #[cfg(test)]
@@ -88,6 +109,7 @@ mod tests {
                     bytes: 10,
                     licence_sha256: "bb".repeat(32),
                     verified: "2026-09-06".into(),
+                    submodules: Vec::new(),
                 },
                 LockEntry {
                     name: "bzip2".into(),
@@ -96,6 +118,12 @@ mod tests {
                     bytes: 20,
                     licence_sha256: "dd".repeat(32),
                     verified: "2026-09-06".into(),
+                    submodules: vec![LockSubmodule {
+                        path: "test/framework".into(),
+                        url: "https://example.invalid/framework.tar.gz".into(),
+                        sha256: "ee".repeat(32),
+                        bytes: 30,
+                    }],
                 },
             ],
         };
@@ -107,6 +135,11 @@ mod tests {
         assert_eq!(read.projects.len(), 2);
         assert_eq!(read.projects[0].name, "bzip2");
         assert_eq!(read.get("zlib").unwrap().bytes, 10);
+        assert_eq!(
+            read.get("bzip2").unwrap().submodules[0].path,
+            "test/framework"
+        );
+        assert!(read.get("zlib").unwrap().submodules.is_empty());
         std::fs::remove_dir_all(&dir).ok();
     }
 }
