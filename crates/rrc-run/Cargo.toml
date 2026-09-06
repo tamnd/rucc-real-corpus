@@ -1,0 +1,16 @@
+[package]
+name = "rrc-run"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "The run record, the sandbox, the environment and the driver shim"
+
+[dependencies]
+rrc-manifest.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+
+[lints]
+workspace = true
