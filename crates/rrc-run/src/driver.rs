@@ -69,6 +69,10 @@ pub struct Trial {
     pub missing: Vec<Requirement>,
     /// The build step that ended it, successfully or otherwise.
     pub build: Option<Completed>,
+    /// The sentence from `build.expect-configure` that configure did not say, when there is one.
+    /// A configure that exits zero having decided the project does not get its atomics is a
+    /// build nobody should read a result from, and this is what stops it being read.
+    pub misconfigured: Option<String>,
     /// The suite, if the build got that far.
     pub test: Option<Completed>,
     /// Seconds across every build step, since a configure and a make are both building.
@@ -148,6 +152,7 @@ pub fn attempt(job: &Job<'_>, slot: Slot, compiler: Compiler) -> std::io::Result
         phase: Phase::Fetched,
         missing: Vec::new(),
         build: None,
+        misconfigured: None,
         test: None,
         build_seconds: 0.0,
         test_seconds: 0.0,
@@ -179,6 +184,16 @@ pub fn attempt(job: &Job<'_>, slot: Slot, compiler: Compiler) -> std::io::Result
             return Ok(trial);
         }
         trial.phase = step.reaches;
+        // A probe that answered the wrong way does not fail the configure, it changes what gets
+        // built, so the only place to catch it is here with the output still in hand.
+        if step.reaches == Phase::Configured
+            && let Some(said) = trial.build.as_ref()
+            && let Some(missing) = unanswered(job.manifest, said)
+        {
+            trial.first_diagnostic = Some(missing.clone());
+            trial.misconfigured = Some(missing);
+            return Ok(trial);
+        }
     }
 
     if let Some(output) = job.manifest.build.output.as_ref() {
@@ -364,6 +379,20 @@ fn test_invocation(
     })
 }
 
+/// The first sentence from `build.expect-configure` that configure did not print.
+///
+/// Both streams, because a configure script splits its own progress across the two and which
+/// line lands where is a detail of the script rather than anything the manifest should know.
+fn unanswered(manifest: &Manifest, configure: &Completed) -> Option<String> {
+    let said = format!("{}\n{}", configure.stdout, configure.stderr);
+    manifest
+        .build
+        .expect_configure
+        .iter()
+        .find(|expected| !said.contains(expected.as_str()))
+        .map(|expected| format!("configure never said `{expected}`"))
+}
+
 fn missing_requirements(manifest: &Manifest, env: &BTreeMap<String, String>) -> Vec<Requirement> {
     let path = env.get("PATH").cloned().unwrap_or_default();
     manifest
@@ -421,6 +450,11 @@ pub fn grade(manifest: &Manifest, trial: &Trial, reference: Option<&Trial>) -> G
 
     if !trial.missing.is_empty() {
         return with(Outcome::Skipped, declared);
+    }
+    // Before the build check rather than after, because configure exited zero and the thing that
+    // is wrong is what it decided rather than whether it finished.
+    if trial.misconfigured.is_some() {
+        return with(Outcome::DidNotBuild, declared);
     }
     if let Some(build) = &trial.build
         && !build.ending.is_success()
@@ -830,6 +864,86 @@ int main(void){ printf("1..2\nok 1 one\nok 2 two\n"); return 0; }
             // The machine has both, which is a fine outcome for a test about not having them.
             assert_eq!(record.outcome, Outcome::Passed);
         }
+    }
+
+    /// A project with a configure script that answers a probe, which is the shape
+    /// `build.expect-configure` exists for.
+    ///
+    /// The script prints whatever it was told to print and writes a makefile either way, which is
+    /// what a real probe does: it does not fail, it decides something and carries on.
+    fn probing_fixture(name: &str, answer: &str) -> Option<Fixture> {
+        let f = fixture(name, "int main(void){return 0;}\n")?;
+        let configure = f.extracted.join("configure");
+        std::fs::write(
+            &configure,
+            format!(
+                "#!/bin/sh\necho 'checking for widgets... {answer}'\nprintf 'all:\\n\\t$(CC) $(CFLAGS) main.c -o sample\\n' > Makefile\n"
+            ),
+        )
+        .unwrap();
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            std::fs::set_permissions(&configure, std::fs::Permissions::from_mode(0o755)).unwrap();
+        }
+        Some(f)
+    }
+
+    const PROBING: &str = r#"
+[project]
+name = "sample"
+rung = 2
+upstream = "https://example.invalid/sample"
+licence = "MIT"
+licence-file = "LICENSE"
+description = "a sample project that exists only in this test"
+demands = ["pointer-arithmetic"]
+
+[source]
+url = "https://example.invalid/sample.tar.gz"
+sha256 = "0000000000000000000000000000000000000000000000000000000000000000"
+
+[build]
+system = "configure"
+output = "sample"
+expect-configure = ["checking for widgets... yes"]
+
+[test]
+command = ["./sample"]
+oracle = "self-checking"
+"#;
+
+    #[test]
+    fn a_probe_that_answered_the_wrong_way_does_not_build_even_though_configure_exited_zero() {
+        let Some(f) = probing_fixture("probe-no", "no") else {
+            return;
+        };
+        let manifest = Manifest::from_str_named(PROBING, Path::new("test/project.toml")).unwrap();
+        let record = run(&job(&f, &manifest), Slot::A).unwrap();
+        assert_eq!(
+            record.outcome,
+            Outcome::DidNotBuild,
+            "a project built without the thing it is on the list for is not a pass"
+        );
+        assert_eq!(record.phase_reached, Phase::Configured);
+        assert!(
+            record
+                .first_diagnostic
+                .as_deref()
+                .is_some_and(|said| said.contains("checking for widgets... yes")),
+            "the record should name the sentence configure did not say, got {:?}",
+            record.first_diagnostic
+        );
+    }
+
+    #[test]
+    fn a_probe_that_answered_the_right_way_builds_and_runs() {
+        let Some(f) = probing_fixture("probe-yes", "yes") else {
+            return;
+        };
+        let manifest = Manifest::from_str_named(PROBING, Path::new("test/project.toml")).unwrap();
+        let record = run(&job(&f, &manifest), Slot::A).unwrap();
+        assert_eq!(record.outcome, Outcome::Passed);
     }
 
     #[test]

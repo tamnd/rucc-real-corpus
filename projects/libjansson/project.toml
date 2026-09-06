@@ -1,0 +1,57 @@
+[project]
+name = "libjansson"
+rung = 2
+upstream = "https://github.com/akheron/jansson"
+licence = "MIT"
+licence-file = "LICENSE"
+description = "a small json library, and the smallest project in the corpus that asks for the atomic builtins"
+demands = ["atomic-builtins", "autoconf-probes", "double-formatting"]
+
+# Spec 5.1 pins v2.14 and this is v2.15.1, which is the current release and the one that carries
+# the atomics probe unchanged. The pin is the release tarball rather than a codeload snapshot of
+# the tag, because the release ships a generated configure and that makes autoreconf a tool the
+# harness does not have to have.
+[source]
+url = "https://github.com/akheron/jansson/releases/download/v2.15.1/jansson-2.15.1.tar.bz2"
+sha256 = "f9aa4b3ec8496fee69db94f06f3d76fd4a26b012ee9bf1e917078c2cd2841881"
+strip-components = 1
+
+# The configure line is bare on purpose. A default build is a shared library through libtool plus
+# a static one, and the shared half is the half that exercises position independent code and the
+# visibility attributes, so turning it off would throw away coverage to save a minute.
+#
+# The expectation below is the whole reason this project is in rung zero's milestone. The atomics
+# probe is an AC_TRY_LINK around __atomic_load_n, and its failure path sets have_atomic_builtins
+# to no and falls back to a lock. That fallback compiles, links, and passes all four suites, so a
+# compiler that cannot do atomics at all would come back green from the one project admitted to
+# answer whether it can. Naming the line turns that silence into a did-not-build with the missing
+# sentence on the record. Verified as printed by gcc 16.2.0 at -O0, -O1, -O2 and -Os.
+[build]
+system = "configure"
+expect-configure = ["checking for gcc __atomic builtins... yes"]
+
+# The count is one because one is what automake counts here. jansson's TESTS is the single
+# run-suites script, and run-suites walks test/suites and runs api, invalid, invalid-unicode and
+# valid itself, printing "4 test suites passed" into test/run-suites.log rather than onto make
+# check's stdout. So the baseline guards the automake layer and not the jansson layer: a suite
+# that fails is reported as FAIL: run-suites and make check exits nonzero, which the oracle
+# catches, but a run-suites that found no suites at all would print "0 test suites passed", exit
+# zero, and still count as one pass here. Closing that needs an oracle that can read a file the
+# run wrote, which the harness has no way to express today.
+#
+# The second automake summary in the output is the top level one, where the only test is a clang
+# format check that skips because clang-format is not installed. That is why the run count is two
+# and the pass count is one.
+[test]
+command = ["make", "check"]
+oracle = "suite"
+parser = "automake"
+baseline-tests = 1
+requires = ["sh"]
+
+# Configure, build and suite together run in about two minutes per level under emulation and well
+# under one natively, and the build limit is the generous one because configure is a few hundred
+# compiler invocations and rucc is not fast yet.
+[limits]
+build-seconds = 900
+test-seconds = 300

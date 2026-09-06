@@ -19,13 +19,32 @@ pub struct Counts {
     pub run: u32,
     /// Cases that passed.
     pub passed: u32,
+    /// Cases the suite declined to judge, which are part of `run` and are not failures.
+    pub skipped: u32,
 }
 
 impl Counts {
-    /// Whether every case that ran passed.
+    /// A count with nothing skipped, which is what every parser but automake produces.
+    #[must_use]
+    pub const fn of(run: u32, passed: u32) -> Self {
+        Self {
+            run,
+            passed,
+            skipped: 0,
+        }
+    }
+
+    /// Whether every case that reached a verdict passed.
+    ///
+    /// Skips are on the right hand side because a skip is not a failure. A suite that skips a
+    /// case because the tool it needs is not installed has said nothing about the compiler, and
+    /// grading that as a wrong answer would make the report depend on what is on the machine.
+    /// What stops skips from being a hiding place is `baseline-tests`: the passing count is
+    /// compared against the number a GCC 16 build reached, so a case that starts skipping is a
+    /// case that stops passing and the baseline notices.
     #[must_use]
     pub const fn all_passed(self) -> bool {
-        self.run == self.passed
+        self.run == self.passed + self.skipped
     }
 }
 
@@ -52,11 +71,17 @@ pub fn counts(parser: SuiteParser, pattern: Option<&str>, text: &str) -> Option<
 ///
 /// It reports each category on its own line. `XFAIL` is an expected failure and counts as a pass,
 /// because it is a case whose result matched what upstream said it would be. `XPASS` is a test
-/// that was expected to fail and did not, which upstream treats as a failure and so do we.
+/// that was expected to fail and did not, which upstream treats as a failure and so do we. `SKIP`
+/// is counted as run and as skipped and as neither of the other two, because automake's own
+/// verdict is that a skip does not fail `make check` and this is upstream's suite.
+///
+/// More than one summary block is normal and they are summed. A recursive `make check` writes one
+/// per directory that has tests, and libjansson writes two.
 fn automake(text: &str) -> Option<Counts> {
     let mut found = false;
     let mut passed = 0;
     let mut run = 0;
+    let mut skipped = 0;
     for line in text.lines() {
         let line = line.trim();
         let Some(rest) = line.strip_prefix('#') else {
@@ -74,14 +99,23 @@ fn automake(text: &str) -> Option<Counts> {
                 passed += count;
                 run += count;
             }
-            "FAIL" | "XPASS" | "ERROR" | "SKIP" => {
+            "FAIL" | "XPASS" | "ERROR" => {
                 found = true;
                 run += count;
+            }
+            "SKIP" => {
+                found = true;
+                run += count;
+                skipped += count;
             }
             _ => {}
         }
     }
-    found.then_some(Counts { run, passed })
+    found.then_some(Counts {
+        run,
+        passed,
+        skipped,
+    })
 }
 
 /// The Test Anything Protocol.
@@ -119,7 +153,7 @@ fn tap(text: &str) -> Option<Counts> {
     // failures rather than absences. Otherwise a suite that crashes at case three of a
     // thousand reports three of three and looks perfect.
     let run = planned.map_or(run, |n| n.max(run));
-    Some(Counts { run, passed })
+    Some(Counts::of(run, passed))
 }
 
 /// The line ctest prints after a run: `100% tests passed, 0 tests failed out of 47`.
@@ -129,10 +163,7 @@ fn ctest(text: &str) -> Option<Counts> {
         .find(|line| line.contains("tests failed out of"))?;
     let failed = number_before(line, "tests failed")?;
     let total = number_after(line, "out of")?;
-    Some(Counts {
-        run: total,
-        passed: total.saturating_sub(failed),
-    })
+    Some(Counts::of(total, total.saturating_sub(failed)))
 }
 
 /// Lua's own suite, which ends in `final OK` and marks each file it starts.
@@ -150,10 +181,7 @@ fn lua(text: &str) -> Option<Counts> {
         return None;
     }
     let ok = text.contains("final OK");
-    Some(Counts {
-        run: files,
-        passed: if ok { files } else { 0 },
-    })
+    Some(Counts::of(files, if ok { files } else { 0 }))
 }
 
 /// A pattern from the manifest, with one capture group holding the passing count and an optional
@@ -170,7 +198,7 @@ fn custom(pattern: &str, text: &str) -> Option<Counts> {
         .get(2)
         .and_then(|m| m.as_str().trim().parse::<u32>().ok())
         .unwrap_or(passed);
-    Some(Counts { run, passed })
+    Some(Counts::of(run, passed))
 }
 
 fn number_before(line: &str, marker: &str) -> Option<u32> {
@@ -207,13 +235,35 @@ Testsuite summary
             "an expected failure is a case that agreed"
         );
         assert_eq!(counts.run, 42);
+        assert_eq!(counts.skipped, 2);
+        assert!(!counts.all_passed(), "one case failed");
+    }
+
+    #[test]
+    fn a_skip_is_not_a_failure_and_more_than_one_block_is_summed() {
+        // libjansson, where make check runs one script that runs the four real suites and the
+        // top level directory has nothing but a clang-format check that skips.
+        let text = "# TOTAL: 1
+# PASS:  1
+# SKIP:  0
+# FAIL:  0
+# TOTAL: 1
+# PASS:  0
+# SKIP:  1
+# FAIL:  0
+";
+        let counts = counts(SuiteParser::Automake, None, text).unwrap();
+        assert_eq!(counts.run, 2);
+        assert_eq!(counts.passed, 1);
+        assert_eq!(counts.skipped, 1);
+        assert!(counts.all_passed(), "a skipped case is not a failed case");
     }
 
     #[test]
     fn tap_counts_the_cases_and_not_only_the_plan() {
         let text = "1..4\nok 1 first\nok 2 second\nnot ok 3 third\nok 4 fourth\n";
         let counts = counts(SuiteParser::Tap, None, text).unwrap();
-        assert_eq!(counts, Counts { run: 4, passed: 3 });
+        assert_eq!(counts, Counts::of(4, 3));
     }
 
     #[test]
@@ -229,13 +279,7 @@ Testsuite summary
     fn ctest_reads_its_summary_line() {
         let text = "99% tests passed, 1 tests failed out of 47\n";
         let counts = counts(SuiteParser::Ctest, None, text).unwrap();
-        assert_eq!(
-            counts,
-            Counts {
-                run: 47,
-                passed: 46
-            }
-        );
+        assert_eq!(counts, Counts::of(47, 46));
     }
 
     #[test]
@@ -243,12 +287,12 @@ Testsuite summary
         let text = "***** FILE 'a.lua'*****\n***** FILE 'b.lua'*****\nfinal OK !!!\n";
         assert_eq!(
             counts(SuiteParser::Lua, None, text).unwrap(),
-            Counts { run: 2, passed: 2 }
+            Counts::of(2, 2)
         );
         let stopped = "***** FILE 'a.lua'*****\n***** FILE 'b.lua'*****\n";
         assert_eq!(
             counts(SuiteParser::Lua, None, stopped).unwrap(),
-            Counts { run: 2, passed: 0 }
+            Counts::of(2, 0)
         );
     }
 
@@ -260,13 +304,7 @@ Testsuite summary
             "and then: 118 of 120 cases ok\n",
         )
         .unwrap();
-        assert_eq!(
-            both,
-            Counts {
-                run: 120,
-                passed: 118
-            }
-        );
+        assert_eq!(both, Counts::of(120, 118));
 
         let one = counts(
             SuiteParser::CustomRegex,
@@ -274,13 +312,7 @@ Testsuite summary
             "9001 assertions passed\n",
         )
         .unwrap();
-        assert_eq!(
-            one,
-            Counts {
-                run: 9001,
-                passed: 9001
-            }
-        );
+        assert_eq!(one, Counts::of(9001, 9001));
     }
 
     #[test]

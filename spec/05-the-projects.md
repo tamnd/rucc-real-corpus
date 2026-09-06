@@ -54,7 +54,7 @@ Candidates were drawn from document 01's two lists, kefir's 110 and slimcc's 289
 
 | project | pin | licence | A | D/E | demands |
 |---|---|---|---|---|---|
-| `libjansson` | `v2.14` | MIT | A3 | D3/E1 | **the atomic-builtin proxy for SQLite**; small, autoconf, self-checking binaries |
+| `libjansson` | `v2.15.1` | MIT | A3 | D3/E1 | **the atomic-builtin proxy for SQLite**; small, autoconf, self-checking binaries |
 | `libpng` | `v1.6.58` | libpng | A3 | D3/E1 | `setjmp`/`longjmp` as the error mechanism, which constrains the optimizer's frame handling |
 | `libjpeg` (IJG) | `9f` | IJG | A3 | D3/E1 | ancient portable C, deep struct nesting, and `-Os` on real code |
 | `pcre2` | `10.48` | BSD-3-Clause | A3 | D3/E1 | a backtracking matcher: a large switch, deep recursion, and `RunTest`'s thousands of cases |

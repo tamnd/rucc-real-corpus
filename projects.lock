@@ -50,6 +50,14 @@ licence-sha256 = "c2b829605ee9c0b05c5c3708f308fc9b0954fb6ad1e0ab1add85f740a88274
 verified = "2026-09-06"
 
 [[project]]
+name = "libjansson"
+url = "https://github.com/akheron/jansson/releases/download/v2.15.1/jansson-2.15.1.tar.bz2"
+sha256 = "f9aa4b3ec8496fee69db94f06f3d76fd4a26b012ee9bf1e917078c2cd2841881"
+bytes = 488779
+licence-sha256 = "150d90904cd8de73609bb177b42edd3867b07b4b7b786dbba319f30de39fcda2"
+verified = "2026-09-06"
+
+[[project]]
 name = "llama2.c"
 url = "https://codeload.github.com/karpathy/llama2.c/tar.gz/350e04fe35433e6d2941dce5a1f53308f87058eb"
 sha256 = "9210e104192375f2c156fd24a84d2692c6b199f8ebbc2337551842c03cc1ddce"
