@@ -228,6 +228,18 @@ pub struct RunRecord {
     /// Whether the project's own build ran in parallel, since a bug that only appears under
     /// `make -j` is a real bug and has to be attributable.
     pub parallel: bool,
+    /// What the cell did before the register relabelled it, on an excluded cell only.
+    ///
+    /// An excluded cell is built and tested like any other and then has its outcome replaced, so
+    /// the exclusion changes how the result is counted and not whether it is measured. This field
+    /// is the measurement that survives the relabelling, and without it `spec/09-patches-and-
+    /// exclusions.md` section 9.5's conditions two and four cannot fire at all.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub observed_outcome: Option<Outcome>,
+    /// The issue an excluded cell is waiting on, so that a reader of the raw log can see what it
+    /// is waiting on without opening `exclusions.toml` alongside it.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub excluded_by: Option<String>,
 }
 
 impl RunRecord {
@@ -337,6 +349,8 @@ mod tests {
             oracle_declared: Oracle::SelfChecking,
             oracle_used: Oracle::SelfChecking,
             parallel: false,
+            observed_outcome: None,
+            excluded_by: None,
         }
     }
 

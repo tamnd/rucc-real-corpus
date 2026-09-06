@@ -24,6 +24,7 @@
 //!
 //! - [`driver`] builds and tests one project in one sandbox and grades the result.
 //! - [`twice`] compares two builds of the same project, which is what the isolation work was for.
+//! - [`staleness`] re-reads the exclusion register against what the excluded cells actually did.
 //!
 //! What is not here is the scheduler that walks the list and calls all of this in order. That
 //! lives in the `rrc` binary, which reads the corpus, picks the cells and writes the log. This
@@ -39,6 +40,7 @@ pub mod record;
 pub mod sandbox;
 pub mod shim;
 pub mod sizes;
+pub mod staleness;
 pub mod twice;
 
 pub use diagnostic::Normalizer;
