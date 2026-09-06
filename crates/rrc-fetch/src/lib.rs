@@ -14,9 +14,9 @@
 //! - [`download`] is the trait that gets bytes from a URL, with a curl implementation and an
 //!   offline one for a CI run that should never touch the network.
 //! - [`digest`] is SHA-256, streamed.
-//! - [`extract`] unpacks into a staging directory and renames, so an interrupted run leaves no
+//! - [`mod@extract`] unpacks into a staging directory and renames, so an interrupted run leaves no
 //!   half a tree that looks complete.
-//! - [`fetch`] is the part that puts those together, and is what callers use.
+//! - [`mod@fetch`] is the part that puts those together, and is what callers use.
 
 pub mod cache;
 pub mod digest;
