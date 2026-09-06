@@ -1,0 +1,31 @@
+[project]
+name = "llama2.c"
+rung = 0
+upstream = "https://github.com/karpathy/llama2.c"
+licence = "MIT"
+licence-file = "LICENSE"
+description = "a transformer inference program in one file, and the tokenizer suite that ships beside it"
+demands = ["float-arithmetic", "libm-builtins"]
+
+[source]
+url = "https://codeload.github.com/karpathy/llama2.c/tar.gz/350e04fe35433e6d2941dce5a1f53308f87058eb"
+sha256 = "9210e104192375f2c156fd24a84d2692c6b199f8ebbc2337551842c03cc1ddce"
+
+[build]
+system = "direct"
+sources = ["test.c"]
+output = "test-tokenizer"
+link = ["-lm"]
+
+# Two things about this entry are worth saying plainly.
+#
+# Spec 5.1 admits this project for float arithmetic in volume, and what runs here is test.c, which
+# checks the tokenizer against the tokenizer.bin already in the tree and never touches the forward
+# pass. The float path needs a model file of about sixty megabytes that the source field cannot
+# fetch, so the demand is declared and is not yet exercised. Issue 24 tracks that.
+#
+# The oracle is self-checking rather than the differential the table names, because test.c exits
+# non zero on the first mismatch of its own accord. Section 8.1 calls that an upgrade.
+[test]
+command = ["./test-tokenizer"]
+oracle = "self-checking"

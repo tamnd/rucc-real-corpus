@@ -241,6 +241,15 @@ fn check_exclusions(corpus: &Corpus, findings: &mut Vec<Finding>) {
                 what: "has no issue, and an exclusion with no issue is a project quietly removed from the denominator".into(),
             });
         }
+        if entry.case != entry.project {
+            findings.push(Finding {
+                where_: where_.clone(),
+                what: format!(
+                    "names the case `{}`, and a cell is asked for by project name, so this entry matches nothing and the failure it describes still counts",
+                    entry.case
+                ),
+            });
+        }
         if entry.why.trim().is_empty() {
             findings.push(Finding {
                 where_,
@@ -380,5 +389,27 @@ kind = "standard"
             });
         let findings = check(&corpus);
         assert!(findings.iter().any(|f| f.what.contains("stale")));
+    }
+
+    #[test]
+    fn an_exclusion_naming_a_case_inside_a_project_is_caught() {
+        // The one that bit us: an entry written against the test that actually fails, which the
+        // scheduler never asks about, so the exclusion silently did nothing and the cell stayed
+        // red.
+        let mut corpus = corpus_of(SAMPLE);
+        let name = corpus.manifests[0].project.name.clone();
+        corpus
+            .exclusions
+            .entries
+            .push(crate::exclusions::Exclusion {
+                project: name,
+                case: "some_failing_test".into(),
+                level: "O0".into(),
+                issue: "https://github.com/tamnd/rucc/issues/1".into(),
+                why: "reasons".into(),
+                since: "2026-09-06".into(),
+            });
+        let findings = check(&corpus);
+        assert!(findings.iter().any(|f| f.what.contains("matches nothing")));
     }
 }

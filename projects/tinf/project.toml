@@ -1,0 +1,38 @@
+[project]
+name = "tinf"
+rung = 0
+upstream = "https://github.com/jibsen/tinf"
+licence = "Zlib"
+licence-file = "LICENSE"
+description = "a small inflate implementation, decoding huffman codes a bit at a time"
+demands = ["bit-manipulation", "pointer-arithmetic"]
+
+[source]
+url = "https://codeload.github.com/jibsen/tinf/tar.gz/9929246b87f0946b124cfa2a89894b8943b0b072"
+sha256 = "7bd54db053e9cd9290cd28a6a4250ea8d4cc3f2e2598da29387e4ea2b956f2e3"
+
+[build]
+system = "direct"
+sources = [
+  "test/test_tinf.c",
+  "src/adler32.c",
+  "src/crc32.c",
+  "src/tinfgzip.c",
+  "src/tinflate.c",
+  "src/tinfzlib.c",
+]
+output = "tinf-test"
+
+[[build.flags]]
+flag = "-Isrc"
+why = "the suite includes tinf.h by bare name and the header sits beside the sources rather than in an include directory"
+
+# Spec 5.1 has this project down as a d1 recorded expectation. It is a d3 suite, because the tests
+# are a greatest suite that reports a count, and section 8.1 says an oracle that turns out to be
+# stronger than the table claims is an upgrade rather than a discrepancy.
+[test]
+command = ["./tinf-test"]
+oracle = "suite"
+parser = "custom-regex"
+regex = "Pass: (\\d+), fail"
+baseline-tests = 82

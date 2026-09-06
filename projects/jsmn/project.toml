@@ -1,0 +1,24 @@
+[project]
+name = "jsmn"
+rung = 0
+upstream = "https://github.com/zserge/jsmn"
+licence = "MIT"
+licence-file = "LICENSE"
+description = "a json parser in one header that allocates nothing and is written almost entirely in pointer arithmetic"
+demands = ["pointer-arithmetic"]
+
+[source]
+url = "https://codeload.github.com/zserge/jsmn/tar.gz/25647e692c7906b96ffd2b05ca54c097948e879c"
+sha256 = "02ac62537ea34ee33b55efa41a832b78086548715298a454b6f304e29a7c9d43"
+
+[build]
+system = "direct"
+sources = ["test/tests.c"]
+output = "tests"
+
+[test]
+command = ["./tests"]
+oracle = "suite"
+parser = "custom-regex"
+regex = "PASSED: (\\d+)"
+baseline-tests = 16

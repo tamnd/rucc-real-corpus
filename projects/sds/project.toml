@@ -1,0 +1,30 @@
+[project]
+name = "sds"
+rung = 0
+upstream = "https://github.com/antirez/sds"
+licence = "BSD-2-Clause"
+licence-file = "LICENSE"
+description = "a string library that hides a header in front of the pointer it hands out"
+demands = ["flexible-array-member", "struct-layout"]
+
+[source]
+url = "https://codeload.github.com/antirez/sds/tar.gz/5347739b1581fcba74fd5cab1fc21d2aef317d71"
+sha256 = "37a4afd7d2b766609dfb0c2e3da84eaec74d00302165c0d04a0f42b204dfb295"
+
+[build]
+system = "direct"
+sources = ["sds.c"]
+output = "sds-test"
+
+[[build.flags]]
+flag = "-DSDS_TEST_MAIN"
+why = "the suite lives inside sds.c behind this guard, which is the only way upstream offers to build it"
+
+# The count is taken after the comma because the line reads `46 tests, 46 passed, 0 failed` and the
+# first number on it is the number run rather than the number that passed.
+[test]
+command = ["./sds-test"]
+oracle = "suite"
+parser = "custom-regex"
+regex = ", (\\d+) passed"
+baseline-tests = 46

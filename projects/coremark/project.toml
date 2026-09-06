@@ -1,0 +1,63 @@
+[project]
+name = "coremark"
+rung = 0
+upstream = "https://github.com/eembc/coremark"
+licence = "Apache-2.0"
+licence-file = "LICENSE.md"
+description = "the eembc benchmark whose real value here is that it validates its own crcs"
+demands = ["pointer-arithmetic", "integer-conversion", "switch-dispatch"]
+
+[source]
+url = "https://codeload.github.com/eembc/coremark/tar.gz/1f483d5b8316753a742cbf5590caf5bd0a4e4777"
+sha256 = "4067e7f260218df13f2875d8f821a8ff32a84153c6e0759d7c89f96c0a8bf987"
+
+[build]
+system = "direct"
+sources = [
+  "core_list_join.c",
+  "core_main.c",
+  "core_matrix.c",
+  "core_state.c",
+  "core_util.c",
+  "posix/core_portme.c",
+]
+output = "coremark"
+
+[[build.flags]]
+flag = "-I."
+why = "the port includes coremark.h from the root while being compiled from posix"
+
+[[build.flags]]
+flag = "-Iposix"
+why = "core_portme.h lives in the posix port directory and coremark.h includes it by bare name"
+
+[[build.flags]]
+flag = "-DFLAGS_STR=\"see the run record\""
+why = "the port refuses to compile without it and only prints it, and the flags that actually mattered are on the record rather than in a string the program repeats back"
+
+# The first three arguments are the official 2K performance run parameters and the fourth is the
+# iteration count, which is pinned here rather than left at zero. Zero means coremark times the
+# machine and picks a count for itself, and a count that differs between two levels or two hosts
+# takes the final crc with it.
+#
+# The sentence checked is the final crc rather than the "Correct operation validated" coremark
+# prints when it is happy, because it counts a run shorter than ten seconds as an error of its own
+# and that is a benchmarking rule rather than a correctness one. Twenty thousand iterations is
+# under a second at -O2, so on that rule every level above -O0 reports "Errors detected" with all
+# four crcs correct. Buying the sentence would mean about two hundred thousand iterations, which is
+# two minutes at -O0 on every host at every level, for no more information than this line carries.
+#
+# What this line carries: crcfinal is accumulated across every iteration of all three workloads,
+# where crclist, crcmatrix and crcstate are captured on the first iteration only, so it is the
+# strongest single line in the output. Recorded at 0x382f on gcc 16.2.0 at -O0, -O1, -O2 and -Os,
+# on linux x86-64 and on macos arm64.
+[test]
+command = ["./coremark", "0x0", "0x0", "0x66", "20000"]
+oracle = "recorded"
+expect-contains = "[0]crcfinal      : 0x382f"
+
+# About seven seconds at -O0 and a second at -O2, so the default three hundred is enough for the
+# build and the run has room for a slow or emulated host.
+[limits]
+build-seconds = 300
+test-seconds = 300

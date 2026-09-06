@@ -1,0 +1,23 @@
+[project]
+name = "jtckdint"
+rung = 0
+upstream = "https://github.com/jart/jtckdint"
+licence = "ISC"
+licence-file = "LICENSE.txt"
+description = "a stdckdint.h implementation over the overflow builtins, with a suite that checks every width"
+demands = ["overflow-builtins", "stdckdint"]
+
+[source]
+url = "https://codeload.github.com/jart/jtckdint/tar.gz/d4c68b9559acdcc18b73c9fa463edc6b9c569c9f"
+sha256 = "2510b9b932ed2b14055d738576d97d62b76185122b6f014fb36bd641b967b525"
+
+[build]
+system = "direct"
+sources = ["test.c"]
+output = "jtckdint-test"
+
+# Every case is an assert and the program says nothing when they all hold, so the exit status is
+# the whole oracle and there is no count to hold to a baseline.
+[test]
+command = ["./jtckdint-test"]
+oracle = "self-checking"

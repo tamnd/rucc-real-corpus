@@ -50,7 +50,12 @@ impl Exclusions {
 pub struct Exclusion {
     /// The project, as the manifest names it.
     pub project: String,
-    /// The case inside it. Use the project name again when the whole project is excluded.
+    /// The case inside it, which today is always the project name again, because a cell is asked
+    /// for by project and level and there is nothing finer to name. The field is here because
+    /// section 9.4 has it and because finer granularity is coming, and the lint refuses anything
+    /// else in the meantime so that an entry naming the failing test rather than the project
+    /// fails loudly instead of matching nothing. A test that has to be skipped inside a suite is
+    /// `test.skip-cases` in the manifest, not this.
     pub case: String,
     /// The level, or `*` for every level. A narrow exclusion keeps the information a coarse
     /// one destroys.

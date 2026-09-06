@@ -1,0 +1,28 @@
+[project]
+name = "c4"
+rung = 0
+upstream = "https://github.com/rswier/c4"
+licence = "MIT"
+licence-file = "LICENSE"
+description = "a c compiler in about 500 lines that compiles itself and then compiles a program with the result"
+demands = ["pointer-arithmetic", "function-pointers", "switch-dispatch"]
+
+[source]
+url = "https://codeload.github.com/rswier/c4/tar.gz/2feb8c0a142b2e513be69442c24af82dbaf41a25"
+sha256 = "f9c601a370c4932969aa8ded5cec403258e708ed8a4ff6037069083e45c2238e"
+
+[build]
+system = "direct"
+sources = ["c4.c"]
+output = "c4"
+
+# The oracle is two stages. The first argument is c4's own source, so the built compiler compiles
+# itself, and the second is the hello world the product then compiles and runs. A miscompilation
+# that survives the first stage still has to survive being used as a compiler in the second.
+[test]
+command = ["./c4", "c4.c", "hello.c"]
+oracle = "recorded"
+expect-output = """
+hello, world
+exit(0) cycle = 9
+exit(0) cycle = 26015"""
