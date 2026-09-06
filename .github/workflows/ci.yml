@@ -125,7 +125,9 @@ jobs:
   # The lockfile and the manifests have to agree with each other, and the check costs a second.
   # It is a separate job from the tests because it is the one that will grow: as projects land,
   # this becomes the gate that says every project has a pin, a licence, a reason for being on
-  # the list, and a feature tag that exists.
+  # the list, and a feature tag that exists. It runs the lint's own tests and then the lint
+  # itself, because the tests only prove the rules work on a corpus made up in a test and it is
+  # the eleven real manifests that a change is going to break.
   corpus:
     name: the corpus agrees with itself
     needs: quick
@@ -135,3 +137,5 @@ jobs:
       - uses: Swatinem/rust-cache@v2.9.2
       - name: cargo test, the lint
         run: cargo test -p rrc-manifest --all-features
+      - name: the lint, against the corpus itself
+        run: cargo run -p rrc -- lint
