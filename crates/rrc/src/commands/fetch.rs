@@ -12,6 +12,7 @@
 use crate::commands::Done;
 use crate::corpus::Loaded;
 use rrc_fetch::{Cache, Curl, Downloader, Offline, fetch_and_extract};
+use rrc_manifest::lockfile::{LockEntry, Lockfile};
 use rrc_manifest::manifest::Manifest;
 use std::fmt::Write as _;
 use std::path::{Path, PathBuf};
@@ -31,7 +32,7 @@ pub fn downloader() -> Box<dyn Downloader> {
 }
 
 /// Fetch and extract the named projects, or every project when none are named.
-pub fn run(loaded: &Loaded, names: &[String]) -> Result<Done, String> {
+pub fn run(loaded: &Loaded, names: &[String], record: bool) -> Result<Done, String> {
     let chosen = loaded.select(&rrc_manifest::axes::Rung::ALL, names)?;
     if chosen.is_empty() {
         return Ok(Done::good("nothing to fetch\n"));
@@ -42,11 +43,21 @@ pub fn run(loaded: &Loaded, names: &[String]) -> Result<Done, String> {
 
     let mut out = String::new();
     let mut failed = 0;
+    let mut pins = Vec::new();
     for manifest in chosen {
         let dest = loaded.extracted(&manifest.project.name);
         match ensure(manifest, &cache, downloader.as_ref(), &dest) {
             Ok(from) => {
                 let _ = writeln!(out, "{:<24}  {from}", manifest.project.name);
+                if record {
+                    match pin(manifest, &cache, downloader.as_ref(), &dest) {
+                        Ok(entry) => pins.push(entry),
+                        Err(why) => {
+                            failed += 1;
+                            let _ = writeln!(out, "{:<24}  {why}", manifest.project.name);
+                        }
+                    }
+                }
             }
             Err(why) => {
                 failed += 1;
@@ -55,12 +66,113 @@ pub fn run(loaded: &Loaded, names: &[String]) -> Result<Done, String> {
         }
     }
 
+    if record && failed == 0 {
+        let path = loaded.root.join("projects.lock");
+        let written = merge(&path, pins)?;
+        written.write(&path)?;
+        let _ = writeln!(out, "\nwrote {}", path.display());
+    }
+
     Ok(if failed == 0 {
         Done::good(out)
     } else {
-        let _ = writeln!(out, "\n{failed} projects could not be fetched");
+        let _ = writeln!(
+            out,
+            "\n{failed} projects could not be fetched{}",
+            if record {
+                ", so projects.lock was left alone rather than written half right"
+            } else {
+                ""
+            }
+        );
         Done::bad(out)
     })
+}
+
+/// What one project's line in the lockfile says.
+///
+/// The URL is the one that served the bytes rather than the primary from the manifest, because
+/// section 6.4 wants a corpus living off its own mirror to be visible rather than comfortable.
+/// The licence hash is taken from the extracted tree, which is what makes a licence change
+/// between two versions of a project a diff in this file at the pin move.
+fn pin(
+    manifest: &Manifest,
+    cache: &Cache,
+    downloader: &dyn Downloader,
+    dest: &Path,
+) -> Result<LockEntry, String> {
+    let fetched =
+        rrc_fetch::fetch(&manifest.source, cache, downloader).map_err(|why| why.to_string())?;
+    let licence = dest.join(&manifest.project.licence_file);
+    let licence_sha256 = rrc_fetch::sha256_file(&licence).map_err(|why| {
+        format!(
+            "the licence file `{}` is not in the extracted tree: {why}",
+            manifest.project.licence_file
+        )
+    })?;
+    Ok(LockEntry {
+        name: manifest.project.name.clone(),
+        url: fetched.url,
+        sha256: manifest.source.sha256.clone(),
+        bytes: fetched.bytes,
+        licence_sha256,
+        verified: today(),
+    })
+}
+
+/// The lockfile that already exists, with these entries put over the top of it.
+///
+/// Recording one project has to leave the other seventy nine alone, since otherwise
+/// `rrc fetch --record jsmn` would be a way to delete the corpus by accident.
+fn merge(path: &Path, pins: Vec<LockEntry>) -> Result<Lockfile, String> {
+    let mut lockfile = Lockfile::from_path(path)?;
+    for entry in pins {
+        match lockfile
+            .projects
+            .iter_mut()
+            .find(|had| had.name == entry.name)
+        {
+            Some(had) => *had = entry,
+            None => lockfile.projects.push(entry),
+        }
+    }
+    Ok(lockfile)
+}
+
+/// Today, in ISO order, in UTC.
+///
+/// Written out rather than taken from a crate because it is nine lines and the alternative is a
+/// dependency in a repository whose whole claim is that its results can be reproduced years from
+/// now. UTC rather than local time, so that two people recording the same pin on the same day
+/// write the same date.
+fn today() -> String {
+    let seconds = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_or(0, |since| since.as_secs());
+    let (year, month, day) = civil(seconds / 86_400);
+    format!("{year:04}-{month:02}-{day:02}")
+}
+
+/// Days since 1970-01-01 as a calendar date.
+///
+/// Howard Hinnant's `civil_from_days`, which shifts the epoch to the first of March so that the
+/// leap day lands at the end of the year and the month lengths fall out of one multiplication.
+fn civil(days: u64) -> (u64, u64, u64) {
+    let days = days + 719_468;
+    let era = days / 146_097;
+    let day_of_era = days % 146_097;
+    let year_of_era =
+        (day_of_era - day_of_era / 1460 + day_of_era / 36_524 - day_of_era / 146_096) / 365;
+    let year = year_of_era + era * 400;
+    let day_of_year = day_of_era - (365 * year_of_era + year_of_era / 4 - year_of_era / 100);
+    let shifted = (5 * day_of_year + 2) / 153;
+    let day = day_of_year - (153 * shifted + 2) / 5 + 1;
+    let month = if shifted < 10 {
+        shifted + 3
+    } else {
+        shifted - 9
+    };
+    (if month <= 2 { year + 1 } else { year }, month, day)
 }
 
 /// Make sure a project's source is extracted at `dest`, and say where it came from.
@@ -144,6 +256,57 @@ mod tests {
         manifest.source.sha256 = "cd".repeat(32);
         let why = ensure(&manifest, &Cache::new(&root), &Offline, &dest).unwrap_err();
         assert!(why.contains("offline"), "the stale tree was reused: {why}");
+
+        std::fs::remove_dir_all(&root).ok();
+    }
+
+    #[test]
+    fn the_date_is_the_one_a_person_would_write() {
+        assert_eq!(civil(0), (1970, 1, 1));
+        assert_eq!(civil(19_782), (2024, 2, 29), "a leap day is a real day");
+        assert_eq!(civil(20_757), (2026, 10, 31));
+    }
+
+    #[test]
+    fn recording_one_project_leaves_the_others_alone() {
+        let root = std::env::temp_dir().join("rrc-fetch-merge");
+        std::fs::remove_dir_all(&root).ok();
+        std::fs::create_dir_all(&root).unwrap();
+        let path = root.join("projects.lock");
+
+        let entry = |name: &str, sha: &str| LockEntry {
+            name: name.to_string(),
+            url: format!("https://example.invalid/{name}.tar.gz"),
+            sha256: sha.to_string(),
+            bytes: 1024,
+            licence_sha256: "ef".repeat(32),
+            verified: "2026-09-06".to_string(),
+        };
+
+        merge(&path, vec![entry("jsmn", &"ab".repeat(32))])
+            .unwrap()
+            .write(&path)
+            .unwrap();
+        merge(&path, vec![entry("c4", &"cd".repeat(32))])
+            .unwrap()
+            .write(&path)
+            .unwrap();
+
+        let lockfile = Lockfile::from_path(&path).unwrap();
+        assert_eq!(
+            lockfile.projects.len(),
+            2,
+            "recording one project has to leave the rest of the corpus pinned: {lockfile:?}"
+        );
+
+        // And moving a pin replaces the line rather than adding a second one for the same name.
+        merge(&path, vec![entry("jsmn", &"12".repeat(32))])
+            .unwrap()
+            .write(&path)
+            .unwrap();
+        let lockfile = Lockfile::from_path(&path).unwrap();
+        assert_eq!(lockfile.projects.len(), 2);
+        assert_eq!(lockfile.get("jsmn").unwrap().sha256, "12".repeat(32));
 
         std::fs::remove_dir_all(&root).ok();
     }

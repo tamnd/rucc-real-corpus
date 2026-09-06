@@ -49,6 +49,7 @@ The harness is one binary, `rrc`, and it is run from anywhere inside the reposit
 cargo run -p rrc -- list                  what is on the corpus and what each project is admitted for
 cargo run -p rrc -- lint                  check the manifests, the vocabulary, the lockfile and the exclusions
 cargo run -p rrc -- fetch                 download and verify every pin
+cargo run -p rrc -- fetch --record        the same, and write what it resolved into projects.lock
 cargo run -p rrc -- build --project c4    build one project and stop at the binary
 cargo run -p rrc -- test --project c4     build one project and run its own suite
 cargo run -p rrc -- run                   rungs 0 and 1 at four optimization levels, which is the per commit budget

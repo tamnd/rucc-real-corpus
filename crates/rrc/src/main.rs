@@ -68,7 +68,9 @@ fn dispatch(invocation: Invocation) -> Result<Done, String> {
             Ok(commands::list::run(&loaded, &rungs, demands.as_deref()))
         }
         Command::Lint => Ok(commands::lint::run(&open(&options)?)),
-        Command::Fetch { projects } => commands::fetch::run(&open(&options)?, &projects),
+        Command::Fetch { projects, record } => {
+            commands::fetch::run(&open(&options)?, &projects, record)
+        }
         Command::Build { project, level } => {
             commands::schedule::build(&open(&options)?, &options, &project, level)
         }

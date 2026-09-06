@@ -26,6 +26,7 @@ pub mod extract;
 pub mod fetch;
 
 pub use cache::Cache;
+pub use digest::{sha256_bytes, sha256_file};
 pub use download::{Curl, Downloader, Offline};
 pub use error::FetchError;
 pub use extract::{ArchiveKind, extract};
