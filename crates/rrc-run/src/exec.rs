@@ -13,6 +13,7 @@ use std::collections::BTreeMap;
 use std::io::Read;
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Stdio};
+use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
 /// How often the timeout loop looks at the child.
@@ -118,12 +119,18 @@ pub fn run(invocation: &Invocation) -> std::io::Result<Completed> {
     // Both pipes are drained on their own threads. A build that writes more than a pipe buffer
     // to stderr while the harness waits on stdout is a deadlock, and a long compile with a lot
     // of warnings does exactly that.
-    let mut stdout = child.stdout.take().map(drain);
-    let mut stderr = child.stderr.take().map(drain);
+    let stdout = child.stdout.take().map(Drain::of);
+    let stderr = child.stderr.take().map(Drain::of);
 
     let ending = wait_for(&mut child, invocation.timeout)?;
-    let stdout = stdout.take().map_or_else(String::new, join);
-    let stderr = stderr.take().map_or_else(String::new, join);
+
+    // On a clean exit the threads are waited for, because the last few kilobytes may still be
+    // in flight. On a timeout they are not: if something we failed to kill is still holding the
+    // write end, waiting would hang the run, and the timeout would have bought nothing. What has
+    // been read so far is taken instead, which is the part a person needs to see anyway.
+    let wait = ending != Ending::TimedOut;
+    let stdout = stdout.map_or_else(String::new, |drain| drain.finish(wait));
+    let stderr = stderr.map_or_else(String::new, |drain| drain.finish(wait));
 
     Ok(Completed {
         ending,
@@ -195,16 +202,26 @@ fn terminate(child: &mut Child) {
     child.wait().ok();
 }
 
-/// Signal a whole process group by shelling out to `kill`.
+/// Signal a whole process group, through the shell's own `kill` rather than through `libc`.
 ///
-/// A negative pid means the group. Doing it through the command rather than through `libc` keeps
-/// the workspace's `unsafe_code = "forbid"` true, and the cost is one process on the two
-/// occasions per run when something has to be killed at all.
+/// A negative pid means the group, and the group is the point: killing `make` alone leaves the
+/// compiler it started running.
+///
+/// It has to be the shell's builtin and not the `kill` on `PATH`. The procps `kill` that Linux
+/// ships treats every argument beginning with a dash as a signal name, so `kill -TERM -1234` is
+/// an error about an unknown signal called 1234 and nothing is killed at all. The macOS one
+/// accepts it, which is exactly the shape of difference that passes on a laptop and fails in CI,
+/// and it did. Both `dash` and `bash` handle a negative operand in their builtin, so going
+/// through `sh` is the portable spelling.
+///
+/// Going through a command at all rather than through `libc` is what keeps the workspace's
+/// `unsafe_code = "forbid"` true, and it costs one process on the rare occasion something has to
+/// be killed.
 #[cfg(unix)]
 fn signal_group(pid: u32, signal: &str) {
-    Command::new("kill")
-        .arg(format!("-{signal}"))
-        .arg(format!("-{pid}"))
+    Command::new("/bin/sh")
+        .arg("-c")
+        .arg(format!("kill -{signal} -{pid}"))
         .stdout(Stdio::null())
         .stderr(Stdio::null())
         .status()
@@ -228,16 +245,49 @@ fn ending_of(status: std::process::ExitStatus) -> Ending {
     Ending::Exited(status.code().unwrap_or(-1))
 }
 
-fn drain<R: Read + Send + 'static>(mut stream: R) -> std::thread::JoinHandle<String> {
-    std::thread::spawn(move || {
-        let mut buffer = Vec::new();
-        stream.read_to_end(&mut buffer).ok();
-        String::from_utf8_lossy(&buffer).into_owned()
-    })
+/// One output stream being read on its own thread, into a buffer the caller can look at without
+/// waiting for the thread to finish.
+///
+/// The shared buffer is what makes the timeout a guarantee rather than a hope. A thread blocked
+/// on a pipe cannot be interrupted, so if the reader had to be joined then a process that
+/// survived the kill would hold the run open forever and the limit in the manifest would mean
+/// nothing.
+struct Drain {
+    buffer: Arc<Mutex<Vec<u8>>>,
+    thread: std::thread::JoinHandle<()>,
 }
 
-fn join(handle: std::thread::JoinHandle<String>) -> String {
-    handle.join().unwrap_or_default()
+impl Drain {
+    fn of<R: Read + Send + 'static>(mut stream: R) -> Self {
+        let buffer = Arc::new(Mutex::new(Vec::new()));
+        let into = Arc::clone(&buffer);
+        let thread = std::thread::spawn(move || {
+            let mut chunk = [0u8; 16 * 1024];
+            loop {
+                let read = match stream.read(&mut chunk) {
+                    Ok(0) | Err(_) => break,
+                    Ok(read) => read,
+                };
+                let Ok(mut held) = into.lock() else {
+                    break;
+                };
+                held.extend_from_slice(&chunk[..read]);
+            }
+        });
+        Self { buffer, thread }
+    }
+
+    fn finish(self, wait: bool) -> String {
+        if wait {
+            self.thread.join().ok();
+        }
+        let read = self
+            .buffer
+            .lock()
+            .map(|held| held.clone())
+            .unwrap_or_default();
+        String::from_utf8_lossy(&read).into_owned()
+    }
 }
 
 /// Whether a command exists on a `PATH`, for the requirement check in `spec/08-oracles.md`.
