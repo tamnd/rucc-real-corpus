@@ -101,7 +101,19 @@ The harness constructs a `bin/` directory containing `cc`, `gcc`, `cpp`, `ld` an
 
 **Diagnostic-shaped compatibility is not the shim's job.** If autoconf concludes something wrong about us, that is a finding for document 08.8's `config.h` differential and an issue against rucc's driver, not a flag added here. Document 15's open question one is about how many M5-era blockers turn out to be driver behaviour rather than code generation, and papering over them in the shim would destroy the data that answers it.
 
-## 7.8 Migrating SQLite out of `rucc-compat`
+## 7.8 The level, and the Makefile that assigns its own flags
+
+Section 7.7 says the level arrives through `CFLAGS` in the environment. That is true of a Makefile that says `CFLAGS ?= -O2` or `CFLAGS += -Wall`, and it is false of one that says `CFLAGS = -O2`, because a plain assignment in a Makefile beats the environment and nothing in the environment can change that. A project like this builds at whichever level its Makefile names, four cells in the report become four copies of one measurement, and nothing in the run says so.
+
+**The first answer was to stop using the Makefile.** `picohttpparser` in document 05.1 is the case: it moved from A1 to A0 and the harness compiles its three files itself. That answer works for a project whose build is three files and fails for a project whose own test suite is the reason it is admitted, because a direct build throws the suite away with the Makefile.
+
+**The second answer is `build.level-flags`**, which names a make variable and gives the reason. The harness passes `VARIABLE=<the level's flags>` as a command line assignment to every make it runs for that project, including a test command that is itself a make, and a command line assignment beats every assignment inside the Makefile. The variable is usually `CFLAGS` and is sometimes the part of it the Makefile builds `CFLAGS` out of: `lmdb` assembles `CFLAGS` from `THREADS`, `OPT`, `W` and `XCFLAGS`, so overriding `CFLAGS` there would drop `-pthread` and the right variable to name is `OPT`.
+
+**Replacing a variable drops whatever it was carrying**, which is why `build.flags` goes on the end of the assignment. `blake2`'s reference Makefile carries `-I../testvectors` in its `CFLAGS` and its self tests include a header from there, so the manifest lists that flag with its reason and the harness puts it back. A flag that appears there is a flag somebody wrote a sentence about, which is the same rule document 09.3 already applies.
+
+**It is opt in and the lint is strict about it.** A manifest that names no variable gets the old behaviour, a manifest that names one on a direct build is a finding because nothing would read it, a variable that is not a make variable name is a finding because it is going on a command line as one, and a missing reason is a finding because the reason is the line of the Makefile that makes the whole thing necessary.
+
+## 7.9 Migrating SQLite out of `rucc-compat`
 
 `rucc-compat/corpus/sqlite/` today holds a `corpus.toml` with two exclusions: the amalgamation on `__atomic_load_n` having no lowering, and `shell.c` on `__builtin_ceil` and `__builtin_floor`, both `E0686`, both with issue numbers. That entry is a file-level compile check, which is the right shape for `rucc-compat` and the wrong shape for what M5 needs.
 

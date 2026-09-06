@@ -28,4 +28,4 @@ pub use exclusions::{Exclusion, Exclusions};
 pub use features::{Feature, FeatureKind, Features};
 pub use lint::{Corpus, Finding};
 pub use lockfile::{LockEntry, Lockfile};
-pub use manifest::{Manifest, ManifestError, Project, Source, Test};
+pub use manifest::{LevelFlags, Manifest, ManifestError, Project, Source, Test};

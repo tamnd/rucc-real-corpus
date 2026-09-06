@@ -222,6 +222,48 @@ pub struct Build {
     /// mean to introduce. `spec/07-harness.md` section 7.7.
     #[serde(default)]
     pub host_cc: HostCc,
+    /// How the level reaches a Makefile that assigns its own flags. `spec/07-harness.md`
+    /// section 7.8.
+    #[serde(default)]
+    pub level_flags: Option<LevelFlags>,
+}
+
+impl Build {
+    /// The make command line assignment that carries the level, when the manifest asks for one.
+    ///
+    /// A command line assignment beats every assignment inside the Makefile, which is the whole
+    /// point: the variable named here is one the Makefile sets outright, so the environment
+    /// never gets a say. The manifest's own flags go on the end because the value they were
+    /// carrying is the value being replaced, and dropping them would break the build rather than
+    /// change its level.
+    #[must_use]
+    pub fn level_assignment(&self, level: Level) -> Option<String> {
+        let carrier = self.level_flags.as_ref()?;
+        let mut value = level.cflags().to_string();
+        for note in &self.flags {
+            value.push(' ');
+            value.push_str(&note.flag);
+        }
+        Some(format!("{}={value}", carrier.variable))
+    }
+}
+
+/// The make variable that carries the optimization level, and why the environment cannot.
+///
+/// The environment is where the level normally goes, because `CFLAGS ?= -O2` and `CFLAGS +=
+/// -Wall` both honour it. A Makefile that says `CFLAGS = -O2` honours nothing, so all four
+/// levels build at whichever one the Makefile names and four cells in the report become four
+/// copies of one measurement. `picohttpparser` in `spec/05-the-projects.md` section 5.1 is the
+/// project that was moved to a direct build over exactly this, and that answer does not scale to
+/// a project whose own suite is the reason it is on the list.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct LevelFlags {
+    /// The variable to assign on the make command line, which is usually `CFLAGS` and is
+    /// sometimes the part of it the Makefile builds `CFLAGS` out of.
+    pub variable: String,
+    /// Which line of the Makefile makes this necessary, in a sentence somebody can check.
+    pub why: String,
 }
 
 const fn default_build_system() -> BuildSystem {
@@ -440,6 +482,34 @@ oracle = "self-checking"
         let text = SAMPLE.replace("rung = 0", "rung = 7");
         let error = parse(&text).unwrap_err();
         assert!(error.to_string().contains("six rungs"));
+    }
+
+    #[test]
+    fn a_manifest_that_says_nothing_about_the_level_gets_no_assignment() {
+        let manifest = parse(SAMPLE).unwrap();
+        assert_eq!(manifest.build.level_assignment(Level::O2), None);
+    }
+
+    #[test]
+    fn the_level_assignment_names_the_variable_the_manifest_named() {
+        let text = format!(
+            "{SAMPLE}\n[build.level-flags]\nvariable = \"OPT\"\nwhy = \"the Makefile builds CFLAGS out of OPT and the thread flags\"\n"
+        );
+        let manifest = parse(&text).unwrap();
+        let assignment = manifest.build.level_assignment(Level::O0).unwrap();
+        assert!(assignment.starts_with("OPT="));
+        assert!(assignment.contains(Level::O0.cflags()));
+        assert!(!assignment.contains(Level::O2.cflags()));
+    }
+
+    #[test]
+    fn the_flags_the_makefile_was_carrying_survive_the_assignment_that_replaces_them() {
+        let text = format!(
+            "{SAMPLE}\n[build.level-flags]\nvariable = \"CFLAGS\"\nwhy = \"the Makefile assigns CFLAGS outright\"\n\n[[build.flags]]\nflag = \"-I../testvectors\"\nwhy = \"the self test includes blake2-kat.h from there and the Makefile's own CFLAGS carried it\"\n"
+        );
+        let manifest = parse(&text).unwrap();
+        let assignment = manifest.build.level_assignment(Level::O2).unwrap();
+        assert!(assignment.ends_with(" -I../testvectors"), "{assignment}");
     }
 
     #[test]

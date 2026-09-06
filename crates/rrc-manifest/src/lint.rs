@@ -210,6 +210,32 @@ fn check_build(manifest: &Manifest, say: &mut Vec<String>) {
                 .into(),
         );
     }
+    if let Some(carrier) = &manifest.build.level_flags {
+        if manifest.build.system == BuildSystem::Direct {
+            say.push(
+                "names a make variable for the level and has no make in its build, so nothing would read it"
+                    .into(),
+            );
+        }
+        if carrier.variable.trim().is_empty() {
+            say.push("names an empty make variable for the level".into());
+        } else if !carrier
+            .variable
+            .chars()
+            .all(|c| c.is_ascii_uppercase() || c.is_ascii_digit() || c == '_')
+        {
+            say.push(format!(
+                "`{}` is not a make variable name, and it is going on a command line as one",
+                carrier.variable
+            ));
+        }
+        if carrier.why.trim().is_empty() {
+            say.push(
+                "overrides the level variable with no reason, and the reason is the line of the Makefile that makes it necessary"
+                    .into(),
+            );
+        }
+    }
     for note in manifest
         .build
         .flags
@@ -502,6 +528,50 @@ kind = "standard"
         corpus.manifests[0].build.expect_configure = vec!["   ".into()];
         let findings = check(&corpus);
         assert!(findings.iter().any(|f| f.what.contains("empty sentence")));
+    }
+
+    #[test]
+    fn a_level_variable_on_a_build_with_no_make_in_it_is_caught() {
+        let text = SAMPLE.replace(
+            "[test]",
+            "[build.level-flags]\nvariable = \"CFLAGS\"\nwhy = \"the Makefile assigns it outright\"\n\n[test]",
+        );
+        let findings = check(&corpus_of(&text));
+        assert!(
+            findings
+                .iter()
+                .any(|f| f.what.contains("nothing would read it"))
+        );
+    }
+
+    #[test]
+    fn a_level_variable_that_is_not_a_make_variable_name_is_caught() {
+        let text = SAMPLE
+            .replace("system = \"direct\"", "system = \"make\"")
+            .replace("sources = [\"jsmn_test.c\"]\n", "")
+            .replace(
+                "[test]",
+                "[build.level-flags]\nvariable = \"CFLAGS -O3; rm -rf /\"\nwhy = \"it assigns it outright\"\n\n[test]",
+            );
+        let findings = check(&corpus_of(&text));
+        assert!(
+            findings
+                .iter()
+                .any(|f| f.what.contains("is not a make variable name"))
+        );
+    }
+
+    #[test]
+    fn a_level_variable_with_no_reason_is_caught() {
+        let text = SAMPLE
+            .replace("system = \"direct\"", "system = \"make\"")
+            .replace("sources = [\"jsmn_test.c\"]\n", "")
+            .replace(
+                "[test]",
+                "[build.level-flags]\nvariable = \"CFLAGS\"\nwhy = \"  \"\n\n[test]",
+            );
+        let findings = check(&corpus_of(&text));
+        assert!(findings.iter().any(|f| f.what.contains("with no reason")));
     }
 
     #[test]
