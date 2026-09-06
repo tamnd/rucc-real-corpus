@@ -2,3 +2,6 @@ target/
 # Where fetch extracts and where the runs happen. Everything under it is reproducible from
 # projects.lock, so none of it belongs in the history.
 work/
+# Where a local run writes its records and its report. CI publishes those as artifacts and the
+# reference results live in the run history, so a laptop's copy is not something to keep.
+runs/

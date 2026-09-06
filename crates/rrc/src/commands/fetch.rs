@@ -12,7 +12,7 @@
 use crate::commands::Done;
 use crate::corpus::Loaded;
 use rrc_fetch::{Cache, Curl, Downloader, Offline, fetch_and_extract};
-use rrc_manifest::lockfile::{LockEntry, Lockfile};
+use rrc_manifest::lockfile::{LockEntry, LockSubmodule, Lockfile};
 use rrc_manifest::manifest::Manifest;
 use std::fmt::Write as _;
 use std::path::{Path, PathBuf};
@@ -110,6 +110,17 @@ fn pin(
             manifest.project.licence_file
         )
     })?;
+    let mut submodules = Vec::new();
+    for submodule in &manifest.source.submodules {
+        let got = rrc_fetch::fetch(&submodule.source(), cache, downloader)
+            .map_err(|why| why.to_string())?;
+        submodules.push(LockSubmodule {
+            path: submodule.path.clone(),
+            url: got.url,
+            sha256: submodule.sha256.clone(),
+            bytes: got.bytes,
+        });
+    }
     Ok(LockEntry {
         name: manifest.project.name.clone(),
         url: fetched.url,
@@ -117,6 +128,7 @@ fn pin(
         bytes: fetched.bytes,
         licence_sha256,
         verified: today(),
+        submodules,
     })
 }
 
@@ -186,9 +198,8 @@ pub fn ensure(
     dest: &Path,
 ) -> Result<String, String> {
     let stamp = stamp_for(dest);
-    if dest.is_dir()
-        && std::fs::read_to_string(&stamp).is_ok_and(|had| had.trim() == manifest.source.sha256)
-    {
+    let pinned = pin_text(manifest);
+    if dest.is_dir() && std::fs::read_to_string(&stamp).is_ok_and(|had| had.trim() == pinned) {
         return Ok("already extracted".to_string());
     }
 
@@ -203,14 +214,34 @@ pub fn ensure(
 
     // Written last, so that a run killed during extraction leaves a tree with no stamp and the
     // next run does the work again rather than trusting half of one.
-    std::fs::write(&stamp, &manifest.source.sha256)
-        .map_err(|why| format!("writing {}: {why}", stamp.display()))?;
+    std::fs::write(&stamp, &pinned).map_err(|why| format!("writing {}: {why}", stamp.display()))?;
 
-    Ok(match fetched.provenance {
+    let project = &fetched.project;
+    let where_from = match project.provenance {
         rrc_fetch::Provenance::Cache => "from the cache".to_string(),
-        rrc_fetch::Provenance::Primary => format!("from {}", fetched.url),
-        rrc_fetch::Provenance::Mirror => format!("from the mirror {}", fetched.url),
+        rrc_fetch::Provenance::Primary => format!("from {}", project.url),
+        rrc_fetch::Provenance::Mirror => format!("from the mirror {}", project.url),
+    };
+    Ok(match fetched.submodules.len() {
+        0 => where_from,
+        1 => format!("{where_from}, with one submodule"),
+        n => format!("{where_from}, with {n} submodules"),
     })
+}
+
+/// Everything the extracted tree was supposed to be made of, as the text the stamp holds.
+///
+/// The project hash on its own line and then one line per submodule, so that a submodule pin
+/// moving invalidates the tree the same way the project's own pin moving does. A project with no
+/// submodules produces exactly its own hash, which is what stamps written before submodules
+/// existed already contain.
+fn pin_text(manifest: &Manifest) -> String {
+    use std::fmt::Write as _;
+    let mut text = manifest.source.sha256.clone();
+    for submodule in &manifest.source.submodules {
+        let _ = write!(text, "\n{} {}", submodule.path, submodule.sha256);
+    }
+    text
 }
 
 /// Where the stamp for an extracted tree lives.
@@ -281,6 +312,7 @@ mod tests {
             bytes: 1024,
             licence_sha256: "ef".repeat(32),
             verified: "2026-09-06".to_string(),
+            submodules: Vec::new(),
         };
 
         merge(&path, vec![entry("jsmn", &"ab".repeat(32))])

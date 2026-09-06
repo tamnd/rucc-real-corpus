@@ -75,15 +75,76 @@ pub fn fetch(
 }
 
 /// Fetch and extract in one go, which is what every caller outside this crate actually wants.
+///
+/// Submodules are fetched after the project's own source and unpacked into it, because a tarball
+/// of a commit does not carry that commit's submodules and a project whose suite is a submodule
+/// arrives with an empty directory where its suite should be. Each one goes through the same
+/// `fetch`, so each one is hashed on every path including the cache hit.
 pub fn fetch_and_extract(
     source: &Source,
     cache: &Cache,
     downloader: &dyn Downloader,
     dest: &Path,
-) -> Result<Fetched, FetchError> {
-    let fetched = fetch(source, cache, downloader)?;
-    crate::extract::extract(&fetched.path, dest, source.strip_components)?;
-    Ok(fetched)
+) -> Result<Whole, FetchError> {
+    let project = fetch(source, cache, downloader)?;
+    crate::extract::extract(&project.path, dest, source.strip_components)?;
+
+    let mut submodules = Vec::new();
+    for submodule in &source.submodules {
+        if !submodule.path_is_contained() {
+            return Err(FetchError::Extract {
+                path: project.path.clone(),
+                message: format!(
+                    "the submodule path `{}` leaves the extracted tree",
+                    submodule.path
+                ),
+            });
+        }
+        let into = dest.join(&submodule.path);
+        clear_placeholder(&into)?;
+        let fetched = fetch(&submodule.source(), cache, downloader)?;
+        crate::extract::extract(&fetched.path, &into, submodule.strip_components)?;
+        submodules.push((submodule.path.clone(), fetched));
+    }
+    Ok(Whole {
+        project,
+        submodules,
+    })
+}
+
+/// Everything one project's pin resolved to.
+#[derive(Debug, Clone)]
+pub struct Whole {
+    /// The project's own archive.
+    pub project: Fetched,
+    /// Each submodule, by the path it was unpacked into, in manifest order.
+    pub submodules: Vec<(String, Fetched)>,
+}
+
+/// Remove the empty directory git leaves where a submodule would be.
+///
+/// An empty directory is the expected state and is removed without comment. A directory with
+/// something in it means the archive already ships content at that path, which makes the
+/// manifest wrong rather than the archive, so it is an error and not an overwrite.
+fn clear_placeholder(path: &Path) -> Result<(), FetchError> {
+    if !path.exists() {
+        return Ok(());
+    }
+    let empty = path
+        .read_dir()
+        .map_err(|e| FetchError::io(format!("reading {}", path.display()), e))?
+        .next()
+        .is_none();
+    if !empty {
+        return Err(FetchError::Extract {
+            path: path.to_path_buf(),
+            message: format!(
+                "{} already has something in it, so the archive ships it and the manifest should not",
+                path.display()
+            ),
+        });
+    }
+    std::fs::remove_dir(path).map_err(|e| FetchError::io(format!("removing {}", path.display()), e))
 }
 
 /// One URL, one hash check. The error is a sentence, because it ends up in a list of every
@@ -152,11 +213,11 @@ mod tests {
     }
 
     impl Fake {
-        fn new(serves: Vec<(&str, &[u8])>) -> Self {
+        fn new<B: AsRef<[u8]>>(serves: Vec<(&str, B)>) -> Self {
             Self {
                 serves: serves
                     .into_iter()
-                    .map(|(url, bytes)| (url.to_string(), bytes.to_vec()))
+                    .map(|(url, bytes)| (url.to_string(), bytes.as_ref().to_vec()))
                     .collect(),
                 asked: RefCell::new(Vec::new()),
             }
@@ -194,6 +255,7 @@ mod tests {
                     url: (*url).to_string(),
                 })
                 .collect(),
+            submodules: Vec::new(),
         }
     }
 
@@ -251,10 +313,119 @@ mod tests {
         let root = scratch("all-fail");
         let cache = Cache::new(&root);
         let source = source_for(b"payload", &["https://mirror.invalid/p.tar.gz"]);
-        let net = Fake::new(vec![]);
+        let net = Fake::new(Vec::<(&str, &[u8])>::new());
         let error = fetch(&source, &cache, &net).unwrap_err().to_string();
         assert!(error.contains("primary.invalid"));
         assert!(error.contains("mirror.invalid"));
+        std::fs::remove_dir_all(&root).ok();
+    }
+
+    /// A tarball with one top level directory holding `name`, so that stripping one component
+    /// leaves that file at the root of the tree.
+    fn tarball(root: &Path, wrapper: &str, name: &str) -> Vec<u8> {
+        let inner = root.join(wrapper);
+        std::fs::create_dir_all(&inner).unwrap();
+        std::fs::write(inner.join(name), b"contents").unwrap();
+        let archive = root.join(format!("{wrapper}.tar.gz"));
+        let ok = std::process::Command::new("tar")
+            .arg("-c")
+            .arg("-z")
+            .arg("-f")
+            .arg(&archive)
+            .arg("-C")
+            .arg(root)
+            .arg(wrapper)
+            .status()
+            .unwrap();
+        assert!(ok.success());
+        let bytes = std::fs::read(&archive).unwrap();
+        std::fs::remove_dir_all(&inner).ok();
+        std::fs::remove_file(&archive).ok();
+        bytes
+    }
+
+    #[test]
+    fn a_submodule_is_unpacked_into_the_empty_directory_the_archive_left() {
+        let root = scratch("submodule");
+        let cache = Cache::new(root.join("cache"));
+        // The project archive ships an empty `picotest` directory, which is what a tarball of a
+        // commit with a submodule looks like.
+        let project_root = root.join("build-project");
+        std::fs::create_dir_all(project_root.join("project-1.0/picotest")).unwrap();
+        std::fs::write(project_root.join("project-1.0/test.c"), b"int main(void){}").unwrap();
+        let project = {
+            let archive = project_root.join("p.tar.gz");
+            let ok = std::process::Command::new("tar")
+                .arg("-c")
+                .arg("-z")
+                .arg("-f")
+                .arg(&archive)
+                .arg("-C")
+                .arg(&project_root)
+                .arg("project-1.0")
+                .status()
+                .unwrap();
+            assert!(ok.success());
+            std::fs::read(&archive).unwrap()
+        };
+        let framework = tarball(&root.join("build-sub"), "picotest-abc", "picotest.c");
+
+        let source = Source {
+            url: "https://primary.invalid/p.tar.gz".into(),
+            sha256: sha256_bytes(&project),
+            strip_components: 1,
+            mirrors: Vec::new(),
+            submodules: vec![rrc_manifest::manifest::Submodule {
+                path: "picotest".into(),
+                url: "https://primary.invalid/picotest.tar.gz".into(),
+                sha256: sha256_bytes(&framework),
+                strip_components: 1,
+                mirrors: Vec::new(),
+            }],
+        };
+        let net = Fake::new(vec![
+            ("https://primary.invalid/p.tar.gz", &project),
+            ("https://primary.invalid/picotest.tar.gz", &framework),
+        ]);
+        let dest = root.join("tree");
+        let whole = fetch_and_extract(&source, &cache, &net, &dest).unwrap();
+        assert_eq!(whole.submodules.len(), 1);
+        assert!(dest.join("test.c").is_file());
+        assert!(
+            dest.join("picotest/picotest.c").is_file(),
+            "the submodule should have filled the empty directory"
+        );
+        std::fs::remove_dir_all(&root).ok();
+    }
+
+    #[test]
+    fn a_submodule_path_that_leaves_the_tree_is_refused_before_anything_is_downloaded() {
+        let root = scratch("escape");
+        let cache = Cache::new(root.join("cache"));
+        let project = tarball(&root.join("build"), "project-1.0", "main.c");
+        let source = Source {
+            url: "https://primary.invalid/p.tar.gz".into(),
+            sha256: sha256_bytes(&project),
+            strip_components: 1,
+            mirrors: Vec::new(),
+            submodules: vec![rrc_manifest::manifest::Submodule {
+                path: "../escaped".into(),
+                url: "https://primary.invalid/x.tar.gz".into(),
+                sha256: sha256_bytes(b"anything"),
+                strip_components: 1,
+                mirrors: Vec::new(),
+            }],
+        };
+        let net = Fake::new(vec![("https://primary.invalid/p.tar.gz", &project)]);
+        let error = fetch_and_extract(&source, &cache, &net, &root.join("tree"))
+            .unwrap_err()
+            .to_string();
+        assert!(error.contains("leaves the extracted tree"), "got {error}");
+        assert_eq!(
+            net.asked.borrow().len(),
+            1,
+            "the escaping submodule should never have been asked for"
+        );
         std::fs::remove_dir_all(&root).ok();
     }
 

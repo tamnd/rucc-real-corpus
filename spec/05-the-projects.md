@@ -17,7 +17,7 @@ Candidates were drawn from document 01's two lists, kefir's 110 and slimcc's 289
 | `coremark` | `1f483d5` | Apache-2.0 | A1 | D2/E0 | a self-validating CRC over its own state; the canonical "the compiler is wrong and the program knows" oracle |
 | `c4` | `2feb8c0` | MIT | A0 | D1/E0 | a two-stage oracle in 500 lines: it compiles itself, then compiles hello world with the result |
 | `jsmn` | `25647e6` | MIT | A1 | D2/E0 | a parser written entirely with pointer arithmetic and no allocation |
-| `picohttpparser` | branch pin | MIT | A1 | D2/E0 | byte scanning with deliberate unrolling and fall-through switches |
+| `picohttpparser` | `539bb9f` | MIT | A0 | D3/E0 | byte scanning with deliberate unrolling and fall-through switches |
 | `parson` | `ba29f4e` | MIT | A1 | D2/E0 | recursive descent, `double` formatting round-trips |
 | `tinyexpr` | `v1.1.1` | zlib | A1 | D2/E2 | function pointers to libm, the first C2 demand on the ladder |
 | `sds` | `5347739` | BSD-2-Clause | A1 | D2/E0 | a header before a struct, `container_of` by hand, flexible array members |
@@ -26,6 +26,8 @@ Candidates were drawn from document 01's two lists, kefir's 110 and slimcc's 289
 | `llama2.c` | `350e04f` | MIT | A1 | D0/E0 | `float` arithmetic in volume, and the first place a fast-math-shaped bug would show |
 | `incbin` | latest | Unlicense | A1 | D2/E0 | `.incbin` through inline assembly, which is B4 in a file you can read |
 | `jtckdint` | `d4c68b9` | ISC | A1 | D2/E0 | `<stdckdint.h>` and the overflow builtins; kefir patches this one, so expect an exclusion |
+
+**Why `picohttpparser` moved from A1/D2 to A0/D3.** The row said A1 because upstream ships a Makefile, and the Makefile assigns `CFLAGS` outright rather than appending, so building through it would run all four levels at whichever one it names and turn four cells into four copies of one measurement. It also drives the suite through `prove`, which is perl and therefore E2 on a rung that document 03.1 puts at E0. Compiling the three files directly avoids both, and the suite it builds is picotest, which emits TAP with a count, so the oracle is a counted suite rather than an exit status. That is document 08.1's upgrade rather than a downgrade, and the count is on the register at 299.
 
 **Why `c4` is worth a row.** It is a C compiler in about 500 lines that compiles itself and then compiles a hello world with the product. If rucc miscompiles it, the second stage produces a wrong program, and the failure is visible in a file small enough to read in one sitting. There is no other project on this list with an oracle that strong at that size.
 

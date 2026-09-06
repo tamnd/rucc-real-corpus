@@ -99,10 +99,66 @@ pub struct Source {
     /// Mirrors, tried in order after the primary fails, each subject to the same hash check.
     #[serde(default, rename = "mirror")]
     pub mirrors: Vec<Mirror>,
+    /// Archives unpacked into a subdirectory of the extracted tree, for a project whose suite
+    /// lives in a git submodule. `spec/06-manifest.md` section 6.3.
+    #[serde(default, rename = "submodule")]
+    pub submodules: Vec<Submodule>,
 }
 
 const fn one() -> u32 {
     1
+}
+
+/// A second pinned archive, unpacked inside the first.
+///
+/// A tarball of a commit does not carry that commit's submodules, so a project whose test
+/// framework is a submodule arrives with an empty directory where its suite should be. This is
+/// how that directory gets filled: with a URL and a hash, pinned and verified exactly like the
+/// project's own source, and stored no more than the project's own source is.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields, rename_all = "kebab-case")]
+pub struct Submodule {
+    /// Where it goes, relative to the root of the extracted tree, and the same path the
+    /// project's own `.gitmodules` gives it.
+    pub path: String,
+    /// The primary URL, under the same rule as `source.url`.
+    pub url: String,
+    /// The SHA-256 of the downloaded bytes, checked before extraction and on every cache hit.
+    pub sha256: String,
+    /// How many leading path components the archive wraps its contents in.
+    #[serde(default = "one")]
+    pub strip_components: u32,
+    /// Mirrors, tried in order after the primary fails.
+    #[serde(default, rename = "mirror")]
+    pub mirrors: Vec<Mirror>,
+}
+
+impl Submodule {
+    /// The submodule as a source, so that it goes through the same fetch path as everything else.
+    #[must_use]
+    pub fn source(&self) -> Source {
+        Source {
+            url: self.url.clone(),
+            sha256: self.sha256.clone(),
+            strip_components: self.strip_components,
+            mirrors: self.mirrors.clone(),
+            submodules: Vec::new(),
+        }
+    }
+
+    /// Whether the path stays inside the tree it is being unpacked into.
+    ///
+    /// Checked here rather than only in the lint, because the lint is a thing somebody runs and
+    /// this is the thing that decides where bytes from the network land.
+    #[must_use]
+    pub fn path_is_contained(&self) -> bool {
+        let path = Path::new(&self.path);
+        !self.path.trim().is_empty()
+            && path.is_relative()
+            && path
+                .components()
+                .all(|part| matches!(part, std::path::Component::Normal(_)))
+    }
 }
 
 /// One mirror for one project.
