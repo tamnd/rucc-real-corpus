@@ -1,5 +1,11 @@
 [workspace]
-members = ["crates/rrc-fetch", "crates/rrc-manifest", "crates/rrc-report", "crates/rrc-run"]
+members = [
+    "crates/rrc",
+    "crates/rrc-fetch",
+    "crates/rrc-manifest",
+    "crates/rrc-report",
+    "crates/rrc-run",
+]
 resolver = "3"
 
 [workspace.package]

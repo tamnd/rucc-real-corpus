@@ -25,9 +25,10 @@
 //! - [`driver`] builds and tests one project in one sandbox and grades the result.
 //! - [`twice`] compares two builds of the same project, which is what the isolation work was for.
 //!
-//! What is not here yet is the scheduler that walks the list and calls all of this in order. That
-//! is the `rrc` binary, and it is a separate pull request because everything above has to be
-//! right before anything is worth measuring.
+//! What is not here is the scheduler that walks the list and calls all of this in order. That
+//! lives in the `rrc` binary, which reads the corpus, picks the cells and writes the log. This
+//! crate stays a library on purpose, so that every question above can be asked and answered
+//! without a command line anywhere near it.
 
 pub mod diagnostic;
 pub mod driver;
