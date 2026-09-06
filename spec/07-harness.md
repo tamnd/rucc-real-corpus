@@ -41,16 +41,19 @@ project, pin-sha256, rung, level, host, gcc-version, rucc-version, rucc-commit,
 outcome, phase-reached, build-seconds, test-seconds, peak-rss,
 tests-run, tests-passed, tests-baseline,
 binary-bytes, text-bytes, data-bytes,
-first-diagnostic, log-path, oracle-used, oracle-declared
+first-diagnostic, log-path, oracle-used, oracle-declared, parallel,
+observed-outcome, excluded-by
 ```
 
-Three fields deserve a note.
+Four fields deserve a note.
 
 **`phase-reached`** is one of `fetched`, `configured`, `built`, `linked`, `tested`, and it is what makes "did not build" an informative outcome. A project that fails at `configured` and one that fails at `linked` are different bugs and a boolean loses that.
 
 **`first-diagnostic`** is the first `rucc: error:` line, normalized: paths made relative, addresses and temporary filenames stripped. It is the grouping key for document 11's failure clustering, and it is why forty projects failing on `E0686` show up as one row rather than forty.
 
 **`oracle-used` against `oracle-declared`** is document 06.5's guarantee made visible. When they differ, the project was graded weaker than its manifest claims and the report says so in a distinct column rather than a footnote.
+
+**`observed-outcome` and `excluded-by`** are present on an excluded cell and absent everywhere else. An excluded cell is built and tested like any other and then has its outcome replaced with `excluded`, and `observed-outcome` is the outcome it produced before the replacement. Without it, document 09.5's conditions two and four have nothing to look at, since an entry that has stopped describing its cell is only visible if somebody ran the cell.
 
 ## 7.4 Isolation
 

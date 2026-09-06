@@ -63,6 +63,8 @@ mod tests {
             oracle_declared: Oracle::SelfChecking,
             oracle_used: Oracle::SelfChecking,
             parallel: false,
+            observed_outcome: None,
+            excluded_by: None,
         }
     }
 }

@@ -60,7 +60,7 @@ since   = "2026-09-06"
 
 ## 9.5 The staleness check
 
-`rrc lint` fails the run on any of four conditions. This is parent document 15.7's discipline and it is the part that makes an exclusion list an asset rather than a liability.
+Four conditions fail the run. This is parent document 15.7's discipline and it is the part that makes an exclusion list an asset rather than a liability.
 
 1. **An exclusion names a project or case that does not exist.** The list has drifted from the manifests.
 2. **An excluded case passes.** The bug is fixed and nobody removed the entry. This is the important one: without it, an exclusion list only grows, and a compiler that has silently become capable of everything on the list still reports the same number.
@@ -68,6 +68,8 @@ since   = "2026-09-06"
 4. **An excluded case's failure no longer matches its `why`.** The `first-diagnostic` from document 07.3 is compared against the diagnostic code in the reason, and a project that has moved from `E0686` to a crash is a different bug wearing an old exclusion. This is the condition the prior art does not check and it is where an exclusion list rots first.
 
 Conditions 2 and 4 mean **the exclusion list is verified by running the excluded cases**, not by skipping them. Excluded projects are built and tested like any other; the exclusion changes how the result is *counted*, not whether it is measured. That costs budget and it is the difference between a list that decays and a list that does not.
+
+**Which of the four runs where.** Conditions 1 and 3 are about the register on its own, they need no compiler, and they are in `rrc lint`. Conditions 2 and 4 are about what the excluded cells did, so they need a run, and they are in `rrc run`, which prints them, writes them into the report and exits non zero on them exactly as it does for a failure. A record carries `observed-outcome`, which is the outcome the cell produced before the register replaced it with `excluded`, and it keeps its `first-diagnostic` rather than having it overwritten with the issue, because that diagnostic is what condition 4 compares against. The issue rides on the record as `excluded-by` instead. Condition 4 only fires when the `why` names a diagnostic code, since a reason written as prose has nothing to compare against and a comparison invented for it would be worse than none. A record with no `observed-outcome` is one written before excluded cells were run, and reading an old log is not allowed to invent findings.
 
 ## 9.6 When a project is blocked, what happens
 

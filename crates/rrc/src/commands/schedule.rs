@@ -17,9 +17,10 @@ use rrc_fetch::{Cache, Downloader};
 use rrc_manifest::axes::Level;
 use rrc_manifest::manifest::Manifest;
 use rrc_run::driver::{self, Compiler, Job};
-use rrc_run::record::{Outcome, Phase, Provenance, RecordLog, RunRecord};
+use rrc_run::record::{Outcome, Provenance, RecordLog, RunRecord};
 use rrc_run::sandbox::Slot;
 use rrc_run::shim::Toolchain;
+use rrc_run::staleness::{self, Stale};
 use rrc_run::twice::{self, Difference};
 use std::fmt::Write as _;
 use std::path::PathBuf;
@@ -75,20 +76,17 @@ pub fn cell(
     level: Level,
     twice: bool,
 ) -> Result<Cell, String> {
-    if let Some(entry) =
+    // Found before the build and applied after it. Spec 9.5 is explicit that an excluded cell is
+    // built and tested like any other and that the exclusion changes how the result is counted
+    // rather than whether it is measured, because the two staleness conditions that matter are an
+    // excluded cell that passes and an excluded cell whose failure has changed, and neither can
+    // fire against a cell nobody ran. It costs a cell's worth of budget per entry and that is the
+    // difference between a register that decays and one that does not.
+    let entry =
         loaded
             .corpus
             .exclusions
-            .find(&manifest.project.name, &manifest.project.name, level)
-    {
-        // Not built at all. An excluded cell that is still built and then relabelled costs the
-        // same as a cell that counts, and the register exists to stop paying for results nobody
-        // is allowed to read.
-        return Ok(Cell {
-            record: excluded(setup, manifest, level, &entry.issue),
-            differences: Vec::new(),
-        });
-    }
+            .find(&manifest.project.name, &manifest.project.name, level);
 
     let extracted = loaded.extracted(&manifest.project.name);
     fetch::ensure(
@@ -100,8 +98,11 @@ pub fn cell(
 
     let workspace = loaded.workspace();
     let job = job(setup, manifest, level, &extracted, &workspace);
-    let record = driver::run(&job, Slot::A)
+    let mut record = driver::run(&job, Slot::A)
         .map_err(|why| format!("{} at {}: {why}", manifest.project.name, level.name()))?;
+    if let Some(entry) = entry {
+        relabel(&mut record, &entry.issue);
+    }
 
     let differences = if twice {
         compare_two_builds(setup, manifest, level, &extracted, &loaded.workspace())?
@@ -159,33 +160,16 @@ fn job<'a>(
     }
 }
 
-/// The record for a cell the register removed from the denominator.
-fn excluded(setup: &Setup, manifest: &Manifest, level: Level, issue: &str) -> RunRecord {
-    RunRecord {
-        project: manifest.project.name.clone(),
-        pin_sha256: manifest.source.sha256.clone(),
-        rung: manifest.project.rung,
-        level,
-        provenance: setup.provenance.clone(),
-        outcome: Outcome::Excluded,
-        phase_reached: Phase::Fetched,
-        build_seconds: 0.0,
-        test_seconds: 0.0,
-        peak_rss: None,
-        tests_run: None,
-        tests_passed: None,
-        tests_baseline: manifest.test.baseline_tests,
-        binary_bytes: None,
-        text_bytes: None,
-        data_bytes: None,
-        // The issue rides on the record so that a reader of the raw log can see what the cell is
-        // waiting on without going and reading exclusions.toml alongside it.
-        first_diagnostic: Some(format!("excluded, waiting on {issue}")),
-        log_path: None,
-        oracle_declared: manifest.test.oracle,
-        oracle_used: manifest.test.oracle,
-        parallel: manifest.build.parallel,
-    }
+/// Take a cell the register covers out of the denominator, keeping what it did.
+///
+/// Everything measured stays on the record, including the diagnostic, because the staleness check
+/// compares that diagnostic against the reason the entry gives and a record that has been wiped
+/// clean has nothing to compare. Only the outcome is replaced, and the one it replaced goes into
+/// `observed_outcome` rather than being thrown away.
+fn relabel(record: &mut RunRecord, issue: &str) {
+    record.observed_outcome = Some(record.outcome);
+    record.excluded_by = Some(issue.to_string());
+    record.outcome = Outcome::Excluded;
 }
 
 /// `rrc build`, which stops at the binary.
@@ -250,6 +234,9 @@ fn describe(record: &RunRecord) -> String {
     let mut out = String::new();
     let _ = writeln!(out, "{} at {}", record.project, record.level.name());
     let _ = writeln!(out, "  outcome      {}", record.outcome);
+    if let (Some(observed), Some(issue)) = (record.observed_outcome, &record.excluded_by) {
+        let _ = writeln!(out, "  observed     {observed}, waiting on {issue}");
+    }
     let _ = writeln!(out, "  reached      {}", record.phase_reached);
     let _ = writeln!(
         out,
@@ -323,8 +310,10 @@ pub fn run(loaded: &Loaded, options: &Options, plan: &RunPlan) -> Result<Done, S
         }
     }
 
+    let stale = staleness::check(&records, &loaded.corpus.exclusions);
     let report = rrc_report::Report::of(&records, &[]);
     let mut markdown = report.markdown();
+    markdown.push_str(&register(&stale));
     if plan.twice {
         markdown.push_str(&determinism(&differences));
     }
@@ -336,12 +325,21 @@ pub fn run(loaded: &Loaded, options: &Options, plan: &RunPlan) -> Result<Done, S
     let _ = writeln!(said, "{}", report.summary.status_line());
     let _ = writeln!(said, "records  {}", records_at.display());
     let _ = writeln!(said, "report   {}", report_at.display());
+    if !stale.is_empty() {
+        let how_many = if stale.len() == 1 {
+            "1 entry no longer describes".to_string()
+        } else {
+            format!("{} entries no longer describe", stale.len())
+        };
+        let _ = writeln!(said, "register {how_many} what happens");
+        said.push_str(&staleness::render(&stale));
+    }
     if plan.twice {
         let _ = writeln!(said, "{}", determinism_line(&differences));
     }
 
     let failed = records.iter().any(|record| record.outcome.is_failure());
-    Ok(if failed || !differences.is_empty() {
+    Ok(if failed || !differences.is_empty() || !stale.is_empty() {
         Done::bad(said)
     } else {
         Done::good(said)
@@ -362,6 +360,23 @@ fn levels_for(manifest: &Manifest, plan: &RunPlan) -> Vec<Level> {
             .filter(|level| asked.contains(level))
             .collect(),
     }
+}
+
+/// The exclusion register section, which is written on every run rather than only when something
+/// is wrong with it.
+///
+/// A register nobody prints is a register nobody rereads. The clean case is one line and it is the
+/// line that says the entries were checked, which is the difference between an empty section and
+/// an absent one.
+fn register(stale: &[Stale]) -> String {
+    let mut out = String::from("\n## The exclusion register\n\n");
+    if stale.is_empty() {
+        out.push_str("Every excluded cell was built and tested like any other, and every entry still describes what happened. The exclusion changed how the cell was counted and not whether it was measured, which is what spec 9.5 asks for.\n");
+        return out;
+    }
+    out.push_str("These excluded cells were built and tested, and their entries no longer describe what happened. An entry that has stopped matching is either a fix nobody recorded or a different bug wearing an old exclusion, and both are findings rather than shrugs.\n\n");
+    out.push_str(&staleness::render(stale));
+    out
 }
 
 /// One cell that did not build the same way twice.
@@ -414,6 +429,7 @@ fn determinism_line(differences: &[Diverged]) -> String {
 mod tests {
     use super::*;
     use rrc_manifest::axes::Rung;
+    use rrc_run::record::Phase;
 
     fn manifest_at(rung: Rung) -> Manifest {
         let text = format!(
@@ -503,31 +519,70 @@ command = ["./sample"]
     }
 
     #[test]
-    fn an_excluded_cell_carries_the_issue_it_waits_on() {
-        let manifest = manifest_at(Rung::R0);
-        let setup = Setup {
-            toolchain: Toolchain {
-                under_test: PathBuf::from("cc"),
-                reference: PathBuf::from("cc"),
-            },
+    fn an_excluded_cell_keeps_what_it_did_and_only_loses_its_place_in_the_denominator() {
+        let mut record = a_record(Outcome::WrongAnswer);
+        record.first_diagnostic = Some("E0686 no lowering for __atomic_load_n".to_string());
+        relabel(&mut record, "tamnd/rucc#412");
+
+        assert_eq!(record.outcome, Outcome::Excluded);
+        assert!(!record.outcome.is_failure());
+        assert_eq!(record.observed_outcome, Some(Outcome::WrongAnswer));
+        assert_eq!(record.excluded_by.as_deref(), Some("tamnd/rucc#412"));
+        assert!(
+            record
+                .first_diagnostic
+                .as_deref()
+                .is_some_and(|said| said.contains("E0686")),
+            "the diagnostic is what the staleness check compares against, so wiping it would \
+             disarm the check the register depends on"
+        );
+    }
+
+    #[test]
+    fn the_register_section_says_the_entries_were_checked_even_when_nothing_is_wrong() {
+        let clean = register(&[]);
+        assert!(clean.contains("still describes what happened"));
+
+        let found = register(&[Stale {
+            project: "jsmn".to_string(),
+            level: "O2".to_string(),
+            issue: "tamnd/rucc#412".to_string(),
+            what: "is excluded and came back passed".to_string(),
+        }]);
+        assert!(found.contains("jsmn at O2"));
+        assert!(found.contains("tamnd/rucc#412"));
+    }
+
+    fn a_record(outcome: Outcome) -> RunRecord {
+        RunRecord {
+            project: "jsmn".to_string(),
+            pin_sha256: "ab".repeat(32),
+            rung: Rung::R0,
+            level: Level::O2,
             provenance: Provenance {
                 host: Provenance::host_name(),
                 gcc_version: String::new(),
                 rucc_version: String::new(),
                 rucc_commit: String::new(),
             },
-            cache: Cache::new(std::env::temp_dir()),
-            downloader: Box::new(rrc_fetch::Offline),
-        };
-        let record = excluded(&setup, &manifest, Level::O2, "tamnd/rucc#412");
-        assert_eq!(record.outcome, Outcome::Excluded);
-        assert!(!record.outcome.is_failure());
-        assert!(
-            record
-                .first_diagnostic
-                .as_deref()
-                .is_some_and(|said| said.contains("tamnd/rucc#412")),
-            "a reader of the raw log should not have to open exclusions.toml alongside it"
-        );
+            outcome,
+            phase_reached: Phase::Tested,
+            build_seconds: 1.0,
+            test_seconds: 1.0,
+            peak_rss: None,
+            tests_run: None,
+            tests_passed: None,
+            tests_baseline: None,
+            binary_bytes: None,
+            text_bytes: None,
+            data_bytes: None,
+            first_diagnostic: None,
+            log_path: None,
+            oracle_declared: rrc_manifest::axes::Oracle::SelfChecking,
+            oracle_used: rrc_manifest::axes::Oracle::SelfChecking,
+            parallel: false,
+            observed_outcome: None,
+            excluded_by: None,
+        }
     }
 }

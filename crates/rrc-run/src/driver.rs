@@ -606,6 +606,10 @@ fn record(job: &Job<'_>, trial: &Trial, graded: Graded) -> RunRecord {
         oracle_declared: job.manifest.test.oracle,
         oracle_used: graded.oracle_used,
         parallel: job.manifest.build.parallel,
+        // Set by the scheduler when the register covers this cell, since the driver builds and
+        // grades a cell without knowing or caring whether anybody is counting it.
+        observed_outcome: None,
+        excluded_by: None,
     }
 }
 
