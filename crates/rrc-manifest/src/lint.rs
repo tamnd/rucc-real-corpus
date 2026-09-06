@@ -173,20 +173,64 @@ fn check_source(manifest: &Manifest, corpus: &Corpus, say: &mut Vec<String>) {
     }
 }
 
-fn check_build(manifest: &Manifest, say: &mut Vec<String>) {
+/// What a direct build is going to compile, and whether anything else has quietly set it.
+///
+/// A direct build spells its programs one of two ways and the two do not combine: `sources` and
+/// `output` for the one program case, a `[[build.program]]` for each when there is more than one.
+/// A manifest that uses both would build only the list, so it is refused rather than half read.
+fn check_programs(manifest: &Manifest, say: &mut Vec<String>) {
+    let several = !manifest.build.programs.is_empty();
     if manifest.build.system == BuildSystem::Direct {
-        if manifest.build.sources.is_empty() {
-            say.push("a direct build names no sources, so there is nothing to compile".into());
+        if several && (manifest.build.output.is_some() || !manifest.build.sources.is_empty()) {
+            say.push(
+                "a direct build spells its programs both ways at once, and only the `[[build.program]]` list would be built"
+                    .into(),
+            );
+        } else if !several {
+            if manifest.build.sources.is_empty() {
+                say.push("a direct build names no sources, so there is nothing to compile".into());
+            }
+            if manifest.build.output.is_none() {
+                say.push("a direct build names no output, so there is nothing to run".into());
+            }
         }
-        if manifest.build.output.is_none() {
-            say.push("a direct build names no output, so there is nothing to run".into());
+    } else {
+        if !manifest.build.sources.is_empty() {
+            say.push(
+                "sources are set on a build that has its own build system, and they will be ignored"
+                    .into(),
+            );
         }
-    } else if !manifest.build.sources.is_empty() {
-        say.push(
-            "sources are set on a build that has its own build system, and they will be ignored"
-                .into(),
-        );
+        if several {
+            say.push(
+                "programs are listed on a build that has its own build system, and nothing would build them"
+                    .into(),
+            );
+        }
     }
+    let mut seen: Vec<&str> = Vec::new();
+    for program in &manifest.build.programs {
+        if program.output.trim().is_empty() {
+            say.push("a program in the build names no output, so there is nothing to run".into());
+        } else if seen.contains(&program.output.as_str()) {
+            say.push(format!(
+                "two programs are both built as `{}`, and the second would overwrite the first",
+                program.output
+            ));
+        } else {
+            seen.push(&program.output);
+        }
+        if program.sources.is_empty() {
+            say.push(format!(
+                "the program `{}` names no sources, so there is nothing to compile",
+                program.output
+            ));
+        }
+    }
+}
+
+fn check_build(manifest: &Manifest, say: &mut Vec<String>) {
+    check_programs(manifest, say);
     let configures = matches!(
         manifest.build.system,
         BuildSystem::Configure | BuildSystem::Autoconf | BuildSystem::Cmake
@@ -440,6 +484,67 @@ kind = "standard"
     #[test]
     fn a_good_manifest_is_quiet() {
         assert_eq!(check(&corpus_of(SAMPLE)), Vec::new());
+    }
+
+    /// The same manifest with the one output replaced by a list of programs.
+    fn with_programs(extra: &str) -> String {
+        format!(
+            "{}{extra}",
+            SAMPLE.replace("sources = [\"jsmn_test.c\"]\noutput = \"jsmn_test\"\n", "")
+        )
+    }
+
+    #[test]
+    fn a_direct_build_of_two_programs_is_quiet() {
+        let text = with_programs(
+            "\n[[build.program]]\noutput = \"linenoise-example\"\nsources = [\"linenoise.c\", \"example.c\"]\n\n[[build.program]]\noutput = \"linenoise-test\"\nsources = [\"linenoise.c\", \"test.c\"]\n",
+        );
+        assert_eq!(check(&corpus_of(&text)), Vec::new());
+    }
+
+    #[test]
+    fn a_direct_build_cannot_spell_its_programs_both_ways_at_once() {
+        let text =
+            format!("{SAMPLE}\n[[build.program]]\noutput = \"other\"\nsources = [\"other.c\"]\n");
+        let findings = check(&corpus_of(&text));
+        assert!(
+            findings
+                .iter()
+                .any(|f| f.what.contains("both ways at once"))
+        );
+    }
+
+    #[test]
+    fn a_program_with_no_sources_is_caught() {
+        let text = with_programs("\n[[build.program]]\noutput = \"example\"\nsources = []\n");
+        let findings = check(&corpus_of(&text));
+        assert!(
+            findings
+                .iter()
+                .any(|f| f.what.contains("`example` names no sources"))
+        );
+    }
+
+    #[test]
+    fn two_programs_built_as_the_same_file_are_caught() {
+        let text = with_programs(
+            "\n[[build.program]]\noutput = \"same\"\nsources = [\"a.c\"]\n\n[[build.program]]\noutput = \"same\"\nsources = [\"b.c\"]\n",
+        );
+        let findings = check(&corpus_of(&text));
+        assert!(findings.iter().any(|f| f.what.contains("overwrite")));
+    }
+
+    #[test]
+    fn programs_on_a_build_that_has_its_own_build_system_are_caught() {
+        let text =
+            with_programs("\n[[build.program]]\noutput = \"example\"\nsources = [\"example.c\"]\n")
+                .replace("system = \"direct\"", "system = \"make\"");
+        let findings = check(&corpus_of(&text));
+        assert!(
+            findings
+                .iter()
+                .any(|f| f.what.contains("nothing would build them"))
+        );
     }
 
     #[test]

@@ -179,15 +179,19 @@ pub struct Build {
     /// Build inside this subdirectory of the extracted tree rather than at its root.
     #[serde(default)]
     pub subdir: Option<String>,
-    /// For a direct build, the source files, relative to the build directory.
+    /// For a direct build of one program, the source files, relative to the build directory.
     #[serde(default)]
     pub sources: Vec<String>,
-    /// For a direct build, the program to produce.
+    /// For a direct build of one program, the program to produce.
     #[serde(default)]
     pub output: Option<String>,
-    /// For a direct build, anything that has to go at the end of the link line.
+    /// For a direct build of one program, anything that has to go at the end of the link line.
     #[serde(default)]
     pub link: Vec<String>,
+    /// For a direct build of more than one program, all of them. `spec/06-manifest.md`
+    /// section 6.2.
+    #[serde(default, rename = "program")]
+    pub programs: Vec<Program>,
     /// Arguments passed to `configure` or to `cmake`.
     #[serde(default)]
     pub configure: Vec<String>,
@@ -246,6 +250,64 @@ impl Build {
         }
         Some(format!("{}={value}", carrier.variable))
     }
+
+    /// The programs a direct build produces, whichever way the manifest spelled them.
+    ///
+    /// One program is the ordinary case and it is spelled with `sources` and `output` at the top
+    /// of the table. More than one is spelled with a `[[build.program]]` for each, and the lint
+    /// refuses a manifest that uses both spellings at once.
+    #[must_use]
+    pub fn direct_programs(&self) -> Vec<Program> {
+        if !self.programs.is_empty() {
+            return self.programs.clone();
+        }
+        let Some(output) = self.output.clone() else {
+            return Vec::new();
+        };
+        vec![Program {
+            output,
+            sources: self.sources.clone(),
+            link: self.link.clone(),
+        }]
+    }
+
+    /// The binary whose size is worth recording, which is the one the suite runs.
+    ///
+    /// A build that names one output has already answered this. A build that produces several has
+    /// not, and the honest answer is the program being graded rather than the largest or the last
+    /// one to be linked. `linenoise` is why: it builds an example and a test, the test is what
+    /// runs, and the example only exists because the test drives it.
+    #[must_use]
+    pub fn measured(&self, command: &[String]) -> Option<String> {
+        if let Some(output) = &self.output {
+            return Some(output.clone());
+        }
+        let named = command.first().map(|word| word.trim_start_matches("./"));
+        let programs = self.direct_programs();
+        programs
+            .iter()
+            .find(|program| Some(program.output.as_str()) == named)
+            .or_else(|| programs.last())
+            .map(|program| program.output.clone())
+    }
+}
+
+/// One program a direct build produces.
+///
+/// A project that ships a test which drives a second binary cannot be built by one compiler
+/// invocation, and moving it to its own Makefile would put the level back out of reach. This is
+/// the shape that stays inside `spec/06-manifest.md` section 6.8's rule that the manifest cannot
+/// express arbitrary shell: a list of compiler invocations the harness writes itself, in order.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Program {
+    /// The program to produce, relative to the build directory.
+    pub output: String,
+    /// Its source files, relative to the build directory.
+    pub sources: Vec<String>,
+    /// Anything that has to go at the end of its link line.
+    #[serde(default)]
+    pub link: Vec<String>,
 }
 
 /// The make variable that carries the optimization level, and why the environment cannot.
@@ -510,6 +572,66 @@ oracle = "self-checking"
         let manifest = parse(&text).unwrap();
         let assignment = manifest.build.level_assignment(Level::O2).unwrap();
         assert!(assignment.ends_with(" -I../testvectors"), "{assignment}");
+    }
+
+    const TWO_PROGRAMS: &str = r#"
+[[build.program]]
+output = "linenoise-example"
+sources = ["linenoise.c", "example.c"]
+
+[[build.program]]
+output = "linenoise-test"
+sources = ["linenoise.c", "test.c"]
+"#;
+
+    #[test]
+    fn a_build_that_names_one_output_is_a_list_of_one_program() {
+        let manifest = parse(SAMPLE).unwrap();
+        let programs = manifest.build.direct_programs();
+        assert_eq!(programs.len(), 1);
+        assert_eq!(programs[0].output, "jsmn_test");
+        assert_eq!(programs[0].sources, vec!["jsmn_test.c".to_string()]);
+    }
+
+    #[test]
+    fn a_build_that_names_several_programs_keeps_them_in_the_order_it_named_them() {
+        let text = format!(
+            "{}{TWO_PROGRAMS}",
+            SAMPLE.replace("sources = [\"jsmn_test.c\"]\noutput = \"jsmn_test\"\n", "")
+        );
+        let manifest = parse(&text).unwrap();
+        let programs = manifest.build.direct_programs();
+        assert_eq!(programs.len(), 2);
+        assert_eq!(programs[0].output, "linenoise-example");
+        assert_eq!(programs[1].output, "linenoise-test");
+    }
+
+    #[test]
+    fn the_size_recorded_is_the_size_of_the_program_the_suite_runs() {
+        let text = format!(
+            "{}{TWO_PROGRAMS}",
+            SAMPLE.replace("sources = [\"jsmn_test.c\"]\noutput = \"jsmn_test\"\n", "")
+        );
+        let manifest = parse(&text).unwrap();
+        let command = vec!["./linenoise-example".to_string()];
+        assert_eq!(
+            manifest.build.measured(&command),
+            Some("linenoise-example".to_string())
+        );
+    }
+
+    #[test]
+    fn a_suite_that_is_not_one_of_the_programs_falls_back_to_the_last_one_built() {
+        let text = format!(
+            "{}{TWO_PROGRAMS}",
+            SAMPLE.replace("sources = [\"jsmn_test.c\"]\noutput = \"jsmn_test\"\n", "")
+        );
+        let manifest = parse(&text).unwrap();
+        let command = vec!["./run-them-all.sh".to_string()];
+        assert_eq!(
+            manifest.build.measured(&command),
+            Some("linenoise-test".to_string())
+        );
     }
 
     #[test]
