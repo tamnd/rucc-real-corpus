@@ -36,3 +36,6 @@ why = "the example includes uzlib.h by bare name and the header sits beside the 
 [test]
 command = ["./tgunzip", "tests/corpus.tar.gz", "corpus-out.tar"]
 oracle = "self-checking"
+
+# No [abi] table. tgunzip is the only program here and it wants the input and the output file on the
+# command line, which is not something the cross check passes.

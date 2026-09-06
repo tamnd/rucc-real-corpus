@@ -27,3 +27,39 @@ targets = ["static"]
 [test]
 command = ["make", "teststatic"]
 oracle = "self-checking"
+
+# The whole of zlib works through a z_stream that the caller allocates and the library fills in, and
+# it carries two function pointers the library then calls back through. Crossing the two compilers
+# over that boundary is a direct test of the struct's layout and of the calls made through it.
+# example.c runs with no arguments, checks its own round trips, and prints the same lines every time.
+[abi.archive]
+output = "libz-abi.a"
+sources = [
+  "adler32.c",
+  "compress.c",
+  "crc32.c",
+  "deflate.c",
+  "gzclose.c",
+  "gzlib.c",
+  "gzread.c",
+  "gzwrite.c",
+  "infback.c",
+  "inffast.c",
+  "inflate.c",
+  "inftrees.c",
+  "trees.c",
+  "uncompr.c",
+  "zutil.c",
+]
+
+[abi.driver]
+output = "zlib-abi"
+sources = ["test/example.c"]
+
+[[abi.flags]]
+flag = "-I."
+why = "example.c sits in test and includes zlib.h by bare name, so it wants the top of the tree on the include path the way the generated Makefile compiles it"
+
+[[abi.flags]]
+flag = "-DHAVE_UNISTD_H"
+why = "configure edits this into the zconf.h it generates, and without it the gz functions call lseek with no declaration, which GCC 16 rejects"

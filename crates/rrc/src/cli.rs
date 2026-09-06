@@ -46,6 +46,8 @@ pub enum Command {
     },
     /// The scheduler, which is the normal entry point.
     Run(RunPlan),
+    /// The four way ABI cross check of `spec/08-oracles.md` section 8.5, on its own.
+    Abi(AbiPlan),
     /// Schema, vocabulary and lockfile agreement.
     Lint,
     /// Render records that already exist.
@@ -84,6 +86,31 @@ impl Default for RunPlan {
             levels: None,
             projects: Vec::new(),
             twice: false,
+            out: PathBuf::from("runs/latest"),
+        }
+    }
+}
+
+/// What an ABI cross check covers.
+///
+/// Its own plan rather than a flag on `RunPlan`, because the two select different things. A run
+/// walks rungs and a cross check walks the projects that have an `[abi]` table, which is a
+/// property of the manifest rather than of the ladder.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AbiPlan {
+    /// Only these projects, or every project that has a cross check.
+    pub projects: Vec<String>,
+    /// The levels to cross at, or nothing to take each project's own.
+    pub levels: Option<Vec<Level>>,
+    /// Where the records go.
+    pub out: PathBuf,
+}
+
+impl Default for AbiPlan {
+    fn default() -> Self {
+        Self {
+            projects: Vec::new(),
+            levels: None,
             out: PathBuf::from("runs/latest"),
         }
     }
@@ -171,6 +198,7 @@ fn command(args: &[String]) -> Result<Command, String> {
             one_project(&args[1..], "test").map(|(project, level)| Command::Test { project, level })
         }
         "run" => run(&args[1..]).map(Command::Run),
+        "abi" => abi(&args[1..]).map(Command::Abi),
         "report" => report(&args[1..]),
         other => Err(format!(
             "there is no `{other}` command, and `rrc help` lists the ones there are"
@@ -270,6 +298,25 @@ fn run(args: &[String]) -> Result<RunPlan, String> {
     Ok(plan)
 }
 
+fn abi(args: &[String]) -> Result<AbiPlan, String> {
+    let mut plan = AbiPlan::default();
+    let mut index = 0;
+    while index < args.len() {
+        let arg = args[index].as_str();
+        match arg {
+            "--level" | "--levels" => {
+                plan.levels = Some(parse_levels(&value(args, &mut index, "--levels")?)?);
+            }
+            "--project" => plan.projects.push(value(args, &mut index, "--project")?),
+            "--out" => plan.out = value(args, &mut index, "--out")?.into(),
+            other if other.starts_with('-') => return Err(unknown(other, "abi")),
+            other => plan.projects.push(other.to_string()),
+        }
+        index += 1;
+    }
+    Ok(plan)
+}
+
 fn report(args: &[String]) -> Result<Command, String> {
     let mut input = PathBuf::from("runs/latest/records.jsonl");
     let mut format = Format::Markdown;
@@ -363,6 +410,7 @@ rrc, the harness for rucc-real-corpus
   rrc build <project> [--level O2]          one project, one level
   rrc test <project> [--level O2]           build then run the suite
   rrc run [--rung 0,1] [--levels O0,O2]     the scheduler, the normal entry point
+  rrc abi [<project>...] [--levels O2]      the four way abi cross check, on its own
   rrc lint                                  schema, vocabulary and lockfile agreement
   rrc report [--input FILE] [--format md]   render records that already exist
 
@@ -377,6 +425,11 @@ Options for run:
   --project NAME  one project by name, repeatable, and it walks every rung
   --twice         build everything twice into two roots and compare the bytes
   --out DIR       where the records and the report go, defaulting to runs/latest
+
+Options for abi:
+
+  --project NAME  one project by name, repeatable, and a bare name means the same thing
+  --out DIR       where the records go, defaulting to runs/latest
 
 Options for fetch:
 
@@ -550,7 +603,9 @@ mod tests {
     #[test]
     fn every_command_in_the_spec_table_is_in_the_usage_text() {
         let usage = usage();
-        for command in ["list", "fetch", "build", "test", "run", "lint", "report"] {
+        for command in [
+            "list", "fetch", "build", "test", "run", "abi", "lint", "report",
+        ] {
             assert!(
                 usage.contains(&format!("rrc {command}")),
                 "{command} is undocumented"

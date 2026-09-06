@@ -22,6 +22,9 @@ pub struct Manifest {
     pub build: Build,
     /// How the result is graded.
     pub test: Test,
+    /// The two halves of the ABI cross check, when the project has one.
+    #[serde(default)]
+    pub abi: Option<Abi>,
     /// Which optimization levels it runs at.
     #[serde(default)]
     pub levels: Levels,
@@ -306,6 +309,54 @@ pub struct Program {
     /// Its source files, relative to the build directory.
     pub sources: Vec<String>,
     /// Anything that has to go at the end of its link line.
+    #[serde(default)]
+    pub link: Vec<String>,
+}
+
+/// The two halves of the ABI cross check, from `spec/08-oracles.md` section 8.5.
+///
+/// A static archive and a program that calls into it, both compiled out of the project's own
+/// sources by the harness rather than by the project's build system. The harness then builds the
+/// pair four ways, crossing the two compilers over the two halves, and compares what the three
+/// crossed builds print against what the two GCC halves print.
+///
+/// It is deliberately not the project's own library and its own suite. Every build system on the
+/// list has one compiler in it, and asking `make` for an archive with one compiler and a driver
+/// with another means teaching the manifest to run a build system twice with different variables,
+/// which is the arbitrary shell that `spec/06-manifest.md` section 6.8 refuses. Two lists of
+/// source files is the whole of what this needs, and the harness writes both command lines.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Abi {
+    /// The library half.
+    pub archive: Archive,
+    /// The calling half.
+    pub driver: Driver,
+    /// Flags both halves need on top of `build.flags`, usually the include path the project's own
+    /// build system would have supplied.
+    #[serde(default)]
+    pub flags: Vec<FlagNote>,
+}
+
+/// The library half of the cross check.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Archive {
+    /// The `.a` to produce, relative to the build directory.
+    pub output: String,
+    /// The translation units that go into it, relative to the build directory.
+    pub sources: Vec<String>,
+}
+
+/// The calling half of the cross check.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Driver {
+    /// The program to produce, relative to the build directory.
+    pub output: String,
+    /// Its sources, which call into the archive and print what they got back.
+    pub sources: Vec<String>,
+    /// Anything that has to go after the archive on the link line.
     #[serde(default)]
     pub link: Vec<String>,
 }

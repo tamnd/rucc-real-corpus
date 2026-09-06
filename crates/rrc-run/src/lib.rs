@@ -23,6 +23,8 @@
 //! What ties those together:
 //!
 //! - [`driver`] builds and tests one project in one sandbox and grades the result.
+//! - [`abi`] builds a project's archive and its driver four ways, crossing the two compilers over
+//!   the two halves, which is the one check on the ladder no single compiler run can do.
 //! - [`twice`] compares two builds of the same project, which is what the isolation work was for.
 //! - [`staleness`] re-reads the exclusion register against what the excluded cells actually did.
 //!
@@ -31,6 +33,7 @@
 //! crate stays a library on purpose, so that every question above can be asked and answered
 //! without a command line anywhere near it.
 
+pub mod abi;
 pub mod diagnostic;
 pub mod driver;
 pub mod env;
@@ -43,6 +46,7 @@ pub mod sizes;
 pub mod staleness;
 pub mod twice;
 
+pub use abi::{AbiRecord, Crossing, Pairing};
 pub use diagnostic::Normalizer;
 pub use driver::{Compiler, Graded, Job, Trial, grade};
 pub use env::{EnvPlan, SOURCE_DATE_EPOCH, environment};

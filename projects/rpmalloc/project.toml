@@ -52,3 +52,6 @@ why = "configure.py builds the test binary with this and the heap tests do not c
 [test]
 command = ["./rpmalloc-test"]
 oracle = "self-checking"
+
+# No [abi] table. The suite starts threads and prints how long they took, so what it prints depends
+# on the machine rather than on the compiler.

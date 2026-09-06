@@ -30,3 +30,6 @@ why = "the Makefile's own CFLAGS carried this through BIGFILES and replacing CFL
 [test]
 command = ["make", "test"]
 oracle = "self-checking"
+
+# No [abi] table. libbz2 is the right archive, but every program in the tree reads a file named on
+# the command line or reads stdin, and the cross check runs the driver with neither.

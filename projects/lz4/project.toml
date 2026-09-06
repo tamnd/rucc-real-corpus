@@ -22,3 +22,18 @@ system = "make"
 [test]
 command = ["make", "-C", "tests", "test-fuzzer", "test-frametest", "FUZZER_TIME=-T20s"]
 oracle = "self-checking"
+
+# The fuzzer and the frametest both seed themselves off a clock and print how long they ran, so
+# neither can be the driver here. decompress-partial does one call into the library, checks the bytes
+# it got back and prints one line, which is small but is the same line every time.
+[abi.archive]
+output = "liblz4-abi.a"
+sources = ["lib/lz4.c", "lib/lz4hc.c", "lib/lz4frame.c", "lib/xxhash.c"]
+
+[abi.driver]
+output = "lz4-abi"
+sources = ["tests/decompress-partial.c"]
+
+[[abi.flags]]
+flag = "-Ilib"
+why = "the test includes lz4.h by bare name and the Makefile in tests compiles with the library directory on the path"

@@ -27,3 +27,26 @@ targets = ["static-library"]
 [test]
 command = ["make", "test"]
 oracle = "self-checking"
+
+# The library is one file and the suite is another, which is the split the cross check wants without
+# having to invent one. The seed the suite uses is a constant in utils.c and nothing reads a clock or
+# an environment variable, so the same build prints the same thousand lines every time.
+[abi.archive]
+output = "libmonocypher-abi.a"
+sources = ["src/monocypher.c", "src/optional/monocypher-ed25519.c"]
+
+[abi.driver]
+output = "monocypher-abi"
+sources = ["tests/test.c", "tests/utils.c"]
+
+[[abi.flags]]
+flag = "-Isrc"
+why = "the headers sit beside the sources and everything includes them by bare name, which is what MAIN_I in the makefile is"
+
+[[abi.flags]]
+flag = "-Isrc/optional"
+why = "monocypher-ed25519.h is there and the suite includes it by bare name"
+
+[[abi.flags]]
+flag = "-Itests"
+why = "the suite includes utils.h and vectors.h by bare name, which is the -I tests that TEST_I adds"
