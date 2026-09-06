@@ -169,6 +169,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "rrc-report"
+version = "0.0.3"
+dependencies = [
+ "rrc-manifest",
+ "rrc-run",
+ "serde_json",
+]
+
+[[package]]
 name = "rrc-run"
 version = "0.0.3"
 dependencies = [
