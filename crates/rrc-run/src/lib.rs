@@ -20,11 +20,17 @@
 //! - [`sizes`] measures the binary, because code size is the one quality number that is free.
 //! - [`record`] is the record itself, the outcome taxonomy and the JSON Lines log.
 //!
+//! What ties those together:
+//!
+//! - [`driver`] builds and tests one project in one sandbox and grades the result.
+//! - [`twice`] compares two builds of the same project, which is what the isolation work was for.
+//!
 //! What is not here yet is the scheduler that walks the list and calls all of this in order. That
 //! is the `rrc` binary, and it is a separate pull request because everything above has to be
 //! right before anything is worth measuring.
 
 pub mod diagnostic;
+pub mod driver;
 pub mod env;
 pub mod exec;
 pub mod parse;
@@ -32,8 +38,10 @@ pub mod record;
 pub mod sandbox;
 pub mod shim;
 pub mod sizes;
+pub mod twice;
 
 pub use diagnostic::Normalizer;
+pub use driver::{Compiler, Graded, Job, Trial, grade};
 pub use env::{EnvPlan, SOURCE_DATE_EPOCH, environment};
 pub use exec::{Completed, Ending, Invocation};
 pub use parse::{Counts, counts};
@@ -41,3 +49,4 @@ pub use record::{Outcome, Phase, Provenance, RecordLog, RunRecord, read_log};
 pub use sandbox::{Sandbox, Slot};
 pub use shim::{EntryKind, Shim, ShimEntry, Toolchain};
 pub use sizes::{Sizes, measure};
+pub use twice::{Difference, compare};

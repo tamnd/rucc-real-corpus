@@ -176,6 +176,7 @@ dependencies = [
  "rrc-manifest",
  "serde",
  "serde_json",
+ "sha2",
 ]
 
 [[package]]
