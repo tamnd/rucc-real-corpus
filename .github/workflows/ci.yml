@@ -6,7 +6,8 @@
 #
 # Actions are pinned to a patch version rather than a major tag. A major tag is a moving
 # reference, and a corpus whose whole purpose is reproducing a result cannot have one in its
-# own pipeline.
+# own pipeline. The compiler is pinned the same way, in rust-toolchain.toml, because a runner
+# image ships whatever Rust it shipped with and two runners can disagree during a rollout.
 
 name: ci
 
