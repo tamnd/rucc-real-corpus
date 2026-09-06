@@ -19,25 +19,63 @@ pub enum ArchiveKind {
 }
 
 impl ArchiveKind {
-    /// Work out the kind from the file name.
+    /// Work out the kind from the first bytes of the file.
     ///
-    /// From the name rather than the content because the name is what the manifest pins, and a
-    /// pin whose name says one thing and whose bytes say another is a problem worth failing on
-    /// rather than papering over.
+    /// From the content rather than from the name, because by the time anything gets here the
+    /// file lives in the cache and the cache is content addressed, so the only name it has is its
+    /// own hash and there is no suffix left to read. The url is no better: a codeload url ends in
+    /// the commit it is serving rather than in `.tar.gz`. Only zip has to be told apart by hand,
+    /// because tar works out its own compressor from the bytes the same way this does.
     #[must_use]
     pub fn of(path: &Path) -> Option<Self> {
-        const ZIP: [&str; 1] = [".zip"];
-        const TAR: [&str; 9] = [
-            ".tar", ".tar.gz", ".tgz", ".tar.bz2", ".tbz2", ".tar.xz", ".txz", ".tar.zst",
-            ".tar.lz",
+        /// Enough for the zip and compressor magics at the front, and for the `ustar` an
+        /// uncompressed tar carries at byte 257.
+        const HEAD: usize = 262;
+        /// gzip, bzip2, xz, zstd and lzip, which is the set tar knows how to undo.
+        const COMPRESSED: [&[u8]; 5] = [
+            b"\x1f\x8b",
+            b"BZh",
+            b"\xfd7zXZ\x00",
+            b"\x28\xb5\x2f\xfd",
+            b"LZIP",
         ];
-        let name = path.file_name()?.to_str()?.to_ascii_lowercase();
-        let ends_with_any = |suffixes: &[&str]| suffixes.iter().any(|s| name.ends_with(s));
-        if ends_with_any(&ZIP) {
+
+        let head = head_of(path, HEAD)?;
+        let starts_with = |magic: &[u8]| head.starts_with(magic);
+        // Three signatures, because an empty zip and one written in pieces do not start the same
+        // way as an ordinary one.
+        if [b"PK\x03\x04", b"PK\x05\x06", b"PK\x07\x08"]
+            .iter()
+            .any(|magic| starts_with(*magic))
+        {
             return Some(Self::Zip);
         }
-        ends_with_any(&TAR).then_some(Self::Tar)
+        if COMPRESSED.iter().any(|magic| starts_with(magic)) {
+            return Some(Self::Tar);
+        }
+        (head.len() == HEAD && &head[257..262] == b"ustar").then_some(Self::Tar)
     }
+}
+
+/// Read up to `want` bytes from the front of a file, or nothing at all if it cannot be read.
+///
+/// A short file is not an error here. It is a file that does not start with any signature the
+/// harness knows, which the caller reports as an archive kind it does not open.
+fn head_of(path: &Path, want: usize) -> Option<Vec<u8>> {
+    use std::io::Read;
+    let mut file = std::fs::File::open(path).ok()?;
+    let mut head = vec![0u8; want];
+    let mut filled = 0;
+    while filled < want {
+        match file.read(&mut head[filled..]) {
+            Ok(0) => break,
+            Ok(read) => filled += read,
+            Err(e) if e.kind() == std::io::ErrorKind::Interrupted => {}
+            Err(_) => return None,
+        }
+    }
+    head.truncate(filled);
+    Some(head)
 }
 
 /// Extract `archive` so that `dest` holds the project tree, stripping `strip_components`
@@ -178,18 +216,48 @@ mod tests {
     }
 
     #[test]
-    fn the_kind_comes_from_the_name() {
+    fn the_kind_comes_from_the_bytes_and_not_from_the_name() {
+        let root = scratch("kinds");
+        let kind_of = |name: &str, bytes: &[u8]| {
+            let path = root.join(name);
+            std::fs::write(&path, bytes).unwrap();
+            ArchiveKind::of(&path)
+        };
         assert_eq!(
-            ArchiveKind::of(Path::new("x.tar.gz")),
+            kind_of("gz", b"\x1f\x8b\x08\x00rest"),
             Some(ArchiveKind::Tar)
         );
+        assert_eq!(kind_of("xz", b"\xfd7zXZ\x00rest"), Some(ArchiveKind::Tar));
+        assert_eq!(kind_of("bz2", b"BZh9rest"), Some(ArchiveKind::Tar));
         assert_eq!(
-            ArchiveKind::of(Path::new("x.tar.xz")),
+            kind_of("zst", b"\x28\xb5\x2f\xfdrest"),
             Some(ArchiveKind::Tar)
         );
-        assert_eq!(ArchiveKind::of(Path::new("x.tgz")), Some(ArchiveKind::Tar));
-        assert_eq!(ArchiveKind::of(Path::new("x.zip")), Some(ArchiveKind::Zip));
-        assert_eq!(ArchiveKind::of(Path::new("x.rar")), None);
+        assert_eq!(kind_of("zip", b"PK\x03\x04rest"), Some(ArchiveKind::Zip));
+        assert_eq!(
+            kind_of("empty-zip", b"PK\x05\x06rest"),
+            Some(ArchiveKind::Zip)
+        );
+        assert_eq!(kind_of("nonsense.tar.gz", b"not an archive"), None);
+
+        let mut plain = vec![0u8; 262];
+        plain[257..262].copy_from_slice(b"ustar");
+        assert_eq!(kind_of("tar", &plain), Some(ArchiveKind::Tar));
+        std::fs::remove_dir_all(&root).ok();
+    }
+
+    #[test]
+    fn an_archive_named_after_its_own_hash_still_extracts() {
+        // What the cache actually hands the extractor. This is content addressed storage, so the
+        // file has no suffix on it at all.
+        let root = scratch("no-suffix");
+        let archive = make_tarball(&root, Some("project-1.2.3"));
+        let hashed = root.join("dead0f00");
+        std::fs::rename(&archive, &hashed).unwrap();
+        let dest = root.join("tree");
+        extract(&hashed, &dest, 1).unwrap();
+        assert!(dest.join("main.c").exists());
+        std::fs::remove_dir_all(&root).ok();
     }
 
     #[test]
