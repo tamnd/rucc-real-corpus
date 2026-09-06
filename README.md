@@ -1,5 +1,7 @@
 # rucc-real-corpus
 
+[![ci](https://github.com/tamnd/rucc-real-corpus/actions/workflows/ci.yml/badge.svg)](https://github.com/tamnd/rucc-real-corpus/actions/workflows/ci.yml)
+
 Real world C projects, built unpatched with [rucc](https://github.com/tamnd/rucc) and graded by their own test suites against a GCC 16 baseline.
 
 The compiler's milestone M5 is "SQLite compiles and runs correctly". SQLite ships as a single translation unit of a quarter of a million lines, so the compiler stops at the first thing it cannot do and you learn exactly one fact per attempt. Forty missing features found that way is four weeks of strictly serial work. The same forty features spread across thirty small projects that each stop at a different one is one afternoon, and then the fixes can be done in parallel and in an order chosen by how many projects each one unblocks.
