@@ -5,6 +5,7 @@
 //! the only place that picks an exit status.
 
 pub mod bisect;
+pub mod diff;
 pub mod fetch;
 pub mod lint;
 pub mod list;

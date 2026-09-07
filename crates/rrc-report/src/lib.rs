@@ -11,17 +11,20 @@
 //! - [`cluster`] groups failures by diagnostic, which turns forty red cells into five pieces of
 //!   work.
 //! - [`cost`] is code size and build time as ratios, per project, never averaged.
+//! - [`diff`] compares two runs, which is what turns a corpus into a regression suite.
 //! - [`markdown`] assembles those into the file the nightly job commits.
 //! - [`jsonl`] writes the records themselves, which outlive any format built on them.
 
 pub mod cluster;
 pub mod cost;
+pub mod diff;
 pub mod jsonl;
 pub mod markdown;
 pub mod summary;
 
 pub use cluster::{Cluster, clusters};
 pub use cost::{Cost, costs};
+pub use diff::Diff;
 pub use markdown::Report;
 pub use summary::Summary;
 
