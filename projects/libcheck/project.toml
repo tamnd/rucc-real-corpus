@@ -1,0 +1,40 @@
+[project]
+name = "libcheck"
+rung = 2
+upstream = "https://github.com/libcheck/check"
+licence = "LGPL-2.1-or-later"
+licence-file = "COPYING.LESSER"
+description = "a unit testing framework for c that runs each test in a forked process so a crash is a result rather than the end"
+# deep-macros is the honest first tag. The whole ck_assert family is a tower of macros that expand
+# into each other, ck_assert_int_eq into _ck_assert_int into _ck_assert_msg, each adding stringified
+# arguments and the file and line, and what a user writes on one line becomes a great deal more.
+# The assertion reporting under it is variadic all the way down.
+demands = ["deep-macros", "varargs-depth", "autoconf-probes"]
+
+# The release tarball, which ships a generated configure. The project also has a CMakeLists.txt and
+# the autotools path is the one taken here, both because it is the one upstream's own release is
+# built with and because two cmake projects landed in the last change and a third would say less.
+[source]
+url = "https://github.com/libcheck/check/releases/download/0.15.2/check-0.15.2.tar.gz"
+sha256 = "a8de4e0bacfb4d76dd1c618ded263523b53b85d92a146d8835eb1a52932fa20a"
+strip-components = 1
+
+[build]
+system = "configure"
+
+# Ten, in two automake summaries of one and nine, and the number is much smaller than what runs.
+# check_check is one of the ten and it is libcheck's own suite testing itself, several hundred
+# assertions of it, including the ones that check a failing test is reported as failing. So a
+# miscompile shows up as 9 of 10 rather than as a count that moved, and the log is where the detail
+# is. The run takes about six minutes because a good part of what libcheck has to prove is about
+# timeouts, and a timeout test is slow on purpose.
+[test]
+command = ["make", "check"]
+oracle = "suite"
+parser = "automake"
+baseline-tests = 10
+requires = ["sh"]
+
+[limits]
+build-seconds = 900
+test-seconds = 900
