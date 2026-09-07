@@ -106,6 +106,22 @@ impl Shim {
     }
 
     fn write(dir: &Path, toolchain: &Toolchain, split: Option<&Split>) -> std::io::Result<Self> {
+        // A relative target is refused rather than written, and this is the check that would have
+        // saved a week of baselines. The shim directory goes first on `PATH`, so a `cc` pointing
+        // at the bare word `gcc-16` is a name that exists, resolves to nothing and sends every
+        // build to whatever `cc` comes next. Callers get the compiler from [`locate`], which
+        // returns a path, and anything that did not is a bug here rather than a quiet result.
+        for compiler in [&toolchain.under_test, &toolchain.reference] {
+            if compiler.is_relative() {
+                return Err(std::io::Error::new(
+                    std::io::ErrorKind::InvalidInput,
+                    format!(
+                        "the shim needs an absolute compiler and was given `{}`, which would be a dangling symlink first on PATH",
+                        compiler.display()
+                    ),
+                ));
+            }
+        }
         std::fs::create_dir_all(dir)?;
         let mut entries = Vec::new();
 
@@ -311,24 +327,30 @@ fn make_executable(_path: &Path) -> std::io::Result<()> {
     Ok(())
 }
 
-/// Whether a compiler named on the command line is actually there.
+/// Where a compiler named on the command line actually is.
 ///
 /// A bare name is looked up on `PATH` the way a shell would, and anything with a separator in it
-/// has to be a file already. Worth asking once at the start of a run rather than leaving to the
-/// shim, because `cc` and `gcc` are symlinks and a symlink to a compiler that does not exist is
-/// made happily and without complaint. What comes out the far side is a 127 buried in somebody's
-/// configure, and `checking whether the C compiler works... no` is close to the least useful place
-/// to find out that `--rucc` was pointed at nothing.
+/// has to be a file already and is made absolute against the working directory. The answer is a
+/// path rather than a yes, and that is the whole point of the function: the shim points `cc` and
+/// `gcc` at it with a symlink, and a symlink whose target is the bare word `gcc-16` is a dangling
+/// symlink in a directory that is first on `PATH`, which is not an error anybody sees. It is a
+/// build that quietly finds the next `cc` along and reports the result as ours.
+///
+/// Worth asking once at the start of a run rather than leaving to the shim, because what comes out
+/// the far side otherwise is a 127 buried in somebody's configure, and `checking whether the C
+/// compiler works... no` is close to the least useful place to find out that `--rucc` was pointed
+/// at nothing.
 #[must_use]
-pub fn resolves(compiler: &Path) -> bool {
+pub fn locate(compiler: &Path) -> Option<PathBuf> {
     // More than one component means the caller wrote a path rather than a name, and a path is
     // taken as given. `rucc` is one component, `./rucc` and `/usr/bin/gcc` are more.
     if compiler.components().count() > 1 {
-        return compiler.is_file();
+        if !compiler.is_file() {
+            return None;
+        }
+        return std::path::absolute(compiler).ok();
     }
-    compiler
-        .to_str()
-        .is_some_and(|name| on_path(name).is_some())
+    compiler.to_str().and_then(on_path)
 }
 
 /// Find a command on the current `PATH`, so it can be pinned by absolute path.
@@ -435,23 +457,57 @@ mod tests {
         let root = scratch("resolves");
         let missing = root.join("rucc");
         assert!(
-            !resolves(&missing),
+            locate(&missing).is_none(),
             "a path to nothing resolved, so the shim would be a dangling symlink"
         );
         std::fs::write(&missing, "#!/bin/sh\n").unwrap();
-        assert!(resolves(&missing), "a file that is there did not resolve");
+        assert!(
+            locate(&missing).is_some(),
+            "a file that is there did not resolve"
+        );
         std::fs::remove_dir_all(&root).ok();
     }
 
     #[test]
     fn a_bare_name_is_looked_up_the_way_a_shell_would() {
+        let found = locate(Path::new("sh"))
+            .expect("sh was not found on PATH, and every machine this runs on has one");
         assert!(
-            resolves(Path::new("sh")),
-            "sh was not found on PATH, and every machine this runs on has one"
+            found.is_absolute(),
+            "a name resolved to {}, and a relative one is the dangling symlink this exists to stop",
+            found.display()
         );
         assert!(
-            !resolves(Path::new("rrc-a-compiler-nobody-has-installed")),
+            locate(Path::new("rrc-a-compiler-nobody-has-installed")).is_none(),
             "a name that is on no PATH resolved anyway"
         );
+    }
+
+    #[test]
+    fn a_path_that_is_already_a_path_comes_back_as_one_the_shim_can_point_at() {
+        let root = scratch("absolute");
+        let compiler = root.join("rucc");
+        std::fs::write(&compiler, "#!/bin/sh\n").unwrap();
+        let found = locate(&compiler).expect("a file that is there did not resolve");
+        assert!(
+            found.is_absolute() && found.ends_with("rucc"),
+            "resolved to {}",
+            found.display()
+        );
+        std::fs::remove_dir_all(&root).ok();
+    }
+
+    #[test]
+    fn a_shim_pointed_at_a_bare_name_is_refused_rather_than_written() {
+        let root = scratch("bare");
+        let tools = Toolchain {
+            under_test: PathBuf::from("gcc-16"),
+            reference: PathBuf::from("gcc-16"),
+        };
+        let failed = Shim::create(&root.join("bin"), &tools).expect_err(
+            "a bare name was accepted, so `cc` is a dangling symlink and the next `cc` on PATH does the build",
+        );
+        assert!(failed.to_string().contains("dangling"));
+        std::fs::remove_dir_all(&root).ok();
     }
 }
