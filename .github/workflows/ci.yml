@@ -52,6 +52,10 @@ jobs:
       # here because a style nobody enforces is a style that lasts about four weeks.
       - name: prose style
         run: ./scripts/style.sh
+      # Cheap, and it catches the one mistake that only shows up on the commit that cuts a
+      # release, where nobody is looking for it.
+      - name: the path requirements match the workspace version
+        run: ./scripts/versions.sh
 
   test:
     name: test on ${{ matrix.name }}
