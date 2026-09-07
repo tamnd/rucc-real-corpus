@@ -311,6 +311,26 @@ fn make_executable(_path: &Path) -> std::io::Result<()> {
     Ok(())
 }
 
+/// Whether a compiler named on the command line is actually there.
+///
+/// A bare name is looked up on `PATH` the way a shell would, and anything with a separator in it
+/// has to be a file already. Worth asking once at the start of a run rather than leaving to the
+/// shim, because `cc` and `gcc` are symlinks and a symlink to a compiler that does not exist is
+/// made happily and without complaint. What comes out the far side is a 127 buried in somebody's
+/// configure, and `checking whether the C compiler works... no` is close to the least useful place
+/// to find out that `--rucc` was pointed at nothing.
+#[must_use]
+pub fn resolves(compiler: &Path) -> bool {
+    // More than one component means the caller wrote a path rather than a name, and a path is
+    // taken as given. `rucc` is one component, `./rucc` and `/usr/bin/gcc` are more.
+    if compiler.components().count() > 1 {
+        return compiler.is_file();
+    }
+    compiler
+        .to_str()
+        .is_some_and(|name| on_path(name).is_some())
+}
+
 /// Find a command on the current `PATH`, so it can be pinned by absolute path.
 #[must_use]
 pub fn on_path(name: &str) -> Option<PathBuf> {
@@ -408,5 +428,30 @@ mod tests {
         Shim::create(&bin, &tools).unwrap();
         assert!(bin.join("cc").exists());
         std::fs::remove_dir_all(&root).ok();
+    }
+
+    #[test]
+    fn a_compiler_that_is_not_on_the_machine_does_not_resolve() {
+        let root = scratch("resolves");
+        let missing = root.join("rucc");
+        assert!(
+            !resolves(&missing),
+            "a path to nothing resolved, so the shim would be a dangling symlink"
+        );
+        std::fs::write(&missing, "#!/bin/sh\n").unwrap();
+        assert!(resolves(&missing), "a file that is there did not resolve");
+        std::fs::remove_dir_all(&root).ok();
+    }
+
+    #[test]
+    fn a_bare_name_is_looked_up_the_way_a_shell_would() {
+        assert!(
+            resolves(Path::new("sh")),
+            "sh was not found on PATH, and every machine this runs on has one"
+        );
+        assert!(
+            !resolves(Path::new("rrc-a-compiler-nobody-has-installed")),
+            "a name that is on no PATH resolved anyway"
+        );
     }
 }

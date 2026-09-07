@@ -1,0 +1,39 @@
+[project]
+name = "libyaml"
+rung = 2
+upstream = "https://github.com/yaml/libyaml"
+licence = "MIT"
+licence-file = "License"
+description = "a yaml parser and emitter written as a state machine with a generated table"
+demands = ["switch-dispatch", "autoconf-probes", "pointer-arithmetic"]
+
+# The release tarball rather than a codeload snapshot of the tag, because the release ships a
+# generated configure and that keeps autoreconf off the list of tools the harness has to have.
+[source]
+url = "https://github.com/yaml/libyaml/releases/download/0.2.5/yaml-0.2.5.tar.gz"
+sha256 = "c642ae9b75fee120b2d96c712538bd2cf283228d2337df2cf2988e3c02678ef4"
+strip-components = 1
+
+[build]
+system = "configure"
+# Almost every other line libyaml's configure prints has either the sandbox path in it or the host
+# triple, and neither of those is the same on two machines, so this is the one probe worth pinning.
+# It is also the one that matters most for rucc, since answering it means defining __GNUC__ and
+# then standing behind it for the rest of the run.
+expect-configure = ["checking whether we are using the GNU C compiler... yes"]
+
+# Two, which is smaller than it looks. libyaml builds four test runners but only test-version and
+# test-reader are in TESTS, and the other two are driven by the tests/run-* scripts that make check
+# does not call. So the suite that runs here is the reader over its own corner cases plus a check
+# that the library reports the version it was built as. Measured with gcc 16.2.0, TOTAL 2, PASS 2,
+# FAIL 0.
+[test]
+command = ["make", "check"]
+oracle = "suite"
+parser = "automake"
+baseline-tests = 2
+requires = ["sh"]
+
+[limits]
+build-seconds = 900
+test-seconds = 300

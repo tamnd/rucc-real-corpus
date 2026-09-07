@@ -20,11 +20,11 @@ use rrc_run::abi::{self, AbiRecord};
 use rrc_run::driver::{self, Compiler, Job};
 use rrc_run::record::{Outcome, Provenance, RecordLog, RunRecord};
 use rrc_run::sandbox::Slot;
-use rrc_run::shim::Toolchain;
+use rrc_run::shim::{self, Toolchain};
 use rrc_run::staleness::{self, Stale};
 use rrc_run::twice::{self, Difference, Kind};
 use std::fmt::Write as _;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 /// Everything a run needs that is the same for every cell in it.
 ///
@@ -44,20 +44,43 @@ pub struct Setup {
 
 impl Setup {
     /// Gather it.
-    #[must_use]
-    pub fn new(options: &Options) -> Self {
+    ///
+    /// # Errors
+    ///
+    /// When either compiler is not where the command line said it was. Checked here because this
+    /// is the one place both of them are named, and because every error further in is a symptom
+    /// of this one wearing a worse disguise.
+    pub fn new(options: &Options) -> Result<Self, String> {
         let toolchain = Toolchain {
             under_test: options.under_test.clone(),
             reference: options.reference.clone(),
         };
+        found(&toolchain.under_test, "--rucc")?;
+        found(&toolchain.reference, "--gcc")?;
         let provenance = driver::provenance(&toolchain);
-        Self {
+        Ok(Self {
             toolchain,
             provenance,
             cache: Cache::from_env(),
             downloader: fetch::downloader(),
-        }
+        })
     }
+}
+
+/// Refuse a compiler that is not there, and say which flag names it.
+///
+/// The default for the compiler under test is `rucc` on `PATH`, which is right on the machines
+/// this was written for and wrong on a machine that has the corpus checked out and the compiler
+/// not built yet. That is a normal thing to be, and it deserves one sentence rather than a
+/// half hour in a config.log.
+fn found(compiler: &Path, flag: &str) -> Result<(), String> {
+    if shim::resolves(compiler) {
+        return Ok(());
+    }
+    Err(format!(
+        "no compiler at {}, so pass {flag} PATH to say where it is",
+        compiler.display()
+    ))
 }
 
 /// What one cell produced.
@@ -183,7 +206,7 @@ pub fn build(loaded: &Loaded, options: &Options, name: &str, level: Level) -> Re
     let mut without_suite = manifest.clone();
     without_suite.test.command.clear();
 
-    let setup = Setup::new(options);
+    let setup = Setup::new(options)?;
     let extracted = loaded.extracted(name);
     fetch::ensure(
         manifest,
@@ -219,7 +242,7 @@ pub fn build(loaded: &Loaded, options: &Options, name: &str, level: Level) -> Re
 /// `rrc test`, which is one cell of a run.
 pub fn test(loaded: &Loaded, options: &Options, name: &str, level: Level) -> Result<Done, String> {
     let manifest = loaded.get(name)?;
-    let setup = Setup::new(options);
+    let setup = Setup::new(options)?;
     let cell = cell(&setup, loaded, manifest, level, false)?;
     let ok = !cell.record.outcome.is_failure();
     let text = describe(&cell.record);
@@ -317,7 +340,7 @@ pub fn abi_only(loaded: &Loaded, options: &Options, plan: &AbiPlan) -> Result<Do
     }
 
     let out = absolute(loaded, &plan.out);
-    let setup = Setup::new(options);
+    let setup = Setup::new(options)?;
     let mut records = Vec::new();
     for manifest in chosen {
         for level in levels_asked(manifest, plan.levels.as_deref()) {
@@ -478,7 +501,7 @@ pub fn run(loaded: &Loaded, options: &Options, plan: &RunPlan) -> Result<Done, S
     let mut log = RecordLog::append(&records_at)
         .map_err(|why| format!("opening {}: {why}", records_at.display()))?;
 
-    let setup = Setup::new(options);
+    let setup = Setup::new(options)?;
     let mut records = Vec::new();
     let mut differences = Vec::new();
     let mut crossed = Vec::new();

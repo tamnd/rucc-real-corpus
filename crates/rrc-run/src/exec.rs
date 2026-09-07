@@ -114,7 +114,7 @@ impl Completed {
 /// difference between two machines that nobody wrote down.
 pub fn run(invocation: &Invocation) -> std::io::Result<Completed> {
     let started = Instant::now();
-    let mut child = spawn(invocation)?;
+    let mut child = spawn(invocation).map_err(|error| could_not_start(invocation, &error))?;
 
     // Both pipes are drained on their own threads. A build that writes more than a pipe buffer
     // to stderr while the harness waits on stdout is a deadlock, and a long compile with a lot
@@ -138,6 +138,20 @@ pub fn run(invocation: &Invocation) -> std::io::Result<Completed> {
         stderr,
         seconds: started.elapsed().as_secs_f64(),
     })
+}
+
+/// Say which program failed to start.
+///
+/// A failed spawn reports `No such file or directory (os error 2)` and nothing else. The harness
+/// runs six or seven programs against a project, so on its own that error names none of them and
+/// looks like a missing source tree, which is the one thing it is not. The usual way to get here
+/// is a manifest asking for a build system whose tools are not installed, and the only useful
+/// thing to print is the tool.
+fn could_not_start(invocation: &Invocation, error: &std::io::Error) -> std::io::Error {
+    std::io::Error::new(
+        error.kind(),
+        format!("could not start {}: {error}", invocation.command_line()),
+    )
 }
 
 fn spawn(invocation: &Invocation) -> std::io::Result<Child> {
@@ -398,5 +412,16 @@ mod tests {
     fn a_requirement_is_looked_for_on_the_path_we_built() {
         assert!(exists_on("/usr/bin:/bin", "sh"));
         assert!(!exists_on("/usr/bin:/bin", "a-tool-nobody-has"));
+    }
+
+    #[test]
+    fn a_program_that_will_not_start_is_named_in_the_error() {
+        let mut invocation = shell("true", 10);
+        invocation.program = PathBuf::from("autoreconf-that-is-not-installed");
+        let why = run(&invocation).unwrap_err().to_string();
+        assert!(
+            why.contains("autoreconf-that-is-not-installed"),
+            "the error was {why:?}, which does not say which program failed to start"
+        );
     }
 }
