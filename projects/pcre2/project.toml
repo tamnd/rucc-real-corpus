@@ -1,0 +1,44 @@
+[project]
+name = "pcre2"
+rung = 2
+upstream = "https://github.com/PCRE2Project/pcre2"
+licence = "BSD-3-Clause"
+licence-file = "LICENCE.md"
+description = "the regular expression engine perl compatible enough that everything else links it, compiling patterns to a bytecode its own interpreter walks"
+# The interpreter is the point, and it is worth two of the three slots. pcre2_match is one switch
+# over an opcode byte with hundreds of arms, run inside a loop, with deliberate fall through
+# between arms and a hand written backtracking stack beside it. large-switch is the jump table
+# decision, which on this project is the largest one in the corpus, and switch-dispatch is the fall
+# through. Both are wrong in different ways and both come out as a wrong answer rather than as a
+# crash, which is the kind of bug this corpus exists to find.
+#
+# Not computed-goto, which was the first guess and is wrong. pcre2 only takes that path with the
+# JIT, the JIT is off by default, and this build's config.h leaves SUPPORT_JIT undefined.
+demands = ["large-switch", "switch-dispatch", "autoconf-probes"]
+
+# The release tarball, which ships a generated configure. The tag snapshot does not.
+[source]
+url = "https://github.com/PCRE2Project/pcre2/releases/download/pcre2-10.48/pcre2-10.48.tar.bz2"
+sha256 = "b6c68fdf6f3ac31388b50aa89ff0fc49c00c987c16e7b5146491d12003f2c8ed"
+strip-components = 1
+
+[build]
+system = "configure"
+expect-configure = ["checking whether the compiler supports GNU C... yes"]
+
+# Three: pcre2posix_test, RunTest and RunGrepTest. RunTest is the one that matters and it is a
+# shell script that feeds pcre2test a couple of dozen files of patterns and subjects and diffs the
+# output against a recorded answer, so a single wrong match anywhere in it fails the whole runner.
+# That makes the count coarse in the same way libexpat's is, and reliable in the same way: getting
+# 3 of 3 means every recorded answer came back byte for byte, and getting 2 of 3 means going and
+# reading which file diverged. Measured with gcc 16.2.0, TOTAL 3, PASS 3, FAIL 0.
+[test]
+command = ["make", "check"]
+oracle = "suite"
+parser = "automake"
+baseline-tests = 3
+requires = ["sh"]
+
+[limits]
+build-seconds = 1800
+test-seconds = 900
