@@ -82,6 +82,14 @@ licence-sha256 = "62288e34a3c175dd5497ccd2e5f3eac20b4477a3f2066d5892d0f320ddb60c
 verified = "2026-09-06"
 
 [[project]]
+name = "libyaml"
+url = "https://github.com/yaml/libyaml/releases/download/0.2.5/yaml-0.2.5.tar.gz"
+sha256 = "c642ae9b75fee120b2d96c712538bd2cf283228d2337df2cf2988e3c02678ef4"
+bytes = 609454
+licence-sha256 = "c40112449f254b9753045925248313e9270efa36d226b22d82d4cc6c43c57f29"
+verified = "2026-09-07"
+
+[[project]]
 name = "linenoise"
 url = "https://codeload.github.com/antirez/linenoise/tar.gz/a473823d74b93eab2ba83480df16ed37617493f2"
 sha256 = "3db03aba739bc96f3da3133b9615ccc43246ba2c3628b403b00a470abd3b6a8d"

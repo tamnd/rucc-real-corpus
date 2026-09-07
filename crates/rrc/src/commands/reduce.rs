@@ -27,7 +27,7 @@ use std::fmt::Write as _;
 /// Reduce one file in one project.
 pub fn run(loaded: &Loaded, options: &Options, plan: &ReducePlan) -> Result<Done, String> {
     let manifest = loaded.get(&plan.project)?;
-    let setup = Setup::new(options);
+    let setup = Setup::new(options)?;
     let extracted = loaded.extracted(&manifest.project.name);
     fetch::ensure(
         manifest,
