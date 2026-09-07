@@ -18,13 +18,14 @@
 //! is long enough that somebody stopping it halfway through is a normal event, and the records
 //! it had finished are worth keeping.
 
-use crate::cli::{AbiPlan, InterrogatePlan, Options, RunPlan};
+use crate::cli::{AbiPlan, InterrogatePlan, Options, Reuse, RunPlan};
 use crate::commands::{Done, fetch};
 use crate::corpus::Loaded;
 use rrc_fetch::{Cache, Downloader};
 use rrc_manifest::axes::Level;
 use rrc_manifest::manifest::Manifest;
 use rrc_run::abi::{self, AbiRecord};
+use rrc_run::cache;
 use rrc_run::driver::{self, Baseline, Compiler, Job, Prepared};
 use rrc_run::env;
 use rrc_run::interrogate::{self, Divergence, Names, Where};
@@ -48,6 +49,19 @@ pub struct Setup {
     pub provenance: Provenance,
     /// The archive store.
     pub cache: Cache,
+    /// The record store, which is what stops an unchanged cell being built twice.
+    pub records: cache::Cache,
+    /// The compiler under test, by version string and by the hash of its bytes.
+    ///
+    /// Hashed once here rather than once per cell. A rucc binary is around thirty megabytes and a
+    /// run of rungs 0 through 2 has a hundred and eighty four cells in it, so doing this per cell
+    /// would be five gigabytes of reading to answer a question whose answer cannot change during a
+    /// run. It cannot change during a run because a run that rebuilt its own compiler halfway
+    /// through would already be producing records nobody can read, which is the same reason the
+    /// version strings are asked for once.
+    pub under_test: cache::Compiler,
+    /// The reference compiler, the same two ways.
+    pub reference: cache::Compiler,
     /// How bytes are obtained, which may be a downloader that refuses.
     pub downloader: Box<dyn Downloader>,
     /// The prefixes holding tools the base system does not carry, such as cmake or tclsh.
@@ -84,10 +98,15 @@ impl Setup {
             .iter()
             .map(|dir| dir.to_string_lossy().into_owned())
             .collect();
+        let under_test = cache::Compiler::of(&toolchain.under_test, &provenance.rucc_version);
+        let reference = cache::Compiler::of(&toolchain.reference, &provenance.gcc_version);
         Ok(Self {
             toolchain,
             provenance,
             cache: Cache::from_env(),
+            records: cache::Cache::from_env(),
+            under_test,
+            reference,
             downloader: fetch::downloader(),
             extra_path,
         })
@@ -109,6 +128,77 @@ fn found(compiler: &Path, flag: &str) -> Result<PathBuf, String> {
     })
 }
 
+/// The key for one cell, from everything that could change what it produces.
+///
+/// Assembled here rather than in `rrc_run::cache` because this is the layer that knows all of it.
+/// The cache knows how to hash a list of ingredients and how to put a record in a file. What the
+/// ingredients are is a fact about the scheduler.
+///
+/// The three kinds of thing in `extra` are the ones that are not obvious. The baseline setting is
+/// there because a `--no-baseline` run stores an entry with no reference half, and a later
+/// measured run that hit it would come back with every ratio empty and no way to tell why. The
+/// exclusion issue is there because an excluded cell has its outcome replaced after the build, so
+/// a register entry that was added or removed changes the record without changing anything else in
+/// the key. And each dependency's whole manifest is there because a project linked against this
+/// corpus's gmp produces a different binary when gmp's build recipe moves, and the pin alone would
+/// not notice that.
+///
+/// What is not in `extra` and does not need to be is the flags a level expands to, the build
+/// commands, the test command and the limits. All four are in the manifest, and the manifest goes
+/// in whole, so a change to any of them misses without anybody having to remember to list it.
+fn cache_key(
+    setup: &Setup,
+    loaded: &Loaded,
+    manifest: &Manifest,
+    level: Level,
+    baseline: Baseline,
+    excluded_by: Option<&str>,
+) -> String {
+    let mut extra = vec![
+        format!("baseline={baseline:?}"),
+        format!("excluded-by={}", excluded_by.unwrap_or("")),
+    ];
+    // In the order the manifest names them, which is the order they are built in, so two projects
+    // that need the same two libraries in different orders do not share a key.
+    for need in &manifest.build.needs {
+        let digest = loaded
+            .get(&need.project)
+            .map_or_else(|_| String::from("missing"), cache::digest_of_value);
+        extra.push(format!("needs={} {digest}", need.project));
+    }
+    cache::Ingredients {
+        project: &manifest.project.name,
+        pin: &manifest.source.sha256,
+        level: level.name(),
+        under_test: setup.under_test.clone(),
+        reference: setup.reference.clone(),
+        manifest: &cache::digest_of_value(manifest),
+        host: &setup.provenance.host,
+        harness: env!("CARGO_PKG_VERSION"),
+        extra,
+    }
+    .key()
+}
+
+/// Turn a cache entry back into a cell, with both halves marked as reused.
+///
+/// Marked here and only here. A record's `reused` flag is false everywhere it is built, so the one
+/// way it becomes true is by coming through this function, and there is no path by which a fresh
+/// record can claim to be old or an old one can pass for fresh.
+fn reused(found: cache::Entry) -> Cell {
+    let mut record = found.record;
+    record.reused = true;
+    let reference = found.reference.map(|mut reference| {
+        reference.reused = true;
+        reference
+    });
+    Cell {
+        record,
+        reference,
+        differences: Vec::new(),
+    }
+}
+
 /// What one cell produced.
 pub struct Cell {
     /// The record, which is the thing the harness exists to make.
@@ -122,6 +212,11 @@ pub struct Cell {
 }
 
 /// Build and test one project at one level.
+///
+/// # Errors
+///
+/// When the source cannot be fetched, a dependency is missing, or the build could not be started.
+/// A build that fails is not an error here, it is a record saying it failed.
 pub fn cell(
     setup: &Setup,
     loaded: &Loaded,
@@ -129,6 +224,7 @@ pub fn cell(
     level: Level,
     twice: bool,
     baseline: Baseline,
+    reuse: Reuse,
 ) -> Result<Cell, String> {
     // Found before the build and applied after it. Spec 9.5 is explicit that an excluded cell is
     // built and tested like any other and that the exclusion changes how the result is counted
@@ -141,6 +237,29 @@ pub fn cell(
             .corpus
             .exclusions
             .find(&manifest.project.name, &manifest.project.name, level);
+
+    // Computed before anything is fetched, because everything it needs is in the manifests and a
+    // cell that is going to come out of a file should not first download a tarball to find that
+    // out. A fully cached run of rungs 0 through 2 therefore touches the network not at all and
+    // finishes in the time it takes to read a hundred and eighty four small files.
+    //
+    // Never for a `--twice` run. That check builds the same source twice and compares the
+    // products, and comparing today's build against a copy of yesterday's answer proves nothing.
+    let key = (!twice).then(|| {
+        cache_key(
+            setup,
+            loaded,
+            manifest,
+            level,
+            baseline,
+            entry.map(|entry| entry.issue.as_str()),
+        )
+    });
+    if reuse.reads()
+        && let Some(found) = key.as_ref().and_then(|key| setup.records.get(key))
+    {
+        return Ok(reused(found));
+    }
 
     let extracted = loaded.extracted(&manifest.project.name);
     fetch::ensure(
@@ -173,6 +292,27 @@ pub fn cell(
     } else {
         Vec::new()
     };
+
+    // Kept even when the cell failed, because a failure is a result like any other and rebuilding
+    // the forty projects that do not build yet is most of what a run of the lower rungs spends its
+    // time on. A write that does not work is reported rather than swallowed, per the note in
+    // `rrc_run::cache`, but it is reported as a warning and does not sink the run: a full disk is
+    // a reason to stop caching, not a reason to throw away an hour of records.
+    if reuse.writes()
+        && let Some(key) = key.as_ref()
+    {
+        let entry = cache::Entry {
+            record: record.clone(),
+            reference: both.reference.clone(),
+        };
+        if let Err(why) = setup.records.put(key, &entry) {
+            eprintln!(
+                "warning: could not keep {} at {}: {why}",
+                manifest.project.name,
+                level.name()
+            );
+        }
+    }
 
     Ok(Cell {
         record,
@@ -343,7 +483,19 @@ pub fn test(loaded: &Loaded, options: &Options, name: &str, level: Level) -> Res
     // One project at one level, asked for by hand. The baseline half is measured, because
     // `rrc test` is what somebody runs while looking at one cell and the comparison is most of
     // what there is to look at.
-    let cell = cell(&setup, loaded, manifest, level, false, Baseline::Measure)?;
+    // No cache. `rrc test` is what somebody runs while looking at one cell, usually because they
+    // have just changed something and want to watch it happen, and handing back a record from a
+    // file is the opposite of what they asked for. It costs one cell, which is the thing they were
+    // already waiting for.
+    let cell = cell(
+        &setup,
+        loaded,
+        manifest,
+        level,
+        false,
+        Baseline::Measure,
+        Reuse::Off,
+    )?;
     let ok = !cell.record.outcome.is_failure();
     let text = describe(&cell.record);
     Ok(if ok {
@@ -734,6 +886,36 @@ fn crossings(records: &[AbiRecord]) -> String {
     out
 }
 
+/// The one line a run says about its own cache.
+///
+/// It says how many cells were not built, which is the number somebody wants when a run they
+/// expected to take an hour took four minutes, and it says where the cache is, which is the thing
+/// they need when they want to be rid of it. A run that reused nothing says so rather than saying
+/// nothing, because silence there reads as the cache being broken when in fact it was empty.
+fn reuse_line(records: &[RunRecord], reuse: Reuse, cache: &cache::Cache) -> String {
+    if reuse == Reuse::Off || !cache.is_on() {
+        return String::new();
+    }
+    let Some(root) = cache.root() else {
+        return String::new();
+    };
+    let from_cache = records.iter().filter(|record| record.reused).count();
+    let built = records.len() - from_cache;
+    let what = match (from_cache, built) {
+        (0, _) => format!("nothing to reuse, so all {} were built", cells(built)),
+        (_, 0) => format!(
+            "every one of the {} came out of the cache",
+            cells(from_cache)
+        ),
+        _ => format!(
+            "{} came out of the cache and {} were built",
+            cells(from_cache),
+            cells(built)
+        ),
+    };
+    format!("cache    {what}, in {}\n", root.display())
+}
+
 /// `rrc run`, the scheduler.
 ///
 /// Progress goes to standard error and the report goes to standard output, so that piping the
@@ -803,6 +985,7 @@ pub fn run(loaded: &Loaded, options: &Options, plan: &RunPlan) -> Result<Done, S
         let _ = writeln!(said, "baseline {}", baseline_at.display());
     }
     let _ = writeln!(said, "report   {}", report_at.display());
+    let _ = write!(said, "{}", reuse_line(&records, plan.reuse, &setup.records));
     if !stale.is_empty() {
         let how_many = if stale.len() == 1 {
             "1 entry no longer describes".to_string()
@@ -980,7 +1163,15 @@ fn one_cell(
     level: Level,
     place: (usize, usize),
 ) -> Result<Finished, String> {
-    let cell = cell(setup, loaded, manifest, level, plan.twice, plan.baseline)?;
+    let cell = cell(
+        setup,
+        loaded,
+        manifest,
+        level,
+        plan.twice,
+        plan.baseline,
+        plan.reuse,
+    )?;
     let mut record = cell.record;
     // Stamped here rather than in the driver, because the driver builds one cell and has no way of
     // knowing how many others were in flight beside it.
@@ -1462,6 +1653,77 @@ command = ["./sample"]
         assert_eq!(a_record(Outcome::Passed).concurrency, 1);
     }
 
+    #[test]
+    fn a_run_that_reused_nothing_still_says_what_the_cache_did() {
+        let cache = cache::Cache::at("/tmp/rrc-line");
+        let records = vec![a_record(Outcome::Passed), a_record(Outcome::Passed)];
+        let said = reuse_line(&records, Reuse::Allow, &cache);
+        assert!(said.contains("nothing to reuse"), "{said}");
+        assert!(said.contains("all 2 cells were built"), "{said}");
+        assert!(said.contains("/tmp/rrc-line"), "{said}");
+    }
+
+    #[test]
+    fn the_line_counts_the_two_kinds_of_record_separately() {
+        let cache = cache::Cache::at("/tmp/rrc-line");
+        let mut records = vec![a_record(Outcome::Passed); 3];
+        records[0].reused = true;
+        let said = reuse_line(&records, Reuse::Allow, &cache);
+        assert!(
+            said.contains("1 cell came out of the cache and 2 cells were built"),
+            "{said}"
+        );
+
+        for record in &mut records {
+            record.reused = true;
+        }
+        let all = reuse_line(&records, Reuse::Allow, &cache);
+        assert!(all.contains("every one of the 3 cells"), "{all}");
+    }
+
+    #[test]
+    fn a_run_with_the_cache_switched_off_says_nothing_about_it() {
+        let records = vec![a_record(Outcome::Passed)];
+        assert_eq!(
+            reuse_line(&records, Reuse::Off, &cache::Cache::at("/tmp/rrc-line")),
+            ""
+        );
+        assert_eq!(reuse_line(&records, Reuse::Allow, &cache::Cache::off()), "");
+    }
+
+    #[test]
+    fn a_reused_entry_comes_back_with_both_halves_marked() {
+        // The flag is what stops a reader from taking a fortnight old timing for a fresh one, and
+        // it has to be on the reference half as well, since a ratio is made of both.
+        let entry = cache::Entry {
+            record: a_record(Outcome::Passed),
+            reference: Some(a_record(Outcome::Passed)),
+        };
+        assert!(!entry.record.reused);
+        let cell = reused(entry);
+        assert!(cell.record.reused);
+        assert!(
+            cell.reference
+                .expect("the reference half was dropped")
+                .reused
+        );
+        assert!(
+            cell.differences.is_empty(),
+            "a cached cell cannot carry a determinism result, since it did not build twice"
+        );
+    }
+
+    #[test]
+    fn the_determinism_check_can_never_be_answered_from_the_cache() {
+        // `--twice` builds the same source twice and compares the products. Answering it from a
+        // file would make it pass unconditionally, which is worse than not having the check.
+        assert!(!RunPlan::default().twice);
+        assert_eq!(RunPlan::default().reuse, Reuse::Allow);
+        assert!(Reuse::Allow.reads() && Reuse::Allow.writes());
+        assert!(!Reuse::Refresh.reads() && Reuse::Refresh.writes());
+        assert!(!Reuse::Off.reads() && !Reuse::Off.writes());
+    }
+
     fn a_record(outcome: Outcome) -> RunRecord {
         RunRecord {
             project: "jsmn".to_string(),
@@ -1495,6 +1757,7 @@ command = ["./sample"]
             observed_outcome: None,
             excluded_by: None,
             built_against: Vec::new(),
+            reused: false,
         }
     }
 }

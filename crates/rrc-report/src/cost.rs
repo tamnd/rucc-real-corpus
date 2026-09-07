@@ -70,6 +70,14 @@ pub struct Cost {
     pub mine: Measured,
     /// What the reference cost, when there was a reference build to compare against.
     pub theirs: Option<Measured>,
+    /// Whether this cell was answered from the cache instead of built.
+    ///
+    /// On the cost rather than only on the record, because cost is the one place it changes how a
+    /// number should be read. An outcome from the cache is exactly as true as one from a build,
+    /// since the key covers everything that could change it. Seconds from the cache were measured
+    /// on some earlier day on a machine that was doing something else, so a timing table that
+    /// mixes them in without saying so can show a regression that is not there.
+    pub reused: bool,
 }
 
 impl Cost {
@@ -170,6 +178,7 @@ pub fn costs(records: &[RunRecord], reference: &[RunRecord]) -> Vec<Cost> {
             theirs: by_cell
                 .get(&(record.project.as_str(), record.level.name()))
                 .map(|r| Measured::of(r)),
+            reused: record.reused,
         })
         .collect()
 }
@@ -219,7 +228,7 @@ pub fn render_time(costs: &[Cost]) -> String {
         let _ = writeln!(
             out,
             "| {} | {} | {} | {} | {} | {} | {} | {} | {} | {} |",
-            cost.level.name(),
+            level_of(cost),
             seconds(Some(cost.mine.compile_seconds)),
             seconds(cost.theirs.map(|t| t.compile_seconds)),
             show(cost.time_ratio()),
@@ -232,6 +241,31 @@ pub fn render_time(costs: &[Cost]) -> String {
         );
     }
     out
+}
+
+/// The level a timing row is for, with a dagger on a row whose seconds came out of the cache.
+///
+/// Marked in the time table and nowhere else. The size table needs no mark, because a binary that
+/// was 4096 bytes a fortnight ago under the same compiler and the same source is 4096 bytes now,
+/// and neither does the outcome column, for the same reason. Seconds are the one thing a cache
+/// cannot carry forward, so they are the one thing that gets a footnote.
+fn level_of(cost: &Cost) -> String {
+    if cost.reused {
+        format!("{} [^cached]", cost.level.name())
+    } else {
+        cost.level.name().to_owned()
+    }
+}
+
+/// The footnote the dagger points at, or nothing when no row wears one.
+#[must_use]
+pub fn cached_footnote(costs: &[Cost]) -> String {
+    if costs.iter().all(|cost| !cost.reused) {
+        return String::new();
+    }
+    String::from(
+        "\n[^cached]: These seconds were not measured during this run. The cell hashed to one that had already been run under the same source, the same two compilers, the same manifest and the same machine, so its record was reused rather than rebuilt. The outcome and the sizes are unaffected. Run with `--refresh` for a set of timings measured together.\n",
+    )
 }
 
 /// Render the size half of the detailed comparison, for one project.
@@ -359,6 +393,36 @@ mod tests {
         r.binary_bytes = Some(text * 4);
         r.build_seconds = seconds;
         r
+    }
+
+    #[test]
+    fn a_run_that_built_everything_carries_no_footnote_and_no_marks() {
+        let costs = costs(
+            &[measured("jsmn", 1200, 1.0)],
+            &[measured("jsmn", 1000, 1.0)],
+        );
+        assert!(!costs[0].reused);
+        assert_eq!(cached_footnote(&costs), "");
+        assert!(!render_time(&costs).contains("[^cached]"));
+    }
+
+    #[test]
+    fn a_reused_cell_marks_its_timing_row_and_explains_the_mark_once() {
+        let mut mine = measured("jsmn", 1200, 1.0);
+        mine.reused = true;
+        let costs = costs(&[mine], &[measured("jsmn", 1000, 1.0)]);
+        assert!(costs[0].reused);
+
+        let table = render_time(&costs);
+        assert!(table.contains("[^cached]"), "{table}");
+
+        let note = cached_footnote(&costs);
+        assert!(note.contains("[^cached]:"), "{note}");
+        assert!(note.contains("--refresh"), "{note}");
+
+        // The mark is on the timings only. A binary that was this size under this compiler and
+        // this source a fortnight ago is this size now, so the size table is untouched.
+        assert!(!render_size(&costs).contains("[^cached]"));
     }
 
     #[test]

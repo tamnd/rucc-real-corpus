@@ -91,15 +91,33 @@ Stated in advance because the alternative is that it is decided under pressure, 
 
 ## 12.7 Caching, and what is not cached
 
-**Cached:** the fetched archives, keyed by SHA-256, and the extracted trees, keyed by the same. That is all.
+**Cached:** the fetched archives, keyed by SHA-256, and the extracted trees, keyed by the same. Since 12.9, whole run records too, under the rules there.
 
 **Not cached:** anything built. No `ccache`, no reused object files, no incremental builds between runs. A corpus whose results depend on what was left over from the previous run is not measuring the compiler, and the determinism check of document 07.5 would be measuring the cache.
 
-**This is the answer to why a run is slow, and it is not going to change.** The work a run does is compiling forty projects from nothing, several times each, and the only honest ways to finish sooner are to do the work on more cores at once, to do less of it, or to make the compiler faster. Reusing yesterday's objects would make a run finish in a minute and answer a different question.
+**A build is never partly reused.** That is the line, and it is the whole line. A cell either compiles every object of a project from nothing, or it is not run at all and its previous record is handed back whole. There is no third case where a build starts from something an earlier run left behind, because that is the case whose result belongs to neither run.
 
 **The cache is verified, not trusted.** The hash is checked on every cache hit, per document 06.3, because a corrupted cache entry that is silently reused is a wrong answer with no cause.
 
-## 12.8 Engineering cost
+## 12.9 The record cache
+
+A run of rungs 0 through 2 is a hundred and six minutes of cell time on the reference machine, and on a normal day almost every one of those minutes rebuilds a project whose source, compilers and flags have not moved since the last run. That is fine for a nightly, which has all night. It is not fine for somebody who changed one pass and wants to know what it did, and it is not fine for a pull request.
+
+**The rule.** A cell whose every input hashes to what it hashed before is not built again. Its record is read out of a file instead. Nothing partial is ever reused, so 12.7 stands: the choice is between building the whole cell and not running it.
+
+**The key covers everything that could change the answer.** The source pin, both compilers as bytes and as version strings, the whole manifest, the exclusion register entry, every dependency's manifest, the level, the baseline setting, the host and the harness version. A cache with a key that is missing an ingredient is worse than no cache, because it reports a stale answer confidently and does so most often exactly when somebody has changed the thing the key forgot. So the key is deliberately over specified, and the cost of an ingredient that turns out not to matter is one wasted rebuild.
+
+**Three rules that are not negotiable.**
+
+1. **A reused record says it was reused.** Every record carries a `reused` flag and every report that quotes seconds says how many of them were not measured today. A run assembled partly from this morning and partly from a fortnight ago is a different claim from one gathered in a single sitting, and a reader chasing a timing regression has to be able to tell which they are holding.
+2. **The determinism check never reads it.** Document 07.5 builds the same source twice and compares the products. Comparing today's build against a copy of yesterday's answer would make that check pass unconditionally, which is worse than not having it.
+3. **The nightly never reads it either.** The nightly runs with `--refresh`, which builds every cell and then keeps the results. Its whole value is being the one run whose numbers were all measured on the same machine in the same hour. It still leaves the cache warm, so the next run somebody starts by hand on that machine is nearly free.
+
+**What it does not do.** It does not make the corpus faster. The work of compiling forty projects from nothing is the same work it always was, and the only honest ways to reduce it are more cores, fewer cells, or a faster compiler. What the cache removes is the second, third and fourth time that work is done for no new reason.
+
+**Switching it off.** `--no-cache` neither reads nor writes. `rrc test`, which is what somebody runs while watching one cell, never uses it at all.
+
+## 12.10 Engineering cost
 
 Document 00 puts RC2 at six to nine engineer-weeks and RC5 at four to six months, and the shape of the first number is worth breaking out, since it is the one somebody has to approve.
 

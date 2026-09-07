@@ -76,6 +76,7 @@ mod tests {
             observed_outcome: None,
             excluded_by: None,
             built_against: Vec::new(),
+            reused: false,
         }
     }
 }

@@ -172,6 +172,7 @@ mod tests {
             observed_outcome: Some(observed),
             excluded_by: Some("https://github.com/tamnd/rucc/issues/311".into()),
             built_against: Vec::new(),
+            reused: false,
         }
     }
 
