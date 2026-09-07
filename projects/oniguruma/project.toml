@@ -1,0 +1,36 @@
+[project]
+name = "oniguruma"
+rung = 2
+upstream = "https://github.com/kkos/oniguruma"
+licence = "BSD-2-Clause"
+licence-file = "COPYING"
+description = "the regular expression library ruby and php use, a backtracking matcher with a separate encoding table per character set"
+# Different from pcre2 on purpose. Where pcre2 is one huge switch, oniguruma is a set of per
+# encoding tables of function pointers, so the same job comes out as indirect calls instead of a
+# jump table, and the two of them together say whether a dispatch bug is about one shape or both.
+demands = ["function-pointers", "struct-layout", "autoconf-probes"]
+
+[source]
+url = "https://github.com/kkos/oniguruma/releases/download/v6.9.10/onig-6.9.10.tar.gz"
+sha256 = "2a5cfc5ae259e4e97f86b68dfffc152cdaffe94e2060b770cb827238d769fc05"
+strip-components = 1
+
+[build]
+system = "configure"
+expect-configure = ["checking whether the compiler supports GNU C... yes"]
+
+# Twenty one, and it arrives as two numbers rather than one. oniguruma's make check recurses, so
+# the log has two automake summaries in it, TOTAL 7 from one test directory and TOTAL 14 from the
+# other, and the parser adds them. Worth writing down because a project that grows a third test
+# directory would move this number without anybody touching a test, and the manifest is where that
+# gets noticed. Measured with gcc 16.2.0, 21 of 21, FAIL 0 in both halves.
+[test]
+command = ["make", "check"]
+oracle = "suite"
+parser = "automake"
+baseline-tests = 21
+requires = ["sh"]
+
+[limits]
+build-seconds = 900
+test-seconds = 600

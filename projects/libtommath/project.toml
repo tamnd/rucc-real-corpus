@@ -1,0 +1,44 @@
+[project]
+name = "libtommath"
+rung = 2
+upstream = "https://github.com/libtom/libtommath"
+licence = "Unlicense"
+licence-file = "LICENSE"
+description = "a public domain multiple precision integer library, written as portable C with no assembly anywhere"
+# The reason it is here rather than gmp. gmp gets its speed from hand written assembly, so it
+# tests an assembler more than a compiler. libtommath does the same arithmetic in C, with the
+# carries and the word splitting written out, so what it measures is what the compiler does with
+# a long chain of dependent multiply and add on the widest integer type available.
+demands = ["integer-conversion", "overflow-builtins", "bit-manipulation"]
+
+[source]
+url = "https://github.com/libtom/libtommath/releases/download/v1.3.0/ltm-1.3.0.tar.xz"
+sha256 = "296272d93435991308eb73607600c034b558807a07e829e751142e65ccfa9d08"
+strip-components = 1
+
+# The test binary is built here rather than in the test phase, and that is the whole reason this
+# block names a target at all. libtommath's make test compiles and links demo/test and then stops,
+# so a manifest that ran make test as its suite would report a pass for any compiler that managed
+# to produce a linkable binary, wrong answers included. It builds the library on the way, since
+# test depends on libtommath.a.
+[build]
+system = "make"
+targets = ["test"]
+
+# demo/test walks every operation the library has against known answers, in a loop over operand
+# sizes, and it both returns EXIT_FAILURE on the first disagreement and prints a count at the end.
+# The count is what is taken. Exit status alone would be enough to catch a wrong carry, but it
+# would not catch the suite quietly running fewer tests than it used to, and on a project whose
+# whole job is arithmetic that is the regression worth being able to see. Measured with gcc 16.2.0,
+# "Tests OK/NOP/FAIL: 42/0/0".
+[test]
+command = ["./test"]
+oracle = "suite"
+parser = "custom-regex"
+regex = "Tests OK/NOP/FAIL: (\\d+)/"
+baseline-tests = 42
+requires = ["sh"]
+
+[limits]
+build-seconds = 900
+test-seconds = 900
