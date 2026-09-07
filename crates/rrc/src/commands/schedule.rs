@@ -936,12 +936,23 @@ fn one_at_a_time(
     Ok(())
 }
 
-/// The same run with a worker per job, taking a project at a time.
+/// The same run with a worker per job, taking a cell at a time.
 ///
-/// A project and not a cell is the unit a worker takes, because the four levels of one project all
-/// read the same extracted tree and the two that share a project are the two most likely to want
-/// the same page cache. It also keeps each project's levels in order on one worker, so the O0 line
-/// still arrives before the Os line for the project a person is watching.
+/// The unit is one cell and not one project, and the reason is the shape of a real run rather than
+/// a preference. On the rungs 0 through 2 differential, libjpeg is forty seven minutes of the
+/// hundred and six minutes of cell time, spread over its four levels. A worker that takes the whole
+/// project runs those four in sequence while the other five workers finish everything else and go
+/// idle, so the run cannot end before one worker has done libjpeg alone and the wall clock is the
+/// slowest project rather than the total divided by the jobs. Handing out cells puts those four
+/// levels on four workers.
+///
+/// What it costs is that the levels of one project no longer arrive in order on the terminal. The
+/// report is unaffected, because every cell carries the place the run asked for it in and the
+/// collector sorts on that.
+///
+/// Nothing is shared writably. Every source is extracted before the first worker starts, each cell
+/// clones the tree into its own sandbox, and the only thing two cells of one project now do at the
+/// same time is read it.
 fn concurrently(
     setup: &Setup,
     loaded: &Loaded,
@@ -949,10 +960,21 @@ fn concurrently(
     plan: &RunPlan,
     collector: &Collector,
 ) -> Result<(), String> {
+    let cells: Vec<(usize, usize, &Manifest, Level)> = chosen
+        .iter()
+        .enumerate()
+        .flat_map(|(which, manifest)| {
+            levels_for(manifest, plan)
+                .into_iter()
+                .enumerate()
+                .map(move |(index, level)| (which, index, *manifest, level))
+        })
+        .collect();
+
     let next = std::sync::atomic::AtomicUsize::new(0);
     let failures = std::sync::Mutex::new(Vec::new());
     std::thread::scope(|scope| {
-        for _ in 0..plan.jobs.min(chosen.len()) {
+        for _ in 0..plan.jobs.min(cells.len()) {
             scope.spawn(|| {
                 loop {
                     // A worker that finds an error already recorded stops taking new work rather
@@ -962,22 +984,19 @@ fn concurrently(
                     if stop {
                         return;
                     }
-                    let which = next.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
-                    let Some(manifest) = chosen.get(which) else {
+                    let at = next.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+                    let Some(&(which, index, manifest, level)) = cells.get(at) else {
                         return;
                     };
-                    for (index, level) in levels_for(manifest, plan).into_iter().enumerate() {
-                        let outcome =
-                            one_cell(setup, loaded, plan, manifest, level, (which, index))
-                                .and_then(|finished| {
-                                    collector.keep(&manifest.project.name, level, finished)
-                                });
-                        if let Err(why) = outcome {
-                            if let Ok(mut held) = failures.lock() {
-                                held.push((which, why));
-                            }
-                            return;
+                    let place = (which, index);
+                    let outcome = one_cell(setup, loaded, plan, manifest, level, place).and_then(
+                        |finished| collector.keep(&manifest.project.name, level, finished),
+                    );
+                    if let Err(why) = outcome {
+                        if let Ok(mut held) = failures.lock() {
+                            held.push((place, why));
                         }
+                        return;
                     }
                 }
             });
@@ -987,7 +1006,7 @@ fn concurrently(
     let mut failures = failures
         .into_inner()
         .unwrap_or_else(std::sync::PoisonError::into_inner);
-    failures.sort_by_key(|(which, _)| *which);
+    failures.sort_by_key(|(place, _)| *place);
     match failures.into_iter().next() {
         None => Ok(()),
         Some((_, why)) => Err(why),
