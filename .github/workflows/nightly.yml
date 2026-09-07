@@ -1,0 +1,227 @@
+# The nightly tier of spec/12-ci-and-cost.md section 12.2, on the three hosts of that section.
+#
+# This one builds real projects, so it is the only pipeline here that needs a C compiler, a
+# network and four hours rather than fifteen minutes. It gates nothing on purpose. Section 12.2
+# is explicit about why: a nightly that can block work is a nightly that gets disabled the first
+# busy week, so a red run opens an issue and the merge queue never notices.
+#
+# One thing about it is temporary and worth being honest about at the top of the file rather than
+# in a footnote. There is no rucc binary to install yet, so both halves of every comparison are
+# the same compiler. That makes this a control rather than a differential: every project is built
+# and tested against the reference alone, the config.h differential compares a configure against
+# itself, and the double build compares a compiler against its own output. All three should come
+# back empty, and anything that does not is a bug in this harness, a manifest that describes a
+# project wrongly, or a pin that has rotted upstream. Those are exactly the failures that are
+# invisible until somebody trips over them, which is what a nightly is for. When rucc can be
+# installed, the compiler under test becomes rucc and the same three checks become the real ones
+# with no other change to this file.
+#
+# The compiler is whatever the newest GCC the host can be persuaded to install turns out to be,
+# and the run records the version, because a GCC 16 baseline on a host with no GCC 16 would be a
+# claim rather than a measurement.
+
+name: nightly
+
+on:
+  schedule:
+    # Early UTC, so a red run is waiting rather than arriving in the middle of the day.
+    - cron: "17 6 * * *"
+  workflow_dispatch:
+    inputs:
+      rungs:
+        description: which rungs to run
+        default: "0,1,2"
+        required: false
+
+# Never two at once. Two nightlies would fetch into the same cache and commit the same report.
+concurrency:
+  group: nightly
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: 0
+
+jobs:
+  run:
+    name: nightly on ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    # Section 12.2 budgets four hours per host. The limit is above that rather than at it, so
+    # that a slow night is a slow night and not a truncated report.
+    timeout-minutes: 300
+    permissions:
+      contents: write
+      issues: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: linux x86-64
+            os: ubuntu-24.04
+            reference: true
+          - name: linux arm64
+            os: ubuntu-24.04-arm
+            reference: false
+          - name: macos arm64
+            os: macos-26
+            reference: false
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: Swatinem/rust-cache@v2.9.2
+        with:
+          key: nightly
+
+      # Best effort, and deliberately not fatal. GCC 16 is not in the runner images, so this asks
+      # for it and carries on with whatever is there. The next step says what it ended up with and
+      # every record carries the version, so a night that ran against GCC 14 is legible as such
+      # rather than passing itself off as the baseline.
+      - name: ask for gcc 16
+        run: |
+          if [ "$RUNNER_OS" = "Linux" ]; then
+            sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test || true
+            sudo apt-get update -qq || true
+            sudo apt-get install -y gcc-16 || true
+            sudo apt-get install -y cmake make || true
+          else
+            brew list gcc >/dev/null 2>&1 || brew install gcc || true
+            brew list cmake >/dev/null 2>&1 || brew install cmake || true
+          fi
+
+      - name: pick the compiler
+        id: cc
+        run: |
+          set -euo pipefail
+          found=""
+          for candidate in gcc-16 gcc-15 gcc-14 gcc cc; do
+            if command -v "$candidate" >/dev/null 2>&1; then found=$candidate; break; fi
+          done
+          if [ -z "$found" ]; then
+            echo "no C compiler on this host, and the nightly builds C" >&2
+            exit 1
+          fi
+          echo "name=$found" >> "$GITHUB_OUTPUT"
+          echo "the compiler is $found"
+          "$found" --version | head -1
+
+      - name: cargo build
+        run: cargo build --release -p rrc
+
+      # Separate from the run so that a pin that rotted upstream reads as a fetch failure rather
+      # than as forty projects that did not build. Section 12.3 has the weekly job that checks the
+      # urls on their own, and this is the same check arriving a day earlier.
+      - name: the pins are still there
+        run: cargo run --release -p rrc -- fetch
+
+      # The reference host also builds everything twice and compares the bytes, which is the
+      # determinism check of section 07.5. The other two hosts skip it, because a compiler that is
+      # not deterministic is not deterministic anywhere and paying for the answer three times buys
+      # nothing.
+      - name: the run
+        id: run
+        run: |
+          set +e
+          cargo run --release -p rrc -- \
+            --rucc ${{ steps.cc.outputs.name }} --gcc ${{ steps.cc.outputs.name }} \
+            run --rung ${{ inputs.rungs || '0,1,2' }} ${{ matrix.reference && '--twice' || '' }}
+          echo "status=$?" >> "$GITHUB_OUTPUT"
+
+      # Configure twice and compare what the two decided, per section 8.8. With one compiler on
+      # both sides this has to come back empty, and a difference means the interrogation itself is
+      # not reproducible, which would make every real differential unreadable.
+      - name: the interrogation
+        id: interrogate
+        run: |
+          set +e
+          cargo run --release -p rrc -- \
+            --rucc ${{ steps.cc.outputs.name }} --gcc ${{ steps.cc.outputs.name }} \
+            interrogate
+          echo "status=$?" >> "$GITHUB_OUTPUT"
+
+      - name: the report
+        if: always()
+        run: |
+          set -euo pipefail
+          mkdir -p out
+          cargo run --release -p rrc -- report --format markdown > out/latest.md || true
+          cargo run --release -p rrc -- report --features --input runs/latest/records.jsonl > out/features.md || true
+          cp runs/latest/records.jsonl out/records.jsonl 2>/dev/null || true
+
+      # The run flavoured feature map is an artifact rather than a commit, which is a deliberate
+      # departure from the letter of section 12.2 and the reason is in the spec next to it. The
+      # committed `reports/features.md` is generated from the corpus alone so that the per commit
+      # job can regenerate it and diff, and a map with a run behind it would fail that check every
+      # morning. The one with the outcome column in it lives here.
+      - uses: actions/upload-artifact@v7.0.1
+        if: always()
+        with:
+          name: nightly-${{ matrix.os }}
+          path: out
+          retention-days: 30
+
+      # Only the reference host commits, and only on the schedule. Three hosts pushing the same
+      # file would be three races, and section 11.4 refuses to compare cost across machines
+      # anyway, so the committed history is one machine's history or it is nothing.
+      - name: commit the report
+        if: matrix.reference && github.event_name == 'schedule'
+        run: |
+          set -euo pipefail
+          cp out/latest.md reports/latest.md
+          if git diff --quiet -- reports/latest.md; then
+            echo "the report did not move"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/latest.md
+          git commit -m "Nightly report for $(date -u +%Y-%m-%d)"
+          for attempt in 1 2 3; do
+            git fetch --quiet origin main
+            git rebase --quiet origin/main && git push origin HEAD:main && exit 0
+            sleep 5
+          done
+          echo "could not push the report" >&2
+          exit 1
+
+      # Section 12.2 wants one issue per cluster, deduplicated by diagnostic. This is one issue
+      # per host per night, deduplicated by title, which is the part of that worth having before
+      # the clustering is wired up: it says a host is red, it carries the report that says how,
+      # and it never opens a second copy of itself.
+      - name: say so if it is red
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          run_status="${{ steps.run.outputs.status || '2' }}"
+          probe_status="${{ steps.interrogate.outputs.status || '2' }}"
+          if [ "$run_status" = "0" ] && [ "$probe_status" = "0" ]; then
+            echo "nothing to report"
+            exit 0
+          fi
+          title="nightly: ${{ matrix.name }} needs a look"
+          body=$(mktemp)
+          {
+            echo "The nightly on ${{ matrix.name }} came back with something in it. The run exited $run_status and the interrogation exited $probe_status, where 0 is nothing to look at, 1 is a result that wants attention and 2 is the command not running at all."
+            echo
+            echo "The compiler on both sides was ${{ steps.cc.outputs.name }}, so every comparison here is a control and anything red is this corpus rather than a compiler under test. The whole run is attached to the workflow run as an artifact."
+            echo
+            echo "Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+            echo
+            if [ -f out/latest.md ]; then
+              echo '<details><summary>The report</summary>'
+              echo
+              head -c 40000 out/latest.md
+              echo
+              echo '</details>'
+            fi
+          } > "$body"
+          existing=$(gh issue list --state open --search "\"$title\" in:title" --json number,title \
+            --jq ".[] | select(.title == \"$title\") | .number" | head -1)
+          if [ -n "$existing" ]; then
+            gh issue comment "$existing" --body-file "$body"
+          else
+            gh issue create --title "$title" --label kind/report --label area/ci --body-file "$body"
+          fi

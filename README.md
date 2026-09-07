@@ -80,6 +80,8 @@ The same file ends with the SQLite column, which is the one table this whole cor
 
 Exit codes are `0` when there is nothing for a person to look at, `1` when the run happened and something in it wants attention, and `2` when the run did not happen at all because the command line was wrong or the corpus would not load. A failing project and a broken invocation are different problems and CI should be able to tell them apart.
 
+There are two pipelines. The one on every commit builds no C at all: it checks formatting, lints, the house style of the prose, that the manifests agree with the lockfile and the vocabulary, and that `reports/features.md` is what regenerating it would produce. It has a fifteen minute budget and it is nowhere near it. The nightly is the one that builds things, on Linux x86-64, Linux arm64 and macOS arm64, and it gates nothing, because a nightly that can block work gets disabled the first busy week. It opens an issue instead. Until there is a rucc binary to install, both halves of every comparison in it are the same compiler, which makes it a control rather than a differential: the pins are fetched and verified, every project is built and tested, configure is run twice and compared against itself, and the reference host builds everything a second time and compares the bytes. All of that should come back empty, and anything that does not is this corpus being wrong rather than a compiler being wrong, which is the class of failure that is otherwise invisible until somebody new tries to reproduce a result.
+
 ## The specification
 
 Sixteen documents under `spec/`. Start with `spec/00-README.md`.
