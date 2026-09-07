@@ -154,7 +154,7 @@ checksum = "d6f6ff9a378485b298a5286656da665ba74413d36db0979633275d2e708145d4"
 
 [[package]]
 name = "rrc"
-version = "0.2.1"
+version = "0.2.2"
 dependencies = [
  "rrc-fetch",
  "rrc-manifest",
@@ -164,7 +164,7 @@ dependencies = [
 
 [[package]]
 name = "rrc-fetch"
-version = "0.2.1"
+version = "0.2.2"
 dependencies = [
  "rrc-manifest",
  "sha2",
@@ -172,7 +172,7 @@ dependencies = [
 
 [[package]]
 name = "rrc-manifest"
-version = "0.2.1"
+version = "0.2.2"
 dependencies = [
  "serde",
  "toml",
@@ -180,7 +180,7 @@ dependencies = [
 
 [[package]]
 name = "rrc-report"
-version = "0.2.1"
+version = "0.2.2"
 dependencies = [
  "rrc-manifest",
  "rrc-run",
@@ -189,7 +189,7 @@ dependencies = [
 
 [[package]]
 name = "rrc-run"
-version = "0.2.1"
+version = "0.2.2"
 dependencies = [
  "regex",
  "rrc-manifest",
