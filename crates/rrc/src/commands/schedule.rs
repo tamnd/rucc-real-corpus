@@ -98,7 +98,7 @@ pub fn cell(
     )?;
 
     let workspace = loaded.workspace();
-    let job = job(setup, manifest, level, &extracted, &workspace);
+    let job = job_for(setup, manifest, level, &extracted, &workspace);
     let mut record = driver::run(&job, Slot::A)
         .map_err(|why| format!("{} at {}: {why}", manifest.project.name, level.name()))?;
     if let Some(entry) = entry {
@@ -132,7 +132,7 @@ fn compare_two_builds(
     workspace: &std::path::Path,
 ) -> Result<Vec<Difference>, String> {
     let paired = workspace.join("twice");
-    let job = job(setup, manifest, level, extracted, &paired);
+    let job = job_for(setup, manifest, level, extracted, &paired);
     let first = driver::attempt(&job, Slot::A, Compiler::UnderTest)
         .map_err(|why| format!("{} first build: {why}", manifest.project.name))?;
     let second = driver::attempt(&job, Slot::B, Compiler::UnderTest)
@@ -141,7 +141,7 @@ fn compare_two_builds(
         .map_err(|why| format!("{} comparing two builds: {why}", manifest.project.name))
 }
 
-fn job<'a>(
+pub fn job_for<'a>(
     setup: &'a Setup,
     manifest: &'a Manifest,
     level: Level,
@@ -193,7 +193,7 @@ pub fn build(loaded: &Loaded, options: &Options, name: &str, level: Level) -> Re
     )?;
 
     let workspace = loaded.workspace();
-    let job = job(&setup, &without_suite, level, &extracted, &workspace);
+    let job = job_for(&setup, &without_suite, level, &extracted, &workspace);
     let trial = driver::attempt(&job, Slot::A, Compiler::UnderTest)
         .map_err(|why| format!("{name} at {}: {why}", level.name()))?;
 
@@ -287,7 +287,7 @@ pub fn cross(
     // Its own workspace, so that the four cross trees do not sit where the graded build's tree is
     // about to be created and get deleted halfway through by a run of the ordinary kind.
     let workspace = loaded.workspace().join("abi");
-    let job = job(setup, manifest, level, &extracted, &workspace);
+    let job = job_for(setup, manifest, level, &extracted, &workspace);
     abi::check(&job).map_err(|why| format!("{} at {}: {why}", manifest.project.name, level.name()))
 }
 

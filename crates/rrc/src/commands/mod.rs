@@ -4,6 +4,7 @@
 //! rather than printing and exiting, so that `main` is the only place that knows about stdout and
 //! the only place that picks an exit status.
 
+pub mod bisect;
 pub mod fetch;
 pub mod lint;
 pub mod list;

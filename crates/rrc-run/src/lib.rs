@@ -25,6 +25,8 @@
 //! - [`driver`] builds and tests one project in one sandbox and grades the result.
 //! - [`abi`] builds a project's archive and its driver four ways, crossing the two compilers over
 //!   the two halves, which is the one check on the ladder no single compiler run can do.
+//! - [`bisect`] builds the tree with the reference except for a subset built with the compiler
+//!   under test, and searches over the subset until the failure has a file name on it.
 //! - [`twice`] compares two builds of the same project, which is what the isolation work was for.
 //! - [`staleness`] re-reads the exclusion register against what the excluded cells actually did.
 //!
@@ -34,6 +36,7 @@
 //! without a command line anywhere near it.
 
 pub mod abi;
+pub mod bisect;
 pub mod diagnostic;
 pub mod driver;
 pub mod env;
@@ -47,13 +50,14 @@ pub mod staleness;
 pub mod twice;
 
 pub use abi::{AbiRecord, Crossing, Pairing};
+pub use bisect::{BisectRecord, Status};
 pub use diagnostic::Normalizer;
-pub use driver::{Compiler, Graded, Job, Trial, grade};
+pub use driver::{Compiler, Dispatch, Graded, Job, Trial, grade};
 pub use env::{EnvPlan, SOURCE_DATE_EPOCH, environment};
 pub use exec::{Completed, Ending, Invocation};
 pub use parse::{Counts, counts};
 pub use record::{Outcome, Phase, Provenance, RecordLog, RunRecord, read_log};
 pub use sandbox::{Sandbox, Slot};
-pub use shim::{EntryKind, Shim, ShimEntry, Toolchain};
+pub use shim::{EntryKind, Shim, ShimEntry, Split, Toolchain};
 pub use sizes::{Sizes, measure};
 pub use twice::{Difference, Kind, compare};
