@@ -1,0 +1,46 @@
+[project]
+name = "libpsl"
+rung = 2
+upstream = "https://github.com/rockdaboot/libpsl"
+licence = "MIT"
+licence-file = "COPYING"
+description = "the public suffix list as a library, which is a generated lookup table and the code that searches it"
+# The interesting part is the generated table. libpsl builds a static data structure from the
+# public suffix list at build time and then does a binary search over it, so what is under test is
+# a large const array laid out one way and read back another, and the string comparison that walks
+# a hostname backwards a label at a time.
+demands = ["struct-layout", "pointer-arithmetic", "autoconf-probes"]
+
+[source]
+url = "https://github.com/rockdaboot/libpsl/releases/download/0.21.5/libpsl-0.21.5.tar.gz"
+sha256 = "1dcc9ceae8b128f3c0b3f654decd0e1e891afc6ff81098f227ef260449dae208"
+strip-components = 1
+
+[build]
+system = "configure"
+# Both of these are libpsl's own switches, section 9.3 case one, and the reason is reproducibility
+# rather than anything being broken. Left alone, configure goes looking for libidn2, libicu and
+# libidn and builds whichever it finds, so what gets compiled depends on what is installed on the
+# machine. On this laptop it found a homebrew libidn2 and then stopped because the libunistring
+# that goes with it was not there. Three hosts auto-detecting three different answers is exactly
+# the kind of difference that would make a nightly disagree for a reason that is not the compiler,
+# so the configuration is named here and is the same everywhere. What is lost is the unicode
+# handling, which is a dependency's code rather than libpsl's, and what is kept is the built in
+# suffix list and the lookup over it, which is the part this project is on the list for.
+configure = ["--enable-runtime=no", "--enable-builtin=yes"]
+
+# Eight under gcc 16.2.0, in two automake summaries rather than one. Three of them are the fuzzer
+# entry points run over their checked in corpus, which is a real test here even though the word
+# fuzzer suggests otherwise, since it is a fixed set of inputs and a fixed expected outcome. The
+# other five are the lookup tests, and test-is-public-builtin is the one that reads the generated
+# table, which is why this project is worth having.
+[test]
+command = ["make", "check"]
+oracle = "suite"
+parser = "automake"
+baseline-tests = 8
+requires = ["sh"]
+
+[limits]
+build-seconds = 900
+test-seconds = 600

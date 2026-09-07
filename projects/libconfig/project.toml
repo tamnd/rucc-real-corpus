@@ -1,0 +1,46 @@
+[project]
+name = "libconfig"
+rung = 2
+upstream = "https://github.com/hyperrealm/libconfig"
+licence = "LGPL-2.1-or-later"
+licence-file = "COPYING.LIB"
+description = "a structured configuration file library, built around a flex lexer and a bison parser"
+# The generated lexer and parser are the point. scanner.c is a flex table of shorts read through a
+# chain of macros, and grammar.c is a bison table read the same way, so this is a lot of static
+# array data indexed by arithmetic on values that came out of the previous table lookup. Machine
+# written C looks nothing like the hand written kind and exercises different parts of a compiler,
+# which is the reason to have one of these on the list.
+demands = ["large-switch", "deep-macros", "pointer-arithmetic"]
+
+# The upstream dist tarball rather than a github tag snapshot. It matters here in a way it does not
+# for a cmake project, because this one ships the generated configure and, just as important, the
+# generated scanner.c and grammar.c. Taking the tag instead would need autoreconf, flex and bison
+# on every host, and would mean the lexer tables under test were whatever version of flex the host
+# happened to have rather than the ones the release was cut with.
+[source]
+url = "https://hyperrealm.github.io/libconfig/dist/libconfig-1.8.1.tar.gz"
+sha256 = "c73ee3d914ec68c99b61e864832931e9a7112eeabfb449dad217fd83e385cbdf"
+strip-components = 1
+
+[build]
+system = "configure"
+# libconfig ships a C++ wrapper and builds it by default. Nothing in this corpus measures a C++
+# compiler, so building it would mean half the tree was compiled by whatever c++ the host has, and
+# a green result would be partly somebody else's. The switch is libconfig's own.
+configure = ["--disable-cxx"]
+
+# Five under gcc 16.2.0, and the number flatters the project. Four of them are the examples, which
+# parse a file and print it and pass if they exit zero, so they catch a crash and nothing finer.
+# The fifth is libconfig_tests, which is the tinytest suite and is where the actual checking
+# happens. That is worth saying out loud because a four in five drop here would look like a broad
+# failure and would almost certainly be one bug in the parser showing up four times.
+[test]
+command = ["make", "check"]
+oracle = "suite"
+parser = "automake"
+baseline-tests = 5
+requires = ["sh"]
+
+[limits]
+build-seconds = 900
+test-seconds = 600
