@@ -294,7 +294,14 @@ pub fn attempt_with(job: &Job<'_>, slot: Slot, dispatch: Dispatch<'_>) -> std::i
         job.manifest.test.regex.as_deref(),
         &format!("{}\n{}", completed.stdout, completed.stderr),
     );
-    if trial.first_diagnostic.is_none() {
+    // Only when the suite failed. A suite that passed and wrote to stderr on the way has not told
+    // us about an error, it has told us about a test, and the two look identical to a scraper that
+    // is only looking for a line shaped like a diagnostic. zstd is the case that found this: its
+    // own tests check that the CLI rejects a number too large for 32 bits, so a green zstd run
+    // reported "first error numeric value overflows 32-bit unsigned int", which is the program
+    // under test doing exactly what it was asked to do. The build phase scrape above is the one
+    // that matters anyway, because that stderr is the compiler's.
+    if trial.first_diagnostic.is_none() && !completed.ending.is_success() {
         trial.first_diagnostic = normalizer.first(&completed.stderr);
     }
     trial.test = Some(completed);
@@ -993,6 +1000,46 @@ oracle = "self-checking"
         assert_eq!(record.rung, Rung::R0);
         assert!(record.binary_bytes.is_some_and(|bytes| bytes > 0));
         assert!(record.build_seconds > 0.0);
+    }
+
+    #[test]
+    fn a_suite_that_passed_and_wrote_to_stderr_did_not_report_an_error() {
+        // The shape of a real one. zstd's own tests check that its CLI rejects a number too large
+        // for 32 bits, so the suite prints something that reads exactly like a diagnostic and then
+        // exits zero, and a green run used to come back saying "first error numeric value
+        // overflows 32-bit unsigned int".
+        let source = r#"
+#include <stdio.h>
+int main(void){ fprintf(stderr, "error: numeric value overflows 32-bit unsigned int\n"); return 0; }
+"#;
+        let Some(f) = fixture("noisy", source) else {
+            return;
+        };
+        let manifest = manifest("");
+        let record = run(&job(&f, &manifest), Slot::A).unwrap();
+        assert_eq!(record.outcome, Outcome::Passed);
+        assert_eq!(
+            record.first_diagnostic, None,
+            "a suite that passed had its own output reported as the compiler's error"
+        );
+    }
+
+    #[test]
+    fn a_suite_that_failed_still_has_its_stderr_read() {
+        let source = r#"
+#include <stdio.h>
+int main(void){ fprintf(stderr, "error: the thing went wrong\n"); return 1; }
+"#;
+        let Some(f) = fixture("loud", source) else {
+            return;
+        };
+        let manifest = manifest("");
+        let record = run(&job(&f, &manifest), Slot::A).unwrap();
+        assert!(record.outcome.is_failure());
+        assert!(
+            record.first_diagnostic.is_some(),
+            "the one case where a suite's stderr is worth reading is the one that got dropped"
+        );
     }
 
     #[test]

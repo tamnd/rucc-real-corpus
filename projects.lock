@@ -34,6 +34,14 @@ licence-sha256 = "9577b9c846f61fd69a0d8ac965998c6450c7d8969f71f0bb4a931b91aebad2
 verified = "2026-09-06"
 
 [[project]]
+name = "gdbm"
+url = "https://ftp.gnu.org/gnu/gdbm/gdbm-1.26.tar.gz"
+sha256 = "6a24504a14de4a744103dcb936be976df6fbe88ccff26065e54c1c47946f4a5e"
+bytes = 1226591
+licence-sha256 = "690d762f2e8e149ab1e2d6a409a3853b6151a2533b2382fae549a176d6bedecf"
+verified = "2026-09-07"
+
+[[project]]
 name = "heatshrink"
 url = "https://codeload.github.com/atomicobject/heatshrink/tar.gz/7d419e1fa4830d0b919b9b6a91fe2fb786cf3280"
 sha256 = "b18a1b7ad6f51eac7ac1a81ca072703bd21d6d8727c05cd505843643705af65d"
@@ -270,3 +278,11 @@ sha256 = "d9e270d46252734aa49770fbc544125391617956266f220bd63216c834f3a522"
 bytes = 1572004
 licence-sha256 = "845efc77857d485d91fb3e0b884aaa929368c717ae8186b66fe1ed2495753243"
 verified = "2026-09-06"
+
+[[project]]
+name = "zstd"
+url = "https://github.com/facebook/zstd/releases/download/v1.5.7/zstd-1.5.7.tar.gz"
+sha256 = "eb33e51f49a15e023950cd7825ca74a4a2b43db8354825ac24fc1b7ee09e6fa3"
+bytes = 2434947
+licence-sha256 = "7055266497633c9025b777c78eb7235af13922117480ed5c674677adc381c9d8"
+verified = "2026-09-07"

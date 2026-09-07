@@ -1,0 +1,50 @@
+[project]
+name = "gdbm"
+rung = 2
+upstream = "https://www.gnu.org.ua/software/gdbm/"
+licence = "GPL-3.0-or-later"
+licence-file = "COPYING"
+description = "the gnu key value database, a hash table written straight onto a file with the on disk layout declared as structs"
+# It is here for the file format. gdbm reads and writes its bucket and directory structures as
+# structs mapped over file offsets, so the layout the compiler chooses is the layout on disk, and
+# a padding decision that differs from GCC's shows up as a database that cannot be reopened.
+demands = ["struct-layout", "bit-manipulation", "autoconf-probes"]
+
+[source]
+url = "https://ftp.gnu.org/gnu/gdbm/gdbm-1.26.tar.gz"
+sha256 = "6a24504a14de4a744103dcb936be976df6fbe88ccff26065e54c1c47946f4a5e"
+strip-components = 1
+
+# Readline is off, and that is a decision about the host rather than about gdbm. Its configure
+# finds a readline on macOS, because libedit installs a compatibility header, and then the build
+# fails on history_list which that compatibility layer does not have. None of that is about the
+# compiler under test, and a project that builds on Linux and not on a laptop for a reason nobody
+# can act on is a project that will get ignored. gdbm is here for its on disk structures and the
+# interactive tool is not part of that.
+[build]
+system = "configure"
+expect-configure = ["checking whether the compiler supports GNU C... yes"]
+configure = ["--without-readline", "--enable-libgdbm-compat"]
+
+# gdbm uses autotest rather than automake TESTS, so make check prints "All 38 tests were
+# successful." and no automake summary at all, which is why this needs the regex. The regex does
+# not anchor on "All", because autotest drops that word and writes "27 tests were successful."
+# the moment anything skips, and a pattern that only matched the happy wording would report no
+# count on exactly the runs worth looking at.
+#
+# The 38 is only 38 because of --enable-libgdbm-compat. Without it eleven of these skip, the ones
+# covering the dbm and ndbm compatibility entry points, and the suite reports 27. Those eleven are
+# worth having rather than skipping, since they open and read databases through a second set of
+# structs laid over the same file, which is more pressure on the layout than the native API alone.
+# Measured with gcc 16.2.0, all 38 successful, nothing skipped.
+[test]
+command = ["make", "check"]
+oracle = "suite"
+parser = "custom-regex"
+regex = "(\\d+) tests were successful"
+baseline-tests = 38
+requires = ["sh"]
+
+[limits]
+build-seconds = 900
+test-seconds = 900
