@@ -20,7 +20,11 @@ Three tiers, three budgets, and a rule about what happens when a budget is excee
 
 **Three hosts.** Parent document 02's axis four names three hosts and three targets. The nightly runs on Linux x86-64, macOS aarch64 and one BSD, because a corpus that only runs where the developers work is a corpus that discovers portability failures at release time.
 
-**It commits `reports/latest.md`** and `reports/features.md` to the default branch, per documents 11.7 and 10.6.
+**It commits `reports/latest.md`** to the default branch, per document 11.7, and from the reference host alone, because three hosts pushing the same file is three races and document 11.4 refuses to compare cost across machines anyway.
+
+`reports/features.md` is not committed by the nightly and the reason is worth writing down, because the obvious reading of section 10.6 is that it should be. The committed map is generated from the corpus alone, with no run behind it, which is what lets the per commit job regenerate it and diff it and so catch a stale one on a host with no compiler and no network. A map generated with a run behind it is a different file, since it has an outcome column and a different ordering, so a nightly that committed one would fail that check every morning. The run flavoured map is attached to the workflow run as an artifact instead, which is where the records themselves already are.
+
+**The three hosts are Linux x86-64, Linux arm64 and macOS arm64 as it stands, and not the BSD.** The axis this is really about is the one where a corpus that only runs where the developers work discovers portability failures at release time, and two architectures and two userlands answer most of it: the arm64 leg catches unaligned access and struct layout, and macOS brings a different libc, a different linker and bsdtar. The BSD leg wants a virtual machine driven by a third party action with no cache in it, which is a leg that goes red for its own reasons and then gets ignored, so it waits for a host we run ourselves rather than being wired up badly now. That is an open item rather than a decision to skip it.
 
 **It does not gate anything**, and that is deliberate. A nightly that can block work is a nightly that gets disabled the first busy week. It opens issues instead, one per document 11.2 cluster, deduplicated by diagnostic.
 
