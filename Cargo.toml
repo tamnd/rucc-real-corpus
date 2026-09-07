@@ -16,10 +16,13 @@ license = "Apache-2.0"
 repository = "https://github.com/tamnd/rucc-real-corpus"
 
 [workspace.dependencies]
-rrc-fetch = { path = "crates/rrc-fetch", version = "0.2.2" }
-rrc-manifest = { path = "crates/rrc-manifest", version = "0.2.2" }
-rrc-report = { path = "crates/rrc-report", version = "0.2.2" }
-rrc-run = { path = "crates/rrc-run", version = "0.2.2" }
+# These track the workspace version above and have to be bumped with it. A requirement left at an
+# older patch keeps resolving until the minor bumps and then stops matching at all, which is a
+# build that breaks on the release commit rather than on the change that caused it.
+rrc-fetch = { path = "crates/rrc-fetch", version = "0.2.4" }
+rrc-manifest = { path = "crates/rrc-manifest", version = "0.2.4" }
+rrc-report = { path = "crates/rrc-report", version = "0.2.4" }
+rrc-run = { path = "crates/rrc-run", version = "0.2.4" }
 regex = "1"
 serde = { version = "1", features = ["derive"] }
 toml = "0.9"
