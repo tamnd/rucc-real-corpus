@@ -31,6 +31,10 @@ standard = "GNU extension; C23 <stdbit.h> is the portable spelling"
 summary = "shifts, masks and bit level packing across byte boundaries"
 kind = "standard"
 
+[cmake-probes]
+summary = "the compiler answers cmake's compiler identification and abi detection the way cmake expects"
+kind = "driver"
+
 [computed-goto]
 summary = "labels as values, goto *"
 kind = "gnu-extension"

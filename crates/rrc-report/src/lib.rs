@@ -49,6 +49,7 @@ mod tests {
                 gcc_version: "16.0.1".to_string(),
                 rucc_version: "0.5.1".to_string(),
                 rucc_commit: "8f2a1c".to_string(),
+                tool_prefixes: Vec::new(),
             },
             outcome,
             phase_reached: Phase::Tested,

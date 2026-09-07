@@ -156,13 +156,24 @@ fn tap(text: &str) -> Option<Counts> {
     Some(Counts::of(run, passed))
 }
 
-/// The line ctest prints after a run: `100% tests passed, 0 tests failed out of 47`.
+/// The line ctest prints after a run, which has two shapes and not one.
+///
+/// `99% tests passed, 1 tests failed out of 47` when something failed, and
+/// `100% tests passed out of 19` when nothing did, with no failure clause at all. This looked for
+/// the failure clause and so found nothing on a green run, which made every passing ctest project
+/// `not compared` with its oracle downgraded to the exit status. That is the wrong way round for
+/// a parser to be wrong, since the case it could not read is the common one, and it went unnoticed
+/// because no project on the list used this parser until cJSON.
 fn ctest(text: &str) -> Option<Counts> {
     let line = text
         .lines()
-        .find(|line| line.contains("tests failed out of"))?;
-    let failed = number_before(line, "tests failed")?;
+        .find(|line| line.contains("tests passed") && line.contains("out of"))?;
     let total = number_after(line, "out of")?;
+    let failed = if line.contains("tests failed") {
+        number_before(line, "tests failed")?
+    } else {
+        0
+    };
     Some(Counts::of(total, total.saturating_sub(failed)))
 }
 
@@ -280,6 +291,23 @@ Testsuite summary
         let text = "99% tests passed, 1 tests failed out of 47\n";
         let counts = counts(SuiteParser::Ctest, None, text).unwrap();
         assert_eq!(counts, Counts::of(47, 46));
+    }
+
+    #[test]
+    fn ctest_reads_the_line_it_prints_when_nothing_failed() {
+        // The shape cJSON produces, and the one this parser could not read. There is no failure
+        // clause on a clean run, so looking for "tests failed out of" found nothing and a green
+        // ctest project came back not compared.
+        let text = "\n100% tests passed out of 19\n\nTotal Test time (real) =   6.94 sec\n";
+        let counts = counts(SuiteParser::Ctest, None, text).unwrap();
+        assert_eq!(counts, Counts::of(19, 19));
+    }
+
+    #[test]
+    fn ctest_reads_the_line_it_prints_when_everything_failed() {
+        let text = "0% tests passed, 19 tests failed out of 19\n";
+        let counts = counts(SuiteParser::Ctest, None, text).unwrap();
+        assert_eq!(counts, Counts::of(19, 0));
     }
 
     #[test]

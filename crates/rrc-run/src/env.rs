@@ -224,6 +224,24 @@ mod tests {
     }
 
     #[test]
+    fn a_discovered_prefix_goes_on_the_path_behind_the_shim_and_in_front_of_the_system() {
+        // The order is the whole point. Behind the shim so that a homebrew gcc cannot be picked up
+        // as `cc` instead of the compiler under test, and in front of `/usr/bin` so that a project
+        // needing cmake or tclsh finds one, since neither is on a bare macos or a bare ubuntu.
+        let f = fixture("prefixes");
+        let empty = BTreeMap::new();
+        let mut with_prefix = plan(&f, &empty);
+        let extra = [PathBuf::from("/opt/homebrew/bin")];
+        with_prefix.extra_path = &extra;
+        let env = environment(&with_prefix);
+        let dirs: Vec<&str> = env["PATH"].split(':').collect();
+        assert_eq!(dirs[0], f.shim.dir().to_string_lossy());
+        assert_eq!(dirs[1], "/opt/homebrew/bin");
+        assert_eq!(dirs[2], "/usr/bin");
+        std::fs::remove_dir_all(&f.root).ok();
+    }
+
+    #[test]
     fn the_manifests_own_flags_come_after_the_level() {
         // gmp is the case that found this. Its configure runs a probe that calls a function
         // declared `void g(){}` with six arguments, which was fine until C23 said an empty

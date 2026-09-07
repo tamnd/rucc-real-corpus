@@ -1,0 +1,44 @@
+[project]
+name = "cjson"
+rung = 2
+upstream = "https://github.com/DaveGamble/cJSON"
+licence = "MIT"
+licence-file = "LICENSE"
+description = "a small json parser and printer in one file, and the first project here that cmake configures"
+# double-formatting is the one to read. cJSON prints a number by sprintf with %1.15g, then reads it
+# back with sscanf and compares against what it started with, and only if the round trip loses
+# something does it fall back to %1.17g. So the printed form of every number in the output depends
+# on the library's own conversion agreeing with itself, and a compiler that is a bit off in either
+# direction changes what the file looks like rather than failing anything.
+demands = ["double-formatting", "cmake-probes"]
+
+# The tag snapshot, because cJSON publishes no release assets. That is fine here in a way it is
+# not for an autoconf project, since cmake generates the build from CMakeLists.txt that is in the
+# tree rather than from a configure somebody had to run first.
+[source]
+url = "https://github.com/DaveGamble/cJSON/archive/refs/tags/v1.7.19.tar.gz"
+sha256 = "7fa616e3046edfa7a28a32d5f9eacfd23f92900fe1f8ccd988c1662f30454562"
+strip-components = 1
+
+[build]
+system = "cmake"
+# Not about the compiler at all, which is why it is here and not in drop-flags. cJSON's
+# CMakeLists.txt asks for cmake 3.0 and cmake 4 removed compatibility with anything below 3.5, so
+# a machine with a current cmake stops at the first line of the first file with "Compatibility
+# with CMake < 3.5 has been removed from CMake". The argument is the one cmake's own error message
+# offers and it changes which policy defaults apply rather than anything about the build. Older
+# cmakes ignore it, so this stays right on a host that has one.
+configure = ["-DCMAKE_POLICY_VERSION_MINIMUM=3.5"]
+
+# Nineteen, all passing under gcc 16.2.0. cJSON bundles the Unity test framework and each of these
+# is one binary of its own, so unlike expat the ctest count is close to the number of things
+# actually checked rather than being a count of runners.
+[test]
+command = ["ctest", "--test-dir", "build", "--output-on-failure"]
+oracle = "suite"
+parser = "ctest"
+baseline-tests = 19
+
+[limits]
+build-seconds = 900
+test-seconds = 600

@@ -152,6 +152,15 @@ pub struct Provenance {
     pub rucc_version: String,
     /// The commit the compiler under test was built from.
     pub rucc_commit: String,
+    /// The prefixes that went on `PATH` in front of the base system, for tools such as cmake and
+    /// tclsh that a bare macos or a bare ubuntu does not have.
+    ///
+    /// On the record because it is the one host difference the environment allows in, and a
+    /// nightly on three hosts that disagree about a project is a nightly where the first question
+    /// is whether all three were using the same tools. An empty list is a real answer and means
+    /// the build got nothing but `/usr/bin`, `/bin`, `/usr/sbin` and `/sbin`.
+    #[serde(default)]
+    pub tool_prefixes: Vec<String>,
 }
 
 impl Provenance {
@@ -332,6 +341,7 @@ mod tests {
                 gcc_version: "16.2.0".into(),
                 rucc_version: "0.5.0".into(),
                 rucc_commit: "deadbeef".into(),
+                tool_prefixes: Vec::new(),
             },
             outcome: Outcome::Passed,
             phase_reached: Phase::Tested,
