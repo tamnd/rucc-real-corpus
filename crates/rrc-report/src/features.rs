@@ -691,6 +691,7 @@ diagnostic = ["block_addr"]
                 project: "a".to_string(),
                 case: "a".to_string(),
                 level: "*".to_string(),
+                host: None,
                 issue: "https://github.com/tamnd/rucc/issues/310".to_string(),
                 why: "E0686 on __builtin_clz".to_string(),
                 since: "2026-09-07".to_string(),

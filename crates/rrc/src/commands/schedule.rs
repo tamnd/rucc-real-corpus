@@ -136,11 +136,12 @@ pub fn cell(
     // excluded cell that passes and an excluded cell whose failure has changed, and neither can
     // fire against a cell nobody ran. It costs a cell's worth of budget per entry and that is the
     // difference between a register that decays and one that does not.
-    let entry =
-        loaded
-            .corpus
-            .exclusions
-            .find(&manifest.project.name, &manifest.project.name, level);
+    let entry = loaded.corpus.exclusions.find(
+        &manifest.project.name,
+        &manifest.project.name,
+        level,
+        &setup.provenance.host,
+    );
 
     let extracted = loaded.extracted(&manifest.project.name);
     fetch::ensure(

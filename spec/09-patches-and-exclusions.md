@@ -50,11 +50,22 @@ level   = "*"
 issue   = "https://github.com/tamnd/rucc/issues/226"
 why     = "__builtin_ceil and __builtin_floor have no lowering, E0686"
 since   = "2026-09-06"
+
+[[exclude]]
+project = "xxhash"
+case    = "xxhash"
+level   = "O1"
+host    = "macos-aarch64"
+issue   = "upstream:https://github.com/tamnd/rucc-real-corpus/issues/41"
+why     = "gcc ices in aarch64_function_arg_alignment"
+since   = "2026-09-07"
 ```
 
-**Every field is required and `issue` is required to resolve.** An exclusion without an issue is not an exclusion, it is a project quietly removed from the denominator. The lint fetches nothing at run time but the URL is checked weekly by document 12.3's job, and an issue that has been closed while its exclusion remains is a failure.
+**Every field except `host` is required, and `issue` is required to resolve.** An exclusion without an issue is not an exclusion, it is a project quietly removed from the denominator. The lint fetches nothing at run time but the URL is checked weekly by document 12.3's job, and an issue that has been closed while its exclusion remains is a failure.
 
 **`level` allows an exclusion to be narrow.** A project that passes at `-O0` and `-O1` and fails at `-O2` is excluded at `-O2` only, and the report shows it as three green cells and one red rather than one absent row. Coarse exclusions destroy information and this format makes the fine one as easy to write.
+
+**`host` narrows an exclusion the same way, along the other axis.** It takes one of the host names document 12.2 lists, spelled the way the records spell it, and leaving it off means every host. A gcc back end crash on Apple silicon is not a fact about Linux, and an entry with no host on it stops the cell everywhere for a reason that only holds in one place. The lint refuses a host nobody runs on, because a typo in this field matches nothing and an exclusion that matches nothing looks exactly like an exclusion that is no longer needed. Leaving it off stays the common case, since most of what gets excluded is a bug in the project's own source and travels with it.
 
 **`since` is a date and it appears in the report.** An exclusion older than the current milestone is a question somebody has to answer.
 
