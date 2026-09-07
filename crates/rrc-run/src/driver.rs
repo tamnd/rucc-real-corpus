@@ -788,6 +788,7 @@ pub fn provenance(toolchain: &Toolchain) -> Provenance {
         gcc_version: first_line(&toolchain.reference),
         rucc_version: first_line(&toolchain.under_test),
         rucc_commit: String::new(),
+        tool_prefixes: Vec::new(),
     }
 }
 
@@ -883,6 +884,7 @@ oracle = "self-checking"
                 gcc_version: "test".to_string(),
                 rucc_version: "test".to_string(),
                 rucc_commit: "test".to_string(),
+                tool_prefixes: Vec::new(),
             },
             pin: "0".repeat(64),
         })

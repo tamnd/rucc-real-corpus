@@ -1,0 +1,38 @@
+[project]
+name = "cmocka"
+rung = 2
+upstream = "https://cmocka.org/"
+licence = "Apache-2.0"
+licence-file = "COPYING"
+description = "a unit testing framework for c that mocks functions and checks it was called the way it said"
+# setjmp-longjmp is what cmocka is. A failing assertion inside a test has to unwind back to the
+# runner without taking the process with it, and cmocka does that with a jump buffer per test, so
+# whether a local is still correct on the other side of the jump is not a detail here, it is the
+# feature. varargs-depth is the second one: the whole mock interface is variadic, and check_expected
+# and will_return pass values of every width through it.
+demands = ["setjmp-longjmp", "varargs-depth", "cmake-probes"]
+
+[source]
+url = "https://cmocka.org/files/1.1/cmocka-1.1.7.tar.xz"
+sha256 = "810570eb0b8d64804331f82b29ff47c790ce9cd6b163e98d47a4807047ecad82"
+strip-components = 1
+
+[build]
+system = "cmake"
+# Its own documented switch, section 9.3 case one. cmocka builds its tests only when asked, and a
+# framework built without them would be a project that compiles and proves nothing.
+configure = ["-DUNIT_TESTING=ON"]
+
+# Forty six under gcc 16.2.0, and a good number in the way cJSON's is: every one of these is its
+# own binary that cmocka runs through its own runner, so the count is close to the number of things
+# checked. Several of them are deliberately failing tests that the suite expects to fail, which is
+# the right thing for a test framework to be testing and is worth knowing before reading the log.
+[test]
+command = ["ctest", "--test-dir", "build", "--output-on-failure"]
+oracle = "suite"
+parser = "ctest"
+baseline-tests = 46
+
+[limits]
+build-seconds = 900
+test-seconds = 600

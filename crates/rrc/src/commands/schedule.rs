@@ -18,6 +18,7 @@ use rrc_manifest::axes::Level;
 use rrc_manifest::manifest::Manifest;
 use rrc_run::abi::{self, AbiRecord};
 use rrc_run::driver::{self, Compiler, Job};
+use rrc_run::env;
 use rrc_run::record::{Outcome, Provenance, RecordLog, RunRecord};
 use rrc_run::sandbox::Slot;
 use rrc_run::shim::{self, Toolchain};
@@ -40,6 +41,8 @@ pub struct Setup {
     pub cache: Cache,
     /// How bytes are obtained, which may be a downloader that refuses.
     pub downloader: Box<dyn Downloader>,
+    /// The prefixes holding tools the base system does not carry, such as cmake or tclsh.
+    pub extra_path: Vec<PathBuf>,
 }
 
 impl Setup {
@@ -57,12 +60,24 @@ impl Setup {
         };
         found(&toolchain.under_test, "--rucc")?;
         found(&toolchain.reference, "--gcc")?;
-        let provenance = driver::provenance(&toolchain);
+        // Discovered once and then both used and recorded, which was the intent from the start and
+        // was not what happened. The prefixes were being found by a function nothing called, so
+        // every build got `/usr/bin` and the three system directories after it and nothing else,
+        // and a project needing cmake or tclsh could not be admitted at all. Nothing failed
+        // loudly, because the eleven R2 projects before this one need only tools a bare macos and
+        // a bare ubuntu both have.
+        let extra_path = env::discover_extra_path();
+        let mut provenance = driver::provenance(&toolchain);
+        provenance.tool_prefixes = extra_path
+            .iter()
+            .map(|dir| dir.to_string_lossy().into_owned())
+            .collect();
         Ok(Self {
             toolchain,
             provenance,
             cache: Cache::from_env(),
             downloader: fetch::downloader(),
+            extra_path,
         })
     }
 }
@@ -171,7 +186,6 @@ pub fn job_for<'a>(
     extracted: &'a std::path::Path,
     workspace: &'a std::path::Path,
 ) -> Job<'a> {
-    const NO_EXTRA_PATH: &[PathBuf] = &[];
     Job {
         manifest,
         level,
@@ -179,7 +193,7 @@ pub fn job_for<'a>(
         workspace,
         toolchain: &setup.toolchain,
         provenance: &setup.provenance,
-        extra_path: NO_EXTRA_PATH,
+        extra_path: &setup.extra_path,
         pin_sha256: &manifest.source.sha256,
     }
 }
@@ -888,6 +902,7 @@ command = ["./sample"]
                 gcc_version: String::new(),
                 rucc_version: String::new(),
                 rucc_commit: String::new(),
+                tool_prefixes: Vec::new(),
             },
             outcome,
             phase_reached: Phase::Tested,
