@@ -66,6 +66,14 @@ licence-sha256 = "c2b829605ee9c0b05c5c3708f308fc9b0954fb6ad1e0ab1add85f740a88274
 verified = "2026-09-06"
 
 [[project]]
+name = "libexpat"
+url = "https://github.com/libexpat/libexpat/releases/download/R_2_7_0/expat-2.7.0.tar.xz"
+sha256 = "25df13dd2819e85fb27a1ce0431772b7047d72af81ae78dc26b4c6e0805f48d1"
+bytes = 493060
+licence-sha256 = "122f2c27000472a201d337b9b31f7eb2b52d091b02857061a8880371612d9534"
+verified = "2026-09-07"
+
+[[project]]
 name = "libjansson"
 url = "https://github.com/akheron/jansson/releases/download/v2.15.1/jansson-2.15.1.tar.bz2"
 sha256 = "f9aa4b3ec8496fee69db94f06f3d76fd4a26b012ee9bf1e917078c2cd2841881"
@@ -152,6 +160,14 @@ sha256 = "d311cd3d051965485bff1c89a3980df7ad0ee3f9c0f33c18964d8c1cc32ef2cf"
 bytes = 28803
 licence-sha256 = "1654be3a1c88c6ae90f1c25ec880ef80076d05910199688dd9853f27d1e894cf"
 verified = "2026-09-06"
+
+[[project]]
+name = "pcre2"
+url = "https://github.com/PCRE2Project/pcre2/releases/download/pcre2-10.48/pcre2-10.48.tar.bz2"
+sha256 = "b6c68fdf6f3ac31388b50aa89ff0fc49c00c987c16e7b5146491d12003f2c8ed"
+bytes = 2213024
+licence-sha256 = "197d8a73ffee0d6b09adba2f9c677b5f5aede24edf89258a68e48248d010d811"
+verified = "2026-09-07"
 
 [[project]]
 name = "picohttpparser"

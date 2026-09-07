@@ -1,0 +1,53 @@
+[project]
+name = "libexpat"
+rung = 2
+upstream = "https://github.com/libexpat/libexpat"
+licence = "MIT"
+licence-file = "COPYING"
+description = "the xml parser almost everything ends up linking against, written as a table driven state machine over function pointers"
+# Three is the cap, and pointer-arithmetic is the one that went. Not because expat does not do it,
+# it does it constantly, but because nine other projects already claim it and a tag nine projects
+# share does not point at anybody. The handler tables and the tokenizer are what expat is.
+demands = ["switch-dispatch", "function-pointers", "autoconf-probes"]
+
+# The release tarball, for the same reason as libyaml: it ships a generated configure and the tag
+# snapshot does not, so nothing here needs autoreconf installed.
+[source]
+url = "https://github.com/libexpat/libexpat/releases/download/R_2_7_0/expat-2.7.0.tar.xz"
+sha256 = "25df13dd2819e85fb27a1ce0431772b7047d72af81ae78dc26b4c6e0805f48d1"
+strip-components = 1
+
+[build]
+system = "configure"
+# Not the same sentence libyaml asserts, and the difference is autoconf rather than the project.
+# 2.70 reworded this probe from "checking whether we are using the GNU C compiler" to what is here,
+# and libyaml's configure was generated in 2020. So the assertion goes with the pin and not with
+# the project, and bumping a pin can move it.
+expect-configure = ["checking whether the compiler supports GNU C... yes"]
+
+# Two, and the two is worth explaining because expat is by far the most thoroughly tested project
+# on this rung and the number does not look like it. TESTS has runtests and runtests_cxx in it, and
+# each of those is one binary that runs 4500 checks of its own and prints "100%: Checks: 4500,
+# Failed: 0" at the end. That line goes into tests/runtests.log rather than onto make check's
+# output, so the harness never sees it and the automake summary is the only thing there is to
+# count. It still catches a miscompile, because a runner that fails any of its 4500 checks exits
+# non zero and comes back as 1 of 2 rather than 2 of 2. What it cannot do is say how badly, so a
+# failure here is a signal to go and read the log rather than a number to put in a report.
+#
+# One caveat on runtests_cxx. The shim has no c++ in it, so that runner is compiled by whatever C++
+# compiler configure found outside the shim, which is never the compiler under test. It is still
+# worth running, because what it links against is the library our cc built, so a miscompile in
+# expat itself still shows up. It is the test driver and not the code under test that came from
+# somewhere else. Only runtests is end to end ours.
+#
+# Measured with gcc 16.2.0, TOTAL 2, PASS 2, FAIL 0, and 4500 checks inside each.
+[test]
+command = ["make", "check"]
+oracle = "suite"
+parser = "automake"
+baseline-tests = 2
+requires = ["sh"]
+
+[limits]
+build-seconds = 900
+test-seconds = 600
