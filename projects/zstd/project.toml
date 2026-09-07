@@ -1,0 +1,38 @@
+[project]
+name = "zstd"
+rung = 2
+upstream = "https://github.com/facebook/zstd"
+licence = "BSD-3-Clause"
+licence-file = "LICENSE"
+description = "the compressor that replaced zlib in most places, with a finite state entropy coder and a hand tuned match finder"
+# Sitting above zlib and lz4, which are already on rungs 0 and 1, and harder than both in the same
+# direction. The entropy coder is bit level table lookups against a state machine, and the match
+# finder does unaligned loads of eight bytes at a time and compares them as integers, which is the
+# idiom where a compiler that is too clever about aliasing gets a wrong answer rather than a crash.
+demands = ["unaligned-access", "bit-manipulation", "memcpy-idioms"]
+
+[source]
+url = "https://github.com/facebook/zstd/releases/download/v1.5.7/zstd-1.5.7.tar.gz"
+sha256 = "eb33e51f49a15e023950cd7825ca74a4a2b43db8354825ac24fc1b7ee09e6fa3"
+strip-components = 1
+
+[build]
+system = "make"
+
+# make check hands off to tests/playTests.sh, which is nineteen hundred lines of shell driving the
+# zstd CLI through round trips, dictionaries, multi frame files, truncated input and every command
+# line argument it has. The script runs under set -e, so exit zero means it reached the end, and
+# there is no count anywhere in it to take instead.
+#
+# It is also the project that showed the harness was reading the wrong stderr. Several of these
+# tests check that the CLI rejects bad arguments, so the suite prints lines like "error: numeric
+# value overflows 32-bit unsigned int" on a completely healthy run. Those used to come back as the
+# run's first error. They do not now, and the fix is in this PR.
+[test]
+command = ["make", "check"]
+oracle = "self-checking"
+requires = ["sh"]
+
+[limits]
+build-seconds = 1800
+test-seconds = 1800
