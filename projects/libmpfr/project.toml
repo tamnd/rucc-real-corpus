@@ -1,0 +1,51 @@
+[project]
+name = "libmpfr"
+rung = 2
+upstream = "https://www.mpfr.org/"
+licence = "LGPL-3.0-or-later"
+licence-file = "COPYING.LESSER"
+description = "correctly rounded arbitrary precision floating point, and the strongest float oracle on the list"
+# The strongest oracle here, and the reason is that mpfr's own tests assert exact bit patterns.
+# Every other float project on the list checks an answer to within a tolerance, which hides a
+# compiler that is almost right. mpfr says what the result is to the last bit at every rounding
+# mode, so a fused multiply add the compiler inserted on its own, or a spill through a register
+# wider than the type, or a constant folded at the wrong precision, all come out as a failed test
+# with the expected and actual bits printed next to each other.
+demands = ["float-arithmetic", "long-double", "integer-conversion"]
+
+[source]
+url = "https://ftp.gnu.org/gnu/mpfr/mpfr-4.2.2.tar.xz"
+sha256 = "b67ba0383ef7e8a8563734e2e889ef5ec3c3b898a01d00fa0a6869ad81c6ce01"
+strip-components = 1
+
+[build]
+system = "configure"
+
+# The first project here to need another one. mpfr is a layer on gmp and there is no version of it
+# that does not link libgmp, so the choice was between requiring a gmp on every host or building
+# the one this corpus already pins. Installing a distribution gmp would have meant that on a run
+# measuring rucc, the arithmetic underneath every one of these tests had been compiled by somebody
+# else, and that the pin said 6.3.0 while the bytes were whatever the machine had. Building it here
+# costs a second configure and make per cell and buys two things: the result is entirely ours, and
+# a failure in mpfr's tests is now evidence about gmp as well, since gmp's own suite and mpfr's
+# exercise very different parts of it.
+[[build.needs]]
+project = "libgmp"
+why = "mpfr is built on gmp and will not configure without libgmp and gmp.h"
+
+# One hundred and ninety eight of one hundred and ninety eight under gcc 16.2.0, nothing skipped and
+# nothing expected to fail, read off the automake summary rather than the harness count.
+[test]
+command = ["make", "check"]
+oracle = "suite"
+parser = "automake"
+baseline-tests = 198
+requires = ["sh"]
+
+# Wider than anything else on this rung because the build limit has to cover two builds. gmp and
+# mpfr together took six hundred and fourteen seconds here and the suite took two hundred and
+# eighty five, so there is room for a host around twice as slow before this starts timing out and
+# getting reported as a compiler that hangs.
+[limits]
+build-seconds = 1800
+test-seconds = 1800

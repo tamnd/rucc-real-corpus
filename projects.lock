@@ -146,6 +146,14 @@ licence-sha256 = "7c25493a9f64fed34d01445467341bda77bc1cdbeccbe33558659ef173fb9f
 verified = "2026-09-07"
 
 [[project]]
+name = "libmpfr"
+url = "https://ftp.gnu.org/gnu/mpfr/mpfr-4.2.2.tar.xz"
+sha256 = "b67ba0383ef7e8a8563734e2e889ef5ec3c3b898a01d00fa0a6869ad81c6ce01"
+bytes = 1505596
+licence-sha256 = "e3a994d82e644b03a792a930f574002658412f62407f5fee083f2555c5f23118"
+verified = "2026-09-07"
+
+[[project]]
 name = "libpng"
 url = "https://download.sourceforge.net/libpng/libpng-1.6.58.tar.xz"
 sha256 = "28eb403f51f0f7405249132cecfe82ea5c0ef97f1b32c5a65828814ae0d34775"

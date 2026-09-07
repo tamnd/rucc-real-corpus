@@ -195,6 +195,10 @@ pub struct Build {
     /// section 6.2.
     #[serde(default, rename = "program")]
     pub programs: Vec<Program>,
+    /// Other projects in this corpus that are built and installed into a prefix first, with the
+    /// dependent build pointed at that prefix. `spec/07-harness.md` section 7.11.
+    #[serde(default, rename = "needs")]
+    pub needs: Vec<Need>,
     /// Arguments passed to `configure` or to `cmake`.
     #[serde(default)]
     pub configure: Vec<String>,
@@ -401,6 +405,24 @@ pub enum HostCc {
     Reference,
     /// The compiler under test, when building the host tool with it is the point.
     UnderTest,
+}
+
+/// Another project in this corpus that has to be built and installed before this one can build.
+///
+/// The alternative was to require the library on every host and let configure find it, and that
+/// alternative is wrong in a way that is easy to miss. mpfr built against a distribution's libgmp
+/// is a run where half the code being exercised was compiled by somebody else's compiler, on a
+/// run whose entire purpose is to measure ours. The pin would say gmp 6.3.0 and the bytes linked
+/// in would be whatever the machine had. Building the dependency from the corpus with the same
+/// compiler costs a second build and makes the pin mean what it says, and it has a second payoff:
+/// mpfr then tests whether our gmp is right, not only whether our mpfr is.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Need {
+    /// The other project's name, as its own manifest spells it.
+    pub project: String,
+    /// Why this project cannot be built without it.
+    pub why: String,
 }
 
 /// A flag set or removed, and why. The why is required so that a flag hiding a bug is

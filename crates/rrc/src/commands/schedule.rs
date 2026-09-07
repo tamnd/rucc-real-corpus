@@ -17,7 +17,7 @@ use rrc_fetch::{Cache, Downloader};
 use rrc_manifest::axes::Level;
 use rrc_manifest::manifest::Manifest;
 use rrc_run::abi::{self, AbiRecord};
-use rrc_run::driver::{self, Compiler, Job};
+use rrc_run::driver::{self, Compiler, Job, Prepared};
 use rrc_run::env;
 use rrc_run::record::{Outcome, Provenance, RecordLog, RunRecord};
 use rrc_run::sandbox::Slot;
@@ -135,8 +135,10 @@ pub fn cell(
         &extracted,
     )?;
 
+    let needs = Needs::prepare(setup, loaded, manifest)?;
+    let prepared = needs.prepared();
     let workspace = loaded.workspace();
-    let job = job_for(setup, manifest, level, &extracted, &workspace);
+    let job = job_for(setup, manifest, level, &extracted, &workspace, &prepared);
     let mut record = driver::run(&job, Slot::A)
         .map_err(|why| format!("{} at {}: {why}", manifest.project.name, level.name()))?;
     if let Some(entry) = entry {
@@ -144,7 +146,14 @@ pub fn cell(
     }
 
     let differences = if twice {
-        compare_two_builds(setup, manifest, level, &extracted, &loaded.workspace())?
+        compare_two_builds(
+            setup,
+            manifest,
+            level,
+            &extracted,
+            &loaded.workspace(),
+            &prepared,
+        )?
     } else {
         Vec::new()
     };
@@ -168,9 +177,10 @@ fn compare_two_builds(
     level: Level,
     extracted: &std::path::Path,
     workspace: &std::path::Path,
+    needs: &[Prepared<'_>],
 ) -> Result<Vec<Difference>, String> {
     let paired = workspace.join("twice");
-    let job = job_for(setup, manifest, level, extracted, &paired);
+    let job = job_for(setup, manifest, level, extracted, &paired, needs);
     let first = driver::attempt(&job, Slot::A, Compiler::UnderTest)
         .map_err(|why| format!("{} first build: {why}", manifest.project.name))?;
     let second = driver::attempt(&job, Slot::B, Compiler::UnderTest)
@@ -179,12 +189,58 @@ fn compare_two_builds(
         .map_err(|why| format!("{} comparing two builds: {why}", manifest.project.name))
 }
 
+/// The corpus dependencies of one project, fetched and held somewhere a job can borrow them.
+///
+/// Owned rather than borrowed straight out of the corpus, for two reasons. A `Job` holds
+/// references and the dependency manifests have to outlive it, and the download has to happen
+/// before any sandbox exists, so that a dependency nobody can fetch is one error message rather
+/// than a build that fails in the middle for a reason that reads like a compiler bug.
+pub struct Needs {
+    entries: Vec<(Manifest, PathBuf)>,
+}
+
+impl Needs {
+    /// Fetch everything `build.needs` names, in the order it names them.
+    ///
+    /// # Errors
+    ///
+    /// When a named project is not in this corpus, or cannot be downloaded.
+    pub fn prepare(setup: &Setup, loaded: &Loaded, manifest: &Manifest) -> Result<Self, String> {
+        let mut entries = Vec::new();
+        for need in &manifest.build.needs {
+            let dependency = loaded.get(&need.project)?;
+            let extracted = loaded.extracted(&need.project);
+            fetch::ensure(
+                dependency,
+                &setup.cache,
+                setup.downloader.as_ref(),
+                &extracted,
+            )?;
+            entries.push((dependency.clone(), extracted));
+        }
+        Ok(Self { entries })
+    }
+
+    /// The borrowed form the driver takes.
+    #[must_use]
+    pub fn prepared(&self) -> Vec<Prepared<'_>> {
+        self.entries
+            .iter()
+            .map(|(manifest, extracted)| Prepared {
+                manifest,
+                extracted,
+            })
+            .collect()
+    }
+}
+
 pub fn job_for<'a>(
     setup: &'a Setup,
     manifest: &'a Manifest,
     level: Level,
     extracted: &'a std::path::Path,
     workspace: &'a std::path::Path,
+    needs: &'a [Prepared<'a>],
 ) -> Job<'a> {
     Job {
         manifest,
@@ -194,6 +250,7 @@ pub fn job_for<'a>(
         toolchain: &setup.toolchain,
         provenance: &setup.provenance,
         extra_path: &setup.extra_path,
+        needs,
         pin_sha256: &manifest.source.sha256,
     }
 }
@@ -229,8 +286,17 @@ pub fn build(loaded: &Loaded, options: &Options, name: &str, level: Level) -> Re
         &extracted,
     )?;
 
+    let needs = Needs::prepare(&setup, loaded, manifest)?;
+    let prepared = needs.prepared();
     let workspace = loaded.workspace();
-    let job = job_for(&setup, &without_suite, level, &extracted, &workspace);
+    let job = job_for(
+        &setup,
+        &without_suite,
+        level,
+        &extracted,
+        &workspace,
+        &prepared,
+    );
     let trial = driver::attempt(&job, Slot::A, Compiler::UnderTest)
         .map_err(|why| format!("{name} at {}: {why}", level.name()))?;
 
@@ -324,7 +390,10 @@ pub fn cross(
     // Its own workspace, so that the four cross trees do not sit where the graded build's tree is
     // about to be created and get deleted halfway through by a run of the ordinary kind.
     let workspace = loaded.workspace().join("abi");
-    let job = job_for(setup, manifest, level, &extracted, &workspace);
+    // No dependencies, and the lint refuses an abi project that declares any. The cross check
+    // compiles a fixed pair of translation units the harness wrote itself, so a library installed
+    // into a prefix would have nothing to be linked into.
+    let job = job_for(setup, manifest, level, &extracted, &workspace, &[]);
     abi::check(&job).map_err(|why| format!("{} at {}: {why}", manifest.project.name, level.name()))
 }
 
@@ -922,6 +991,7 @@ command = ["./sample"]
             parallel: false,
             observed_outcome: None,
             excluded_by: None,
+            built_against: Vec::new(),
         }
     }
 }

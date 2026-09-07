@@ -249,6 +249,25 @@ pub struct RunRecord {
     /// is waiting on without opening `exclusions.toml` alongside it.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub excluded_by: Option<String>,
+    /// The corpus projects that were built and linked into this one, with their pins.
+    ///
+    /// On the record rather than only in the manifest, for the same reason the tool prefixes went
+    /// on it. A result that depended on another build is a result somebody has to be able to
+    /// attribute, and mpfr failing because our gmp is wrong should not read as mpfr being wrong.
+    /// The pin is here as well as the name, because the interesting question a year from now is
+    /// which version of the dependency this was, and the manifest will have moved on.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub built_against: Vec<BuiltAgainst>,
+}
+
+/// One corpus dependency a record rests on.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub struct BuiltAgainst {
+    /// The dependency's project name.
+    pub project: String,
+    /// Its pin, so the record names a version and not just a project.
+    pub pin_sha256: String,
 }
 
 impl RunRecord {
@@ -361,6 +380,7 @@ mod tests {
             parallel: false,
             observed_outcome: None,
             excluded_by: None,
+            built_against: Vec::new(),
         }
     }
 

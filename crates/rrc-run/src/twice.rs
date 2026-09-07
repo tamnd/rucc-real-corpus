@@ -476,6 +476,7 @@ oracle = "self-checking"
             toolchain: &toolchain,
             provenance: &provenance,
             extra_path: &[],
+            needs: &[],
             pin_sha256: &pin,
         };
 
