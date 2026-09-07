@@ -98,6 +98,14 @@ licence-sha256 = "7c25493a9f64fed34d01445467341bda77bc1cdbeccbe33558659ef173fb9f
 verified = "2026-09-07"
 
 [[project]]
+name = "libpng"
+url = "https://download.sourceforge.net/libpng/libpng-1.6.58.tar.xz"
+sha256 = "28eb403f51f0f7405249132cecfe82ea5c0ef97f1b32c5a65828814ae0d34775"
+bytes = 1070096
+licence-sha256 = "bdb0a645ea18c60507d0368379b1ac5474b92255fcc2d115e07486a7672ba526"
+verified = "2026-09-07"
+
+[[project]]
 name = "libsir"
 url = "https://codeload.github.com/aremmell/libsir/tar.gz/0ae01738c93ee6784c431ac70f6322b55e7aacc0"
 sha256 = "34a510bc44c20cfe5177c477487ae48e4a5e7e5f153ba4560ebd20e90b3c18a9"

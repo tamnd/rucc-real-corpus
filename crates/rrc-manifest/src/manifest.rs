@@ -254,6 +254,15 @@ impl Build {
         Some(format!("{}={value}", carrier.variable))
     }
 
+    /// Just the flags, without the reasons that go with them.
+    ///
+    /// The reasons are for a person reading the manifest and the lint that insists on them. What
+    /// goes on a command line is the flags.
+    #[must_use]
+    pub fn flag_list(&self) -> Vec<String> {
+        self.flags.iter().map(|note| note.flag.clone()).collect()
+    }
+
     /// The programs a direct build produces, whichever way the manifest spelled them.
     ///
     /// One program is the ordinary case and it is spelled with `sources` and `output` at the top

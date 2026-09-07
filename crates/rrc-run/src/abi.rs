@@ -290,11 +290,13 @@ pub fn cross(job: &Job<'_>, abi: &Abi, pairing: Pairing) -> std::io::Result<Cros
         reference: job.toolchain.reference.clone(),
     };
     let shim = Shim::create(&sandbox.bin(), &toolchain)?;
+    let flags = job.manifest.build.flag_list();
     let env = environment(&EnvPlan {
         sandbox: &sandbox,
         shim: &shim,
         toolchain: &toolchain,
         level: job.level,
+        flags: &flags,
         host_cc: job.manifest.build.host_cc,
         extra_path: job.extra_path,
         project_env: &job.manifest.build.env,
