@@ -1,0 +1,41 @@
+[project]
+name = "libpng"
+rung = 2
+upstream = "https://github.com/pnggroup/libpng"
+licence = "libpng-2.0"
+licence-file = "LICENSE"
+description = "the png reference implementation, a set of tight per scanline filter loops wrapped in setjmp based error handling"
+# setjmp is the distinctive one and it is the reason this project is worth having. libpng reports
+# every error by longjmp back to a jump buffer the caller set, so whether a local is still correct
+# after the jump depends on what the compiler decided to keep in a register, which is the one place
+# in C where an optimiser and a volatile qualifier have to agree about something subtle.
+demands = ["setjmp-longjmp", "memcpy-idioms", "autoconf-probes"]
+
+# The first R2 project that does not stand alone. libpng needs zlib to build, which is on the list
+# at a lower rung and is also on every machine the harness runs on, so what gets linked here is the
+# system one rather than the corpus one. That is a real gap and it is the honest place for it: the
+# compression is not under test, only the png code around it.
+[source]
+url = "https://download.sourceforge.net/libpng/libpng-1.6.58.tar.xz"
+sha256 = "28eb403f51f0f7405249132cecfe82ea5c0ef97f1b32c5a65828814ae0d34775"
+strip-components = 1
+
+[build]
+system = "configure"
+
+# Thirty six, and unlike expat this number is worth the space it takes. Most of these are pngvalid
+# runs, which generate images, push them through the library, and check the result against a value
+# computed a second way, so they are arithmetic checks rather than smoke tests. The gamma ones in
+# particular do floating point conversion over every sample and compare against a tolerance, which
+# is the sort of thing that goes wrong quietly when an optimiser gets a conversion wrong and stays
+# wrong all the way to a wrong picture. Measured with gcc 16.2.0, TOTAL 36, PASS 36, SKIP 0, FAIL 0.
+[test]
+command = ["make", "check"]
+oracle = "suite"
+parser = "automake"
+baseline-tests = 36
+requires = ["sh"]
+
+[limits]
+build-seconds = 900
+test-seconds = 900

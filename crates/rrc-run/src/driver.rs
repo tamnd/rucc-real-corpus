@@ -219,11 +219,16 @@ pub fn attempt_with(job: &Job<'_>, slot: Slot, dispatch: Dispatch<'_>) -> std::i
             Shim::mixed(&sandbox.bin(), job.toolchain, &split)?
         }
     };
+    // A direct build never reads CFLAGS, because the harness writes that command line itself and
+    // puts the same flags on it. Passing them here anyway keeps the two paths saying the same
+    // thing, and costs a variable nobody looks at.
+    let flags = job.manifest.build.flag_list();
     let env = environment(&EnvPlan {
         sandbox: &sandbox,
         shim: &shim,
         toolchain: &toolchain,
         level: job.level,
+        flags: &flags,
         host_cc: job.manifest.build.host_cc,
         extra_path: job.extra_path,
         project_env: &job.manifest.build.env,

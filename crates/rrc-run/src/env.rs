@@ -42,6 +42,13 @@ pub struct EnvPlan<'a> {
     /// The optimization level, which arrives through `CFLAGS` because that is what every build
     /// system on the list honours.
     pub level: Level,
+    /// The manifest's own flags, which go on the end of `CFLAGS` after the level.
+    ///
+    /// A direct build gets these on the command line the harness writes, and for a long time
+    /// that was the only place they went, so a configure project could declare a flag and have
+    /// nothing happen. There is nothing about a flag in `[build]` that says it is only for rung
+    /// zero, and a manifest that is quietly ignored is worse than one that is refused.
+    pub flags: &'a [String],
     /// Which compiler a build time host tool gets.
     pub host_cc: HostCc,
     /// Extra directories for tools the corpus needs and the base system does not carry, such as
@@ -76,7 +83,7 @@ pub fn environment(plan: &EnvPlan<'_>) -> BTreeMap<String, String> {
 
     // The compiler, by absolute path through the shim, and the level through CFLAGS.
     env.insert("CC".into(), display(&plan.shim.cc()));
-    env.insert("CFLAGS".into(), plan.level.cflags().into());
+    env.insert("CFLAGS".into(), cflags(plan));
 
     // The host compiler, which the shim deliberately does not decide. A generator built with a
     // miscompiling compiler emits wrong source, and the failure then shows up in a file that
@@ -94,6 +101,21 @@ pub fn environment(plan: &EnvPlan<'_>) -> BTreeMap<String, String> {
     }
 
     env
+}
+
+/// The level first, then whatever the manifest asked for.
+///
+/// Order matters and this is the order that lets the manifest win. Both GCC and Clang take the
+/// last of a pair of conflicting flags, so a project that has to be built as C17 because its own
+/// configure predates C23 says so in `[[build.flags]]` and gets it, without the level having to
+/// be spelled out next to it.
+fn cflags(plan: &EnvPlan<'_>) -> String {
+    let mut value = plan.level.cflags().to_string();
+    for flag in plan.flags {
+        value.push(' ');
+        value.push_str(flag);
+    }
+    value
 }
 
 fn path_for(plan: &EnvPlan<'_>) -> String {
@@ -163,6 +185,7 @@ mod tests {
             shim: &f.shim,
             toolchain: &f.toolchain,
             level: Level::O2,
+            flags: &[],
             host_cc: HostCc::Reference,
             extra_path: &[],
             project_env,
@@ -197,6 +220,24 @@ mod tests {
         let empty = BTreeMap::new();
         let env = environment(&plan(&f, &empty));
         assert_eq!(env["CFLAGS"], "-O2");
+        std::fs::remove_dir_all(&f.root).ok();
+    }
+
+    #[test]
+    fn the_manifests_own_flags_come_after_the_level() {
+        // gmp is the case that found this. Its configure runs a probe that calls a function
+        // declared `void g(){}` with six arguments, which was fine until C23 said an empty
+        // parameter list means no parameters, so the probe fails and configure decides there is
+        // no working compiler. The pin is from before C23 and GCC 16 defaults to it, so the
+        // manifest asks for -std=gnu17 and it has to reach a configure script rather than only
+        // the command lines the harness writes itself.
+        let f = fixture("own-flags");
+        let empty = BTreeMap::new();
+        let mut with_flags = plan(&f, &empty);
+        let flags = ["-std=gnu17".to_string()];
+        with_flags.flags = &flags;
+        let env = environment(&with_flags);
+        assert_eq!(env["CFLAGS"], "-O2 -std=gnu17");
         std::fs::remove_dir_all(&f.root).ok();
     }
 
