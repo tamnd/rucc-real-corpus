@@ -432,6 +432,21 @@ pub struct Test {
     /// recorded at admission. A run that comes in under it fails even at exit status zero.
     #[serde(default)]
     pub baseline_tests: Option<u32>,
+    /// The number of cases that same GCC 16 build ran, when it did not pass all of them.
+    ///
+    /// Present only for a project whose suite has a case the reference compiler fails on the
+    /// reference machine, which is rare and is always somebody else's bug. gmp is the first:
+    /// its own `t-rand` passes an `int` through a variadic call that reads `unsigned long`,
+    /// which is fine on x86-64 and garbage on arm64, so gcc scores 173 of 175 and no compiler
+    /// can do better. Without this field such a project can never pass, because grading wants
+    /// every case to pass on top of meeting the baseline, and the choice would be between
+    /// dropping the project and dropping the check.
+    ///
+    /// Setting it does not weaken the grade, it sharpens it. The run has to come back with
+    /// exactly this many cases and at least `baseline-tests` of them passing, so a suite that
+    /// slips from 173 to 172 still fails and so does one that quietly stops running two.
+    #[serde(default)]
+    pub baseline_total: Option<u32>,
     /// What has to be installed before the oracle can run at all.
     #[serde(default)]
     pub requires: Vec<Requirement>,

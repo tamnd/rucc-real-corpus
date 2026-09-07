@@ -669,6 +669,10 @@ fn grade_recorded(manifest: &Manifest, test: &Completed) -> Graded {
 /// `oracle_used` drops to the exit status to say so. That pair is deliberate: the outcome says
 /// the harness refused to grade it, and the oracle column says the strongest thing that could
 /// actually have been applied was a single bit.
+///
+/// `baseline-total` is the third case and it is for a suite the reference compiler itself cannot
+/// get a clean run out of. Then the standard the run is held to is what the reference scored,
+/// both numbers of it, rather than a perfect score no compiler on that host can reach.
 fn grade_suite(manifest: &Manifest, trial: &Trial, test: &Completed) -> Graded {
     let Some(counts) = trial.counts else {
         return Graded {
@@ -680,7 +684,19 @@ fn grade_suite(manifest: &Manifest, trial: &Trial, test: &Completed) -> Graded {
         .test
         .baseline_tests
         .is_none_or(|baseline| counts.passed >= baseline);
-    let outcome = if counts.all_passed() && met_baseline && test.ending.is_success() {
+    // A suite the reference compiler cannot get a clean run out of is graded against what the
+    // reference actually scored rather than against a perfect score it will never reach. The
+    // total has to match as well as the passing count, so the two numbers together say "173 of
+    // 175" and a run that drops a case or stops running two is still a wrong answer. Exit status
+    // is not consulted here for the obvious reason: a suite with a failing case exits non zero
+    // every time, including under gcc, which is the whole situation this is for.
+    let outcome = if let Some(total) = manifest.test.baseline_total {
+        if counts.run == total && met_baseline {
+            Outcome::Passed
+        } else {
+            Outcome::WrongAnswer
+        }
+    } else if counts.all_passed() && met_baseline && test.ending.is_success() {
         Outcome::Passed
     } else {
         Outcome::WrongAnswer
@@ -1045,6 +1061,64 @@ int main(void){ fprintf(stderr, "error: the thing went wrong\n"); return 1; }
             record.first_diagnostic.is_some(),
             "the one case where a suite's stderr is worth reading is the one that got dropped"
         );
+    }
+
+    /// A program that prints an automake summary and then exits the way that summary implies.
+    ///
+    /// gmp in miniature. Its own `t-rand` is undefined behaviour that fails on arm64 whatever
+    /// compiles it, so gcc scores 173 of 175 and the suite exits non zero, and before
+    /// `baseline-total` existed there was no way to admit a project like that without also
+    /// admitting a project whose suite had quietly gone red.
+    fn summary(run: u32, passed: u32) -> String {
+        let failed = run - passed;
+        format!(
+            "#include <stdio.h>\nint main(void){{ printf(\"# TOTAL: {run}\\n# PASS:  {passed}\\n# SKIP:  0\\n# FAIL:  {failed}\\n\"); return {}; }}\n",
+            u32::from(failed > 0)
+        )
+    }
+
+    const AUTOMAKE: &str = "\noracle = \"suite\"\nparser = \"automake\"\n";
+
+    #[test]
+    fn a_suite_the_reference_cannot_pass_either_is_graded_against_what_the_reference_scored() {
+        let Some(f) = fixture("baseline-total", &summary(175, 173)) else {
+            return;
+        };
+        let manifest = manifest(&format!(
+            "{AUTOMAKE}baseline-tests = 173\nbaseline-total = 175\n"
+        ));
+        let record = run(&job(&f, &manifest), Slot::A).unwrap();
+        assert_eq!(
+            record.outcome,
+            Outcome::Passed,
+            "173 of 175 is what gcc scores, so 173 of 175 is a pass"
+        );
+    }
+
+    #[test]
+    fn one_more_failure_than_the_reference_had_is_still_a_wrong_answer() {
+        let Some(f) = fixture("baseline-total-worse", &summary(175, 172)) else {
+            return;
+        };
+        let manifest = manifest(&format!(
+            "{AUTOMAKE}baseline-tests = 173\nbaseline-total = 175\n"
+        ));
+        let record = run(&job(&f, &manifest), Slot::A).unwrap();
+        assert_eq!(record.outcome, Outcome::WrongAnswer);
+    }
+
+    #[test]
+    fn a_suite_that_ran_fewer_cases_than_the_reference_did_is_a_wrong_answer() {
+        // The hole this closes. Passing 173 out of 173 meets a baseline of 173 and looks green,
+        // and what actually happened is that two cases stopped being built.
+        let Some(f) = fixture("baseline-total-short", &summary(173, 173)) else {
+            return;
+        };
+        let manifest = manifest(&format!(
+            "{AUTOMAKE}baseline-tests = 173\nbaseline-total = 175\n"
+        ));
+        let record = run(&job(&f, &manifest), Slot::A).unwrap();
+        assert_eq!(record.outcome, Outcome::WrongAnswer);
     }
 
     #[test]
