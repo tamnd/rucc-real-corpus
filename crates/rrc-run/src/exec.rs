@@ -16,6 +16,8 @@ use std::process::{Child, Command, Stdio};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
+use crate::memory;
+
 /// How often the timeout loop looks at the child.
 ///
 /// Twenty milliseconds. Small enough that the recorded seconds are honest at the resolution
@@ -93,6 +95,12 @@ pub struct Completed {
     pub stderr: String,
     /// Wall clock seconds.
     pub seconds: f64,
+    /// The largest resident set seen among the processes this command started, in bytes.
+    ///
+    /// Sampled by [`crate::memory`] from the wait loop below rather than asked of the kernel, and
+    /// `None` on a command that finished before the first sample or on a platform that will not
+    /// say. See that module for why it is the largest single process rather than the sum.
+    pub peak_rss: Option<u64>,
 }
 
 impl Completed {
@@ -122,7 +130,8 @@ pub fn run(invocation: &Invocation) -> std::io::Result<Completed> {
     let stdout = child.stdout.take().map(Drain::of);
     let stderr = child.stderr.take().map(Drain::of);
 
-    let ending = wait_for(&mut child, invocation.timeout)?;
+    let watched = wait_for(&mut child, invocation.timeout)?;
+    let ending = watched.ending;
 
     // On a clean exit the threads are waited for, because the last few kilobytes may still be
     // in flight. On a timeout they are not: if something we failed to kill is still holding the
@@ -137,7 +146,14 @@ pub fn run(invocation: &Invocation) -> std::io::Result<Completed> {
         stdout,
         stderr,
         seconds: started.elapsed().as_secs_f64(),
+        peak_rss: watched.peak_rss,
     })
+}
+
+/// What the wait loop saw, which is how the command ended and how large it got on the way.
+struct Watched {
+    ending: Ending,
+    peak_rss: Option<u64>,
 }
 
 /// Say which program failed to start.
@@ -182,15 +198,36 @@ fn put_in_own_process_group(command: &mut Command) {
 #[cfg(not(unix))]
 fn put_in_own_process_group(_command: &mut Command) {}
 
-fn wait_for(child: &mut Child, timeout: Duration) -> std::io::Result<Ending> {
+/// Wait for the child, and take a memory reading every so often while waiting.
+///
+/// The sampling rides along on this loop rather than running on a thread of its own, because the
+/// loop already wakes far more often than the sampler wants and a thread would need the child's
+/// process id to outlive a `wait` that may be happening at the same moment.
+fn wait_for(child: &mut Child, timeout: Duration) -> std::io::Result<Watched> {
+    let group = child.id();
     let deadline = Instant::now() + timeout;
+    let mut peak_rss = None;
+    let mut sample_due = Instant::now();
     loop {
         if let Some(status) = child.try_wait()? {
-            return Ok(ending_of(status));
+            return Ok(Watched {
+                ending: ending_of(status),
+                peak_rss,
+            });
         }
-        if Instant::now() >= deadline {
+        let now = Instant::now();
+        if now >= deadline {
             terminate(child);
-            return Ok(Ending::TimedOut);
+            return Ok(Watched {
+                ending: Ending::TimedOut,
+                peak_rss,
+            });
+        }
+        // Sampled after the `try_wait` above, so that a command already gone is never looked for
+        // in a process table where its process id may since have been handed to somebody else.
+        if now >= sample_due {
+            peak_rss = peak_rss.max(memory::largest_in_group(group));
+            sample_due = now + memory::INTERVAL;
         }
         std::thread::sleep(POLL);
     }
@@ -336,6 +373,30 @@ mod tests {
         assert_eq!(out.ending, Ending::Exited(0));
         assert_eq!(out.stdout.trim(), "out");
         assert_eq!(out.stderr.trim(), "err");
+    }
+
+    #[test]
+    fn a_command_that_lives_long_enough_to_be_looked_at_reports_what_it_took() {
+        // Half a second is five samples at `memory::INTERVAL`, which is enough that a sampler
+        // that works at all has seen this shell at least once.
+        let out = run(&shell("sleep 0.5", 10)).unwrap();
+        assert_eq!(out.ending, Ending::Exited(0));
+        if memory::is_available() {
+            assert!(
+                out.peak_rss.is_some_and(|bytes| bytes > 0),
+                "a shell that ran for half a second on a platform we can measure should have a size"
+            );
+        }
+    }
+
+    #[test]
+    fn a_command_that_is_gone_before_the_first_sample_says_nothing_rather_than_zero() {
+        // The first sample is taken after the first `try_wait`, so `true` is normally already
+        // gone. A zero here would be read as a compiler that used no memory, so the column stays
+        // empty instead.
+        let out = run(&shell("true", 10)).unwrap();
+        assert_eq!(out.ending, Ending::Exited(0));
+        assert!(out.peak_rss.is_none_or(|bytes| bytes > 0));
     }
 
     #[test]

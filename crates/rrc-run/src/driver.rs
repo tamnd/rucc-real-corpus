@@ -127,6 +127,12 @@ pub struct Trial {
     pub test: Option<Completed>,
     /// Seconds across every build step, since a configure and a make are both building.
     pub build_seconds: f64,
+    /// The largest resident set any one process of the build reached, in bytes.
+    ///
+    /// The build and not the suite, because the question this column answers is how much memory
+    /// the compiler needs and the suite is the project's own program. `None` where nothing was
+    /// sampled, which [`crate::memory`] explains.
+    pub peak_rss: Option<u64>,
     /// Seconds the suite took.
     pub test_seconds: f64,
     /// The binary, where the manifest names one.
@@ -191,7 +197,8 @@ pub fn run(job: &Job<'_>, slot: Slot, baseline: Baseline) -> std::io::Result<Bot
     let trial = attempt(job, slot, Compiler::UnderTest)?;
     // The differential oracle needs the reference half whatever the caller asked for, since it has
     // nothing to grade against without one. Everything else builds it only for the numbers.
-    let graded_against_it = job.manifest.test.oracle == Oracle::Differential && trial.test.is_some();
+    let graded_against_it =
+        job.manifest.test.oracle == Oracle::Differential && trial.test.is_some();
     let reference = if baseline == Baseline::Measure || graded_against_it {
         Some(attempt(job, reference_slot(slot), Compiler::Reference)?)
     } else {
@@ -339,6 +346,7 @@ fn attempt_upto(
         misconfigured: None,
         test: None,
         build_seconds: 0.0,
+        peak_rss: None,
         test_seconds: 0.0,
         sizes: Sizes::default(),
         counts: None,
@@ -368,6 +376,7 @@ fn attempt_upto(
     for step in steps_upto(build_steps(job, &env, &workdir), extent) {
         let completed = exec::run(&step.invocation)?;
         trial.build_seconds += completed.seconds;
+        trial.peak_rss = trial.peak_rss.max(completed.peak_rss);
         log(&trial.sandbox, &step.name, &step.invocation, &completed)?;
         let finished = completed.ending.is_success();
         if trial.first_diagnostic.is_none() {
@@ -498,6 +507,7 @@ fn install_needs(
         for step in need_steps(need, &env, &workdir, prefix) {
             let completed = exec::run(&step.invocation)?;
             trial.build_seconds += completed.seconds;
+            trial.peak_rss = trial.peak_rss.max(completed.peak_rss);
             log(
                 &trial.sandbox,
                 &format!("{name}-{}", step.name),
@@ -983,7 +993,7 @@ fn record(job: &Job<'_>, trial: &Trial, graded: Graded) -> RunRecord {
         phase_reached: trial.phase,
         build_seconds: trial.build_seconds,
         test_seconds: trial.test_seconds,
-        peak_rss: None,
+        peak_rss: trial.peak_rss,
         tests_run: trial.counts.map(|counts| counts.run),
         tests_passed: trial.counts.map(|counts| counts.passed),
         tests_baseline: job.manifest.test.baseline_tests,

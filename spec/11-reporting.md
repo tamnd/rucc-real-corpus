@@ -59,6 +59,8 @@ Two numbers per project per level, against a GCC 16 build of the same pin on the
 
 **`peak-rss` is recorded and reported for the worst ten projects only**, because compiler memory use is a real failure mode at R4 and R5 and nowhere else.
 
+**How `peak-rss` is arrived at is worth stating, because it is not what the kernel would tell you.** The high water mark the kernel keeps comes back from `getrusage` or `wait4`, both of which are unsafe calls that the workspace forbids, so the harness samples instead: every tenth of a second the wait loop reads the process group and takes the largest resident set in it. Three consequences follow and all three belong in the report rather than in a footnote. A command that finishes between two samples has no number at all, and says so rather than saying zero. The figure is the largest single process rather than the sum of the group, because a build under `make -j` has several compilers alive at once and the sum would be a measurement of `--jobs`, whereas the question worth asking is whether one translation unit fits in a machine of a given size. And it is the build that is measured and not the suite, because the suite is the project's own program and its memory is the project's business.
+
 ## 11.4 Diffing two runs
 
 `rrc diff <run-a> <run-b>` is the command that turns a corpus into a regression suite, and it produces four sections in this order.
