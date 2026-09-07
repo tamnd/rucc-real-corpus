@@ -385,6 +385,7 @@ fn check_test(manifest: &Manifest, say: &mut Vec<String>) {
             say.push("a suite oracle has no baseline-tests, so a run that silently stops halfway would pass".into());
         }
     }
+    check_baseline_total(manifest, say);
     if manifest.test.oracle == Oracle::Recorded
         && manifest.test.expect_output.is_none()
         && manifest.test.expect_contains.is_none()
@@ -412,6 +413,36 @@ fn check_test(manifest: &Manifest, say: &mut Vec<String>) {
                 skip.case
             ));
         }
+    }
+}
+
+/// `baseline-total` is the one field that lets a project be admitted while red, so it gets asked
+/// three questions rather than none.
+///
+/// It only means anything next to a suite oracle, it needs a baseline to be a total of, and it
+/// has to be larger than that baseline, because a total equal to the baseline is saying the
+/// reference passed everything and a project like that does not need this field at all. The last
+/// check is also the one that catches a transposed pair of digits, which is otherwise invisible
+/// and quietly lowers the bar for every run afterwards.
+fn check_baseline_total(manifest: &Manifest, say: &mut Vec<String>) {
+    let Some(total) = manifest.test.baseline_total else {
+        return;
+    };
+    if manifest.test.oracle != Oracle::Suite {
+        say.push(
+            "baseline-total is given and the oracle is not a suite, so nothing would read it"
+                .into(),
+        );
+        return;
+    }
+    let Some(baseline) = manifest.test.baseline_tests else {
+        say.push("baseline-total is given and baseline-tests is not, so there is a total and nothing to compare it against".into());
+        return;
+    };
+    if total <= baseline {
+        say.push(format!(
+            "baseline-total is {total} and baseline-tests is {baseline}, so either the reference passed everything and baseline-total should go, or one of the two numbers is a typo"
+        ));
     }
 }
 
@@ -656,6 +687,37 @@ kind = "standard"
         );
         let findings = check(&corpus_of(&text));
         assert!(findings.iter().any(|f| f.what.contains("baseline-tests")));
+    }
+
+    #[test]
+    fn a_baseline_total_that_is_not_above_the_baseline_is_caught() {
+        // 175 and 173 is gmp and is fine. 173 and 173 says the reference passed every case, and a
+        // project whose reference run is clean should be graded the ordinary way rather than
+        // against a second number that changes nothing.
+        let text = SAMPLE.replace(
+            "oracle = \"self-checking\"",
+            "oracle = \"suite\"\nparser = \"automake\"\nbaseline-tests = 173\nbaseline-total = 173",
+        );
+        let findings = check(&corpus_of(&text));
+        assert!(
+            findings.iter().any(|f| f.what.contains("baseline-total")),
+            "a total that is not above its baseline is either pointless or a typo: {findings:?}"
+        );
+    }
+
+    #[test]
+    fn a_baseline_total_with_nothing_to_compare_against_is_caught() {
+        let text = SAMPLE.replace(
+            "oracle = \"self-checking\"",
+            "oracle = \"suite\"\nparser = \"automake\"\nbaseline-total = 175",
+        );
+        let findings = check(&corpus_of(&text));
+        assert!(
+            findings
+                .iter()
+                .any(|f| f.what.contains("baseline-tests is not")),
+            "a total on its own grades nothing: {findings:?}"
+        );
     }
 
     #[test]

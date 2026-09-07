@@ -1,0 +1,64 @@
+[project]
+name = "libgmp"
+rung = 2
+upstream = "https://gmplib.org/"
+licence = "LGPL-3.0-or-later"
+licence-file = "COPYING.LESSERv3"
+description = "the gnu multiple precision arithmetic library, a portable c core under a mountain of machine specific assembly and macros"
+# longlong.h is the reason this project is here. It is a header of macros that expand to inline asm
+# for the machine it recognises and to plain C when it does not, and umul_ppmm and add_ssaaaa are
+# written once and used everywhere, so a compiler that mishandles either the constraints or the
+# fallback gets an arithmetic library that is wrong rather than one that fails to build.
+demands = ["inline-asm", "deep-macros", "integer-conversion"]
+
+# gnu ftp rather than gmplib.org, which would not serve the tarball to the fetcher. Same file, and
+# the sha256 says so.
+[source]
+url = "https://ftp.gnu.org/gnu/gmp/gmp-6.3.0.tar.xz"
+sha256 = "a3c2b80201b89e68616f4ad30bc66aee4927c3ce50e33929ca819d5c43538898"
+strip-components = 1
+
+[build]
+system = "configure"
+
+# Section 9.3 case one, and this one is worth reading because it is not a workaround, it is the
+# pin being older than the language default. gmp 6.3.0 is from 2023 and its configure runs a probe
+# that declares `void g(){}` and then calls it with six arguments. That was legal C for thirty
+# years, because an empty parameter list meant unspecified rather than none, and C23 changed it to
+# mean none. GCC 16 defaults to C23, so the probe no longer compiles, configure concludes there is
+# no working compiler, and the build stops before it starts. Nothing is wrong with the compiler
+# and nothing is wrong with gmp, they were written against different languages. The flag says
+# which one this pin is in, and it comes off when the pin moves to a release that has been
+# through its own C23 cleanup.
+[[build.flags]]
+flag = "-std=gnu17"
+why = "gmp 6.3.0's configure probes call a function declared with an empty parameter list, which C23 rejects and gcc 16 defaults to"
+
+# 173 of 175, and this is the first project on the list where the reference compiler does not get
+# a clean run either, so it is the first to need both numbers. The one failure is tests/rand/t-rand
+# and it is undefined behaviour in gmp's own test rather than anything a compiler did. t-rand calls
+# gmp_randinit(rstate, GMP_RAND_ALG_LC, a->nbits) where nbits is an int, and gmp_randinit is
+# variadic and reads that argument as unsigned long. On x86-64 the register holding the promoted
+# int usually happens to be zero in its upper half, so this has worked there for twenty five years.
+# On arm64 the argument goes to an eight byte stack slot whose upper four bytes are whatever was
+# there, gmp_randinit sees a garbage size, rejects it, and sets gmp_errno. t-rand then exits 1 with
+# no output at all, which is why the log says FAIL: t-rand and nothing else.
+#
+# Checked rather than guessed. A program linked against the built library calls gmp_randinit at
+# eighteen sizes from 1 to 129 with an int and gets GMP_ERROR_INVALID_ARGUMENT every time, and the
+# same program with the argument cast to unsigned long gets GMP_ERROR_NONE up to 128 and the
+# documented rejection at 129. The other one of the two missing is an ordinary skip.
+#
+# Measured with gcc 16.2.0 on macos arm64, six automake summaries adding to TOTAL 175, PASS 173,
+# SKIP 1, FAIL 1.
+[test]
+command = ["make", "check"]
+oracle = "suite"
+parser = "automake"
+baseline-tests = 173
+baseline-total = 175
+requires = ["sh"]
+
+[limits]
+build-seconds = 1800
+test-seconds = 1800
