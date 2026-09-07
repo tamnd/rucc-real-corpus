@@ -29,6 +29,9 @@
 //!   under test, and searches over the subset until the failure has a file name on it.
 //! - [`reduce`] takes the file a bisection named and cuts it down to something small enough to
 //!   keep in rucc-corpus, which is what stops a finding having to be found twice.
+//! - [`interrogate`] runs configure twice, once with each compiler, and compares what the two
+//!   builds concluded, which is the only check that catches a build that succeeded and produced
+//!   the wrong program.
 //! - [`twice`] compares two builds of the same project, which is what the isolation work was for.
 //! - [`staleness`] re-reads the exclusion register against what the excluded cells actually did.
 //!
@@ -43,6 +46,7 @@ pub mod diagnostic;
 pub mod driver;
 pub mod env;
 pub mod exec;
+pub mod interrogate;
 pub mod parse;
 pub mod record;
 pub mod reduce;
@@ -55,9 +59,10 @@ pub mod twice;
 pub use abi::{AbiRecord, Crossing, Pairing};
 pub use bisect::{BisectRecord, Status};
 pub use diagnostic::Normalizer;
-pub use driver::{Compiler, Dispatch, Graded, Job, Trial, grade};
+pub use driver::{Compiler, Dispatch, Extent, Graded, Job, Trial, grade};
 pub use env::{EnvPlan, SOURCE_DATE_EPOCH, environment};
 pub use exec::{Completed, Ending, Invocation};
+pub use interrogate::{Divergence, Names, Where};
 pub use parse::{Counts, counts};
 pub use record::{Outcome, Phase, Provenance, RecordLog, RunRecord, read_log};
 pub use reduce::{Finding, Kit, Shrunk};

@@ -50,6 +50,8 @@ pub enum Command {
     Run(RunPlan),
     /// The four way ABI cross check of `spec/08-oracles.md` section 8.5, on its own.
     Abi(AbiPlan),
+    /// The config.h differential of `spec/08-oracles.md` section 8.8, on its own.
+    Interrogate(InterrogatePlan),
     /// The mixed build and the bisection over it, from `spec/08-oracles.md` section 8.6.
     Bisect(BisectPlan),
     /// What changed between two runs, from `spec/11-reporting.md` section 11.4.
@@ -112,6 +114,28 @@ pub struct AbiPlan {
     pub levels: Option<Vec<Level>>,
     /// Where the records go.
     pub out: PathBuf,
+}
+
+/// What `rrc interrogate` was asked for.
+///
+/// One level rather than a list. Configure runs the same probes whatever the level is, since the
+/// question it asks is what the compiler accepts and not how well it optimizes, so four levels
+/// would be four copies of one answer.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct InterrogatePlan {
+    /// Only these projects, or every project whose build has a configure step.
+    pub projects: Vec<String>,
+    /// The level to configure at.
+    pub level: Level,
+}
+
+impl Default for InterrogatePlan {
+    fn default() -> Self {
+        Self {
+            projects: Vec::new(),
+            level: Level::O2,
+        }
+    }
 }
 
 impl Default for AbiPlan {
@@ -231,6 +255,7 @@ fn command(args: &[String]) -> Result<Command, String> {
         }
         "run" => run(&args[1..]).map(Command::Run),
         "abi" => abi(&args[1..]).map(Command::Abi),
+        "interrogate" => interrogate(&args[1..]).map(Command::Interrogate),
         "bisect" => bisect(&args[1..]).map(Command::Bisect),
         "reduce" => reduce(&args[1..]).map(Command::Reduce),
         "diff" => diff(&args[1..]).map(Command::Diff),
@@ -345,6 +370,24 @@ fn abi(args: &[String]) -> Result<AbiPlan, String> {
             "--project" => plan.projects.push(value(args, &mut index, "--project")?),
             "--out" => plan.out = value(args, &mut index, "--out")?.into(),
             other if other.starts_with('-') => return Err(unknown(other, "abi")),
+            other => plan.projects.push(other.to_string()),
+        }
+        index += 1;
+    }
+    Ok(plan)
+}
+
+fn interrogate(args: &[String]) -> Result<InterrogatePlan, String> {
+    let mut plan = InterrogatePlan::default();
+    let mut index = 0;
+    while index < args.len() {
+        let arg = args[index].as_str();
+        match arg {
+            "--level" | "--levels" => {
+                plan.level = parse_level(&value(args, &mut index, "--level")?)?;
+            }
+            "--project" => plan.projects.push(value(args, &mut index, "--project")?),
+            other if other.starts_with('-') => return Err(unknown(other, "interrogate")),
             other => plan.projects.push(other.to_string()),
         }
         index += 1;
@@ -621,6 +664,7 @@ rrc, the harness for rucc-real-corpus
   rrc test <project> [--level O2]           build then run the suite
   rrc run [--rung 0,1] [--levels O0,O2]     the scheduler, the normal entry point
   rrc abi [<project>...] [--levels O2]      the four way abi cross check, on its own
+  rrc interrogate [<project>...]            configure twice and compare what the two decided
   rrc bisect <project> [--level O2]         the mixed build, until the failure has a file name
   rrc diff <run-a> <run-b>                  what changed between two runs
   rrc reduce <project> [--file inflate.c]   cut a failing file down to a case for rucc-corpus
@@ -643,6 +687,11 @@ Options for abi:
 
   --project NAME  one project by name, repeatable, and a bare name means the same thing
   --out DIR       where the records go, defaulting to runs/latest
+
+Options for interrogate:
+
+  --project NAME  one project by name, repeatable, and a bare name means the same thing
+  --level LEVEL   the level to configure at, defaulting to O2
 
 Options for bisect:
 

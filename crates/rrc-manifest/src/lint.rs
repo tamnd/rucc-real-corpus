@@ -233,11 +233,7 @@ fn check_programs(manifest: &Manifest, say: &mut Vec<String>) {
 
 fn check_build(manifest: &Manifest, say: &mut Vec<String>) {
     check_programs(manifest, say);
-    let configures = matches!(
-        manifest.build.system,
-        BuildSystem::Configure | BuildSystem::Autoconf | BuildSystem::Cmake
-    );
-    if !configures && !manifest.build.expect_configure.is_empty() {
+    if !manifest.build.system.interrogates() && !manifest.build.expect_configure.is_empty() {
         say.push(
             "expects something from configure and has no configure step, so nothing would check it"
                 .into(),

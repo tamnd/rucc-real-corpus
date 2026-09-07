@@ -191,9 +191,32 @@ pub enum Dispatch<'a> {
     Mixed(&'a [String]),
 }
 
+/// How much of a trial to do.
+///
+/// The short one exists for `spec/08-oracles.md` section 8.8, which needs what configure decided
+/// and nothing after it. Stopping there rather than building and throwing the build away is most
+/// of the cost of the check: a configure is seconds and a build is minutes, and the whole point of
+/// the section is that it can afford to run on every project at every run.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Extent {
+    /// Configure, build, test.
+    Everything,
+    /// Configure and stop, leaving the tree exactly as configure left it.
+    Interrogation,
+}
+
 /// Build and test, without grading.
 pub fn attempt(job: &Job<'_>, slot: Slot, compiler: Compiler) -> std::io::Result<Trial> {
     attempt_with(job, slot, Dispatch::Whole(compiler))
+}
+
+/// Run configure and stop, for the `config.h` differential.
+///
+/// A project with no configure step runs nothing at all and comes back having reached `Fetched`.
+/// That is the honest answer rather than an error: a hand written Makefile interrogates nothing,
+/// so there is nothing for this check to compare and saying so is not a failure.
+pub fn interrogate(job: &Job<'_>, slot: Slot, compiler: Compiler) -> std::io::Result<Trial> {
+    attempt_upto(job, slot, Dispatch::Whole(compiler), Extent::Interrogation)
 }
 
 /// Where a mixed build keeps the two files the dispatcher reads and writes.
@@ -234,6 +257,15 @@ fn shim_for(
 
 /// Build and test with the compilers handed out however the caller asked.
 pub fn attempt_with(job: &Job<'_>, slot: Slot, dispatch: Dispatch<'_>) -> std::io::Result<Trial> {
+    attempt_upto(job, slot, dispatch, Extent::Everything)
+}
+
+fn attempt_upto(
+    job: &Job<'_>,
+    slot: Slot,
+    dispatch: Dispatch<'_>,
+    extent: Extent,
+) -> std::io::Result<Trial> {
     let sandbox = Sandbox::create(job.workspace, slot, &job.manifest.project.name, job.level)?;
     sandbox.place_source(job.extracted)?;
     let compiler = match dispatch {
@@ -296,7 +328,7 @@ pub fn attempt_with(job: &Job<'_>, slot: Slot, dispatch: Dispatch<'_>) -> std::i
 
     let workdir = build_dir(&trial.sandbox, job.manifest);
     let normalizer = Normalizer::rooted_at(trial.sandbox.root());
-    for step in build_steps(job, &env, &workdir) {
+    for step in steps_upto(build_steps(job, &env, &workdir), extent) {
         let completed = exec::run(&step.invocation)?;
         trial.build_seconds += completed.seconds;
         log(&trial.sandbox, &step.name, &step.invocation, &completed)?;
@@ -320,6 +352,10 @@ pub fn attempt_with(job: &Job<'_>, slot: Slot, dispatch: Dispatch<'_>) -> std::i
             trial.misconfigured = Some(missing);
             return Ok(trial);
         }
+    }
+
+    if extent == Extent::Interrogation {
+        return Ok(trial);
     }
 
     if let Some(measured) = job.manifest.build.measured(&job.manifest.test.command) {
@@ -350,6 +386,22 @@ pub fn attempt_with(job: &Job<'_>, slot: Slot, dispatch: Dispatch<'_>) -> std::i
     }
     trial.test = Some(completed);
     Ok(trial)
+}
+
+/// The build steps an extent asks for.
+///
+/// An interrogation keeps everything up to and including the step that reaches `Configured`, and
+/// nothing if no step does. Cutting the list here rather than breaking out of the loop is what
+/// makes a project with no configure run nothing at all, instead of running its whole make and
+/// then being told the caller only wanted the configure.
+fn steps_upto(steps: Vec<Step>, extent: Extent) -> Vec<Step> {
+    if extent == Extent::Everything {
+        return steps;
+    }
+    steps
+        .iter()
+        .position(|step| step.reaches == Phase::Configured)
+        .map_or_else(Vec::new, |last| steps.into_iter().take(last + 1).collect())
 }
 
 /// Where `build.needs` installs to, which is one directory shared by every dependency.

@@ -205,9 +205,19 @@ impl BuildSystem {
     /// Whether this build system interrogates the compiler and can therefore build a different
     /// program depending on what it concludes. These are the projects `spec/08-oracles.md`
     /// section 8.8 runs the `config.h` differential over.
+    ///
+    /// This started as autoconf, cmake and recursive, and both halves of that were wrong once the
+    /// differential was actually built. `configure` had to come in, because every autotools project
+    /// in this corpus is spelled that way: autoreconf is not assumed to be on the host, so each one
+    /// is pinned to a release tarball that already ships a generated configure, and a predicate
+    /// that left them out would have run the check over nothing at all. `recursive` had to go, not
+    /// because a recursive make cannot probe the compiler, but because the harness runs no
+    /// configure step for one, so there is no second answer to compare the first against. The
+    /// question this answers is whether there is something to compare, and saying yes where there
+    /// is nothing would put a permanent empty row in the report.
     #[must_use]
     pub const fn interrogates(self) -> bool {
-        matches!(self, Self::Autoconf | Self::Cmake | Self::Recursive)
+        matches!(self, Self::Configure | Self::Autoconf | Self::Cmake)
     }
 }
 
@@ -349,10 +359,15 @@ mod tests {
     }
 
     #[test]
-    fn only_the_interrogating_build_systems_get_the_config_differential() {
-        assert!(!BuildSystem::Make.interrogates());
-        assert!(!BuildSystem::Configure.interrogates());
+    fn only_the_build_systems_with_a_configure_step_get_the_config_differential() {
+        assert!(BuildSystem::Configure.interrogates());
         assert!(BuildSystem::Autoconf.interrogates());
         assert!(BuildSystem::Cmake.interrogates());
+        // Nothing to compare. A direct build is the harness writing the command line, a hand
+        // written Makefile asks the compiler nothing, and a recursive make gets no configure step
+        // from this harness even when upstream has one.
+        assert!(!BuildSystem::Direct.interrogates());
+        assert!(!BuildSystem::Make.interrogates());
+        assert!(!BuildSystem::Recursive.interrogates());
     }
 }

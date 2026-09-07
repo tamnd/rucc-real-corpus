@@ -10,7 +10,7 @@
 //! is long enough that somebody stopping it halfway through is a normal event, and the records
 //! it had finished are worth keeping.
 
-use crate::cli::{AbiPlan, Options, RunPlan};
+use crate::cli::{AbiPlan, InterrogatePlan, Options, RunPlan};
 use crate::commands::{Done, fetch};
 use crate::corpus::Loaded;
 use rrc_fetch::{Cache, Downloader};
@@ -19,6 +19,7 @@ use rrc_manifest::manifest::Manifest;
 use rrc_run::abi::{self, AbiRecord};
 use rrc_run::driver::{self, Compiler, Job, Prepared};
 use rrc_run::env;
+use rrc_run::interrogate::{self, Divergence, Names, Where};
 use rrc_run::record::{Outcome, Provenance, RecordLog, RunRecord};
 use rrc_run::sandbox::Slot;
 use rrc_run::shim::{self, Toolchain};
@@ -395,6 +396,146 @@ pub fn cross(
     // into a prefix would have nothing to be linked into.
     let job = job_for(setup, manifest, level, &extracted, &workspace, &[]);
     abi::check(&job).map_err(|why| format!("{} at {}: {why}", manifest.project.name, level.name()))
+}
+
+/// Configure one project twice, once with each compiler, and compare what the two runs concluded.
+///
+/// `None` when the project has no configure step, which is not a failure and not a skip. A hand
+/// written Makefile asks the compiler nothing, so there is no second answer to compare the first
+/// against, and reporting an empty result for it would put a permanent blank row in the table.
+///
+/// Its own workspace for the same reason the cross check has one. The two configure trees would
+/// otherwise sit exactly where the graded build is about to create its own, and a run of the
+/// ordinary kind would delete one of them halfway through the comparison.
+pub fn interrogate(
+    setup: &Setup,
+    loaded: &Loaded,
+    manifest: &Manifest,
+    level: Level,
+) -> Result<Option<Vec<Divergence>>, String> {
+    if !manifest.build.system.interrogates() {
+        return Ok(None);
+    }
+    let name = &manifest.project.name;
+    let extracted = loaded.extracted(name);
+    fetch::ensure(
+        manifest,
+        &setup.cache,
+        setup.downloader.as_ref(),
+        &extracted,
+    )?;
+    let needs = Needs::prepare(setup, loaded, manifest)?;
+    let prepared = needs.prepared();
+    let workspace = loaded.workspace().join("interrogate");
+    let job = job_for(setup, manifest, level, &extracted, &workspace, &prepared);
+
+    let failed = |half: &str, why: std::io::Error| format!("{name} {half} configure: {why}");
+    let ours = driver::interrogate(&job, Slot::A, Compiler::UnderTest)
+        .map_err(|why| failed("first", why))?;
+    let theirs = driver::interrogate(&job, Slot::B, Compiler::Reference)
+        .map_err(|why| failed("second", why))?;
+
+    // A configure that failed on one side and not the other is a finding, and it is a louder one
+    // than any macro. Reported here rather than left to the comparison, because a tree that never
+    // got configured has no generated headers and no probe lines, so the comparison would come
+    // back with a list of everything the other side decided and none of it would be the point.
+    if ours.built() != theirs.built() {
+        let (broke, said) = if ours.built() {
+            ("gcc", theirs.first_diagnostic.clone())
+        } else {
+            ("rucc", ours.first_diagnostic.clone())
+        };
+        return Ok(Some(vec![Divergence {
+            file: "configure".to_string(),
+            which: Where::Probe,
+            key: format!("configure failed under {broke}"),
+            ours: said.clone().filter(|_| broke == "rucc"),
+            theirs: said.filter(|_| broke == "gcc"),
+        }]));
+    }
+
+    let names = Names {
+        versions: vec![
+            setup.provenance.rucc_version.clone(),
+            setup.provenance.gcc_version.clone(),
+        ],
+    };
+    let subdir = manifest.build.subdir.as_ref().map(Path::new);
+    interrogate::compare(&ours, &theirs, &extracted, subdir, &names)
+        .map(Some)
+        .map_err(|why| format!("{name} comparing two configures: {why}"))
+}
+
+/// `rrc interrogate`, the config.h differential on its own.
+pub fn interrogate_only(
+    loaded: &Loaded,
+    options: &Options,
+    plan: &InterrogatePlan,
+) -> Result<Done, String> {
+    let chosen: Vec<&Manifest> = if plan.projects.is_empty() {
+        loaded
+            .corpus
+            .manifests
+            .iter()
+            .filter(|manifest| manifest.build.system.interrogates())
+            .collect()
+    } else {
+        plan.projects
+            .iter()
+            .map(|name| loaded.get(name))
+            .collect::<Result<_, _>>()?
+    };
+
+    let setup = Setup::new(options)?;
+    let mut out = String::new();
+    let mut total = 0;
+    let mut asked = 0;
+    for manifest in chosen {
+        let Some(divergences) = interrogate(&setup, loaded, manifest, plan.level)? else {
+            let _ = writeln!(
+                out,
+                "{}: nothing to interrogate, its build asks the compiler nothing",
+                manifest.project.name
+            );
+            continue;
+        };
+        asked += 1;
+        total += divergences.len();
+        if divergences.is_empty() {
+            let _ = writeln!(out, "{}: the two configures agree", manifest.project.name);
+        } else {
+            let _ = writeln!(
+                out,
+                "{}: {}",
+                manifest.project.name,
+                differences_said(divergences.len())
+            );
+            out.push_str(&interrogate::render(&divergences));
+        }
+    }
+    let _ = writeln!(
+        out,
+        "{asked} interrogated, {}",
+        if total == 0 {
+            "no differences".to_string()
+        } else {
+            differences_said(total)
+        }
+    );
+    Ok(if total == 0 {
+        Done::good(out)
+    } else {
+        Done::bad(out)
+    })
+}
+
+/// One difference or several, said the way a person would.
+fn differences_said(how_many: usize) -> String {
+    if how_many == 1 {
+        "1 difference".to_string()
+    } else {
+        format!("{how_many} differences")
+    }
 }
 
 /// `rrc abi`, the cross check on its own.
