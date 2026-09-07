@@ -62,9 +62,18 @@ fn dispatch(invocation: Invocation) -> Result<Done, String> {
     match command {
         Command::Help => Ok(Done::good(cli::usage())),
         Command::Version => Ok(Done::good(format!("rrc {}\n", env!("CARGO_PKG_VERSION")))),
-        Command::Report { input, format } => {
-            commands::report::run(&open(&options)?, input.as_deref(), format)
-        }
+        Command::Report {
+            input,
+            format,
+            out,
+            check,
+        } => commands::report::run(
+            &open(&options)?,
+            input.as_deref(),
+            format,
+            out.as_deref().unwrap_or(&options.corpus),
+            check,
+        ),
         Command::List { rungs, demands } => {
             let loaded = open(&options)?;
             Ok(commands::list::run(&loaded, &rungs, demands.as_deref()))

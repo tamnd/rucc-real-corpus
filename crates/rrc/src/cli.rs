@@ -73,6 +73,21 @@ pub enum Command {
         input: Option<PathBuf>,
         /// Markdown or the status line.
         format: Format,
+        /// Where the page tree goes, when it is not going into the repository.
+        ///
+        /// The committed tree lives at the repository root and that is the default. A pull
+        /// request cannot regenerate the committed tree, because the records behind it belong to
+        /// a nightly on the reference machine and are not in the repository, so what CI does on a
+        /// pull request instead is render its own run somewhere else and attach it. That needs a
+        /// destination that is not the working tree.
+        out: Option<PathBuf>,
+        /// Regenerate and compare rather than write.
+        ///
+        /// This is the flag CI runs. The pages are committed, so a pull request that changes the
+        /// generator or the records without regenerating them leaves a stale file in the tree,
+        /// and the only cheap way to catch that is to generate the pages again and diff. It
+        /// writes nothing, so it is safe to run anywhere.
+        check: bool,
     },
     /// Print the usage text.
     Help,
@@ -206,6 +221,12 @@ pub enum Format {
     /// reporting design rests on. It reads the corpus as well, which no other format does, since
     /// the map is mostly a fact about the manifests and only partly about a run.
     Features,
+    /// The committed tree of linked pages, which is the report a person actually reads.
+    ///
+    /// The only format that writes files rather than printing one. Everything else here renders
+    /// to standard output and lets a shell decide where it goes; this one produces a directory of
+    /// pages that link to each other, so it has to know where they are going.
+    Pages,
 }
 
 /// Everything that is not specific to one command.
@@ -602,19 +623,25 @@ fn diff(args: &[String]) -> Result<DiffPlan, String> {
 fn report(args: &[String]) -> Result<Command, String> {
     let mut input = None;
     let mut format = Format::Markdown;
+    let mut out = None;
+    let mut check = false;
     let mut index = 0;
     while index < args.len() {
         match args[index].as_str() {
             "--input" => input = Some(value(args, &mut index, "--input")?.into()),
             "--features" => format = Format::Features,
+            "--pages" => format = Format::Pages,
+            "--out" => out = Some(value(args, &mut index, "--out")?.into()),
+            "--check" => check = true,
             "--format" => {
                 format = match value(args, &mut index, "--format")?.as_str() {
                     "md" | "markdown" => Format::Markdown,
                     "status" => Format::Status,
                     "features" => Format::Features,
+                    "pages" => Format::Pages,
                     other => {
                         return Err(format!(
-                            "`{other}` is not a format, and the ones there are are `md`, `status` and `features`"
+                            "`{other}` is not a format, and the ones there are are `md`, `status`, `features` and `pages`"
                         ));
                     }
                 };
@@ -623,7 +650,24 @@ fn report(args: &[String]) -> Result<Command, String> {
         }
         index += 1;
     }
-    Ok(Command::Report { input, format })
+    if check && format != Format::Pages {
+        return Err(
+            "--check is about the committed pages, so it goes with --pages and with nothing else"
+                .to_string(),
+        );
+    }
+    if out.is_some() && format != Format::Pages {
+        return Err(
+            "--out is where the page tree goes, so it goes with --pages and with nothing else"
+                .to_string(),
+        );
+    }
+    Ok(Command::Report {
+        input,
+        format,
+        out,
+        check,
+    })
 }
 
 /// The value after a flag, advancing past it.
@@ -721,6 +765,8 @@ rrc, the harness for rucc-real-corpus
   rrc lint                                  schema, vocabulary and lockfile agreement
   rrc report [--input FILE] [--format md]   render records that already exist
   rrc report --features                     the feature demand map, which is what to do next
+  rrc report --pages [--out DIR]            write the report tree, into the repository by default
+  rrc report --pages --check                say which committed pages are out of date
 
 Options that apply to all of them:
 
@@ -785,6 +831,37 @@ mod tests {
 
     fn parsed(line: &str) -> Command {
         parse(&args(line)).unwrap().command
+    }
+
+    #[test]
+    fn the_page_tree_can_be_written_checked_or_sent_somewhere_else() {
+        assert_eq!(
+            parsed("report --pages"),
+            Command::Report {
+                input: None,
+                format: Format::Pages,
+                out: None,
+                check: false,
+            }
+        );
+        let Command::Report { check, out, .. } = parsed("report --pages --check") else {
+            panic!("that is a report");
+        };
+        assert!(check && out.is_none());
+        let Command::Report { out, .. } = parsed("report --pages --out /tmp/pages") else {
+            panic!("that is a report");
+        };
+        assert_eq!(out, Some(PathBuf::from("/tmp/pages")));
+    }
+
+    #[test]
+    fn checking_pages_that_were_not_asked_for_is_refused_rather_than_ignored() {
+        // Both of these read as a request that the harness cannot carry out, and a flag silently
+        // doing nothing is how somebody's CI passes for a month without checking anything.
+        for line in ["report --check", "report --out /tmp/pages"] {
+            let said = parse(&args(line)).unwrap_err();
+            assert!(said.contains("--pages"), "{line}: {said}");
+        }
     }
 
     #[test]

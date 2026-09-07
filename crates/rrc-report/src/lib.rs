@@ -23,6 +23,7 @@ pub mod diff;
 pub mod features;
 pub mod jsonl;
 pub mod markdown;
+pub mod pages;
 pub mod summary;
 
 pub use cluster::{Cluster, clusters};

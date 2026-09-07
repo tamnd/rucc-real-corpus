@@ -108,6 +108,25 @@ Three lines, and the third and fourth are what make it actionable: the level at 
 
 **A single-line status** for the README badge, which is the count table's `passed` and the total, and nothing else.
 
+**A tree of linked markdown pages**, written by `rrc report --pages`, which is the report a person actually reads and the one this section was missing. `reports/latest.md` is the right shape for the artifact of a single run, which is to say you open it, you scroll and you close it. It is the wrong shape for the thing somebody arriving at the repository wants, which is to learn in one screen how far the compiler has got and then to click through to the project they care about.
+
+```
+README.md                     the front page, with one generated block in it
+reports/README.md             the hub: what passed, what it cost, links to everything
+reports/cost.md               every cell against the GCC 16 build of the same pin
+reports/failures.md           the failures, grouped by diagnostic
+reports/projects/README.md    one row per project
+reports/projects/<name>.md    one project, every level, every number
+```
+
+**The front page has a generated block rather than being generated.** It is mostly prose that a person wrote and should keep writing, so the generator replaces what is between two HTML comment markers and leaves everything else alone, and a front page with no markers in it comes back unchanged. A generator that appends to a file it does not understand eventually eats somebody's prose.
+
+**Every page is a pure function of the records**, with no clock and no filesystem in it, which is what makes `rrc report --pages --check` possible. That regenerates the whole tree and says which files no longer match, and it is the same code path as the write, so the check cannot drift away from the thing it checks.
+
+**A pull request cannot run that check and does not pretend to.** The records behind the committed tree belong to a nightly on the reference machine with a compiler no runner has, and they are not in the repository. So what CI does on a pull request is the check that needs no records: every relative link in every page has to land on a file that exists. That is the failure a reader actually hits, and it is the one a rename or a swept page causes.
+
+**Markdown is committed and the records are not.** The records are large, they are specific to one machine, and they differ on every run whether or not anything about the compiler changed, so committing them turns the history into noise and the diff into something nobody reads. They go up as a workflow artifact under the retention above. This applies to every generated file in the repository: if it is committed, it is markdown.
+
 ## 11.8 What the report deliberately omits
 
 **A leaderboard against other compilers.** kefir's and slimcc's numbers are in document 01 as evidence about method, not as a scoreboard. Their lists are different, their patch rules are different, and a table putting our count next to theirs would be comparing three different measurements. Document 00's honesty about this is a commitment, not a hedge.

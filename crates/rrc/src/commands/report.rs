@@ -17,7 +17,13 @@ use std::path::Path;
 /// The reference records are the other half of the cost table and they come from their own run,
 /// so a report rendered from one log alone says the cost was not measured. That is the honest
 /// answer and it is what `spec/11-reporting.md` section 11.4 asks for.
-pub fn run(loaded: &Loaded, input: Option<&Path>, format: Format) -> Result<Done, String> {
+pub fn run(
+    loaded: &Loaded,
+    input: Option<&Path>,
+    format: Format,
+    root: &Path,
+    check: bool,
+) -> Result<Done, String> {
     if format == Format::Features {
         return Ok(Done::good(features(loaded, input)?));
     }
@@ -29,11 +35,16 @@ pub fn run(loaded: &Loaded, input: Option<&Path>, format: Format) -> Result<Done
     }
 
     let reference = reference_beside(input)?;
+    if format == Format::Pages {
+        return pages(&records, &reference, root, check);
+    }
     let report = Report::of(&records, &reference);
     let text = match format {
         Format::Markdown => report.markdown(),
         Format::Status => format!("{}\n", report.summary.status_line()),
-        Format::Features => unreachable!("handled above, before the records are read"),
+        Format::Features | Format::Pages => {
+            unreachable!("both are handled above, before the report is built")
+        }
     };
     let failed = report
         .summary
@@ -45,6 +56,119 @@ pub fn run(loaded: &Loaded, input: Option<&Path>, format: Format) -> Result<Done
     } else {
         Done::good(text)
     })
+}
+
+/// Write the committed page tree, or say which of its files are out of date.
+///
+/// Two modes and one generator, which is the whole point. `--check` renders exactly what a write
+/// would have written and compares it against what is on disk, so the check cannot drift away
+/// from the thing it checks. It is what CI runs on a pull request, and its failure message names
+/// the files and the command that fixes them rather than printing a diff nobody asked for.
+fn pages(
+    records: &[RunRecord],
+    reference: &[RunRecord],
+    root: &Path,
+    check: bool,
+) -> Result<Done, String> {
+    let mut wanted = rrc_report::pages::generate(records, reference);
+    // The front page is a hand written file with one generated block in it, so it is read, spliced
+    // and put back rather than rendered from nothing. A repository with no front page gets no
+    // block, because inventing one would be inventing the prose around it too.
+    let front = root.join("README.md");
+    if let Ok(existing) = std::fs::read_to_string(&front) {
+        wanted.push(rrc_report::pages::Page {
+            path: "README.md".to_string(),
+            text: rrc_report::pages::splice(
+                &existing,
+                &rrc_report::pages::headline(records, reference),
+            ),
+        });
+    }
+
+    if check {
+        let stale: Vec<&str> = wanted
+            .iter()
+            .filter(|page| {
+                std::fs::read_to_string(root.join(&page.path)).ok().as_ref() != Some(&page.text)
+            })
+            .map(|page| page.path.as_str())
+            .collect();
+        if stale.is_empty() {
+            return Ok(Done::good(format!(
+                "all {} report pages are up to date\n",
+                wanted.len()
+            )));
+        }
+        return Ok(Done::bad(format!(
+            "{} report {} out of date, and `rrc report --pages` is what brings {} back:\n{}\n",
+            stale.len(),
+            if stale.len() == 1 {
+                "page is"
+            } else {
+                "pages are"
+            },
+            if stale.len() == 1 { "it" } else { "them" },
+            stale
+                .iter()
+                .map(|path| format!("  {path}"))
+                .collect::<Vec<_>>()
+                .join("\n")
+        )));
+    }
+
+    for page in &wanted {
+        let at = root.join(&page.path);
+        if let Some(parent) = at.parent() {
+            std::fs::create_dir_all(parent)
+                .map_err(|error| format!("could not make {}: {error}", parent.display()))?;
+        }
+        std::fs::write(&at, &page.text)
+            .map_err(|error| format!("could not write {}: {error}", at.display()))?;
+    }
+    // Anything under `reports/projects/` that this run did not produce is a project that has since
+    // left the corpus or been renamed, and leaving its page behind means the tree says something
+    // about a project that is no longer there.
+    let kept: Vec<&str> = wanted.iter().map(|page| page.path.as_str()).collect();
+    let removed = sweep(&root.join("reports/projects"), root, &kept)?;
+
+    Ok(Done::good(format!(
+        "wrote {} report {}{}\n",
+        wanted.len(),
+        if wanted.len() == 1 { "page" } else { "pages" },
+        if removed == 0 {
+            String::new()
+        } else {
+            format!(" and removed {removed} that no longer have a project behind them")
+        }
+    )))
+}
+
+/// Delete the pages in a directory that the generator did not just write.
+///
+/// Only markdown, and only in the one directory whose contents are entirely generated, because a
+/// sweep with a wider reach is a sweep that eventually deletes somebody's notes.
+fn sweep(directory: &Path, root: &Path, kept: &[&str]) -> Result<usize, String> {
+    let Ok(listing) = std::fs::read_dir(directory) else {
+        return Ok(0);
+    };
+    let mut removed = 0;
+    for entry in listing.flatten() {
+        let path = entry.path();
+        if path.extension().is_none_or(|kind| kind != "md") {
+            continue;
+        }
+        let relative = path
+            .strip_prefix(root)
+            .map(|at| at.to_string_lossy().replace('\\', "/"))
+            .unwrap_or_default();
+        if kept.contains(&relative.as_str()) {
+            continue;
+        }
+        std::fs::remove_file(&path)
+            .map_err(|error| format!("could not remove {}: {error}", path.display()))?;
+        removed += 1;
+    }
+    Ok(removed)
 }
 
 /// The feature demand map of `spec/10-feature-demand.md` section 10.6.
