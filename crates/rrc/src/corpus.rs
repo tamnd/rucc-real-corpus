@@ -1,8 +1,8 @@
 //! Reading the corpus off disk.
 //!
 //! The layout is the one in `spec/07-harness.md` section 7.1: `projects/<name>/project.toml`
-//! one directory per project, with `features.toml`, `projects.lock` and `exclusions.toml` at
-//! the root. Nothing here is clever. It walks the directory, parses what it finds, and reports
+//! one directory per project, with `features.toml`, `projects.lock`, `exclusions.toml` and
+//! `sqlite.toml` at the root. Nothing here is clever. It walks the directory, parses what it finds, and reports
 //! every file it could not read rather than stopping at the first one, because somebody editing
 //! four manifests wants all four errors in one go.
 
@@ -12,6 +12,7 @@ use rrc_manifest::features::Features;
 use rrc_manifest::lint::Corpus;
 use rrc_manifest::lockfile::Lockfile;
 use rrc_manifest::manifest::Manifest;
+use rrc_manifest::sqlite::Sqlite;
 use std::path::{Component, Path, PathBuf};
 
 /// A corpus and the directory it was read from.
@@ -107,12 +108,12 @@ pub fn find(start: &Path) -> Result<PathBuf, String> {
     }
 }
 
-/// Read every manifest and the three corpus wide files.
+/// Read every manifest and the four corpus wide files.
 ///
-/// The three files are allowed to be missing and read as empty when they are. That is not
-/// leniency: an empty vocabulary makes every `demands` tag unknown and an empty lockfile makes
-/// every project unfetchable, so `rrc lint` says so in as many sentences as there are projects.
-/// Failing here instead would only move the same complaint somewhere less useful.
+/// All four are allowed to be missing and read as empty when they are. That is not leniency: an
+/// empty vocabulary makes every `demands` tag unknown and an empty lockfile makes every project
+/// unfetchable, so `rrc lint` says so in as many sentences as there are projects. Failing here
+/// instead would only move the same complaint somewhere less useful.
 pub fn load(root: &Path) -> Result<Loaded, String> {
     let mut problems = Vec::new();
     let manifests = read_manifests(&root.join("projects"), &mut problems);
@@ -132,6 +133,7 @@ pub fn load(root: &Path) -> Result<Loaded, String> {
         Exclusions::from_path,
         &mut problems,
     );
+    let sqlite = read_or_default(&root.join("sqlite.toml"), Sqlite::from_path, &mut problems);
 
     if !problems.is_empty() {
         return Err(problems.join("\n"));
@@ -144,6 +146,7 @@ pub fn load(root: &Path) -> Result<Loaded, String> {
             features,
             lockfile,
             exclusions,
+            sqlite,
         },
     })
 }

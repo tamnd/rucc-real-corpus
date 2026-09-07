@@ -303,6 +303,58 @@ recursion deep enough that the frame layout and the tail call decision both matt
 
 - `jtckdint`, R0, not measured
 
+## The SQLite column
+
+Every demand the SQLite amalgamation makes, the smallest project below it that makes the same demand, and what the run says about that project. Measured against 3.53.4 of `sqlite3.c`, which is 269649 lines. The counts and what was counted for each are in `sqlite.toml` at the root, which is the file to go and disagree with. SQLite is not admitted to the list until RC5, so until then this column is a measurement of the source rather than a run of it.
+
+This is the number RC2 turns on. The residue is the demands with nothing below them, which are the things the ladder was never going to find out about before the climb. It is currently 1 of 18.
+
+| demand | sites | smallest reacher below | rung | outcome |
+|---|---|---|---|---|
+| `always-inline` | 1 | nothing below it |  |  |
+| `memcpy-idioms` | 1125 | `lz4` | R1 | not measured |
+| `bit-manipulation` | 1082 | `heatshrink` | R0 | not measured |
+| `integer-conversion` | 931 | `coremark` | R0 | not measured |
+| `function-pointers` | 792 | `tinyexpr` | R0 | not measured |
+| `float-arithmetic` | 213 | `llama2.c` | R0 | not measured |
+| `switch-dispatch` | 207 | `heatshrink` | R0 | not measured |
+| `large-switch` | 188 | `libconfig` | R2 | not measured |
+| `deep-macros` | 163 | `picohttpparser` | R0 | not measured |
+| `pointer-arithmetic` | 162 | `jsmn` | R0 | not measured |
+| `struct-layout` | 79 | `sds` | R0 | not measured |
+| `varargs-depth` | 43 | `libsir` | R1 | not measured |
+| `recursion-depth` | 31 | `parson` | R0 | not measured |
+| `double-formatting` | 27 | `parson` | R0 | not measured |
+| `unaligned-access` | 22 | `lz4` | R1 | not measured |
+| `bit-builtins` | 10 | `rpmalloc` | R1 | not measured |
+| `overflow-builtins` | 3 | `jtckdint` | R0 | not measured |
+| `atomic-builtins` | 2 | `rpmalloc` | R1 | not measured |
+
+### The residue
+
+Each of these is a project worth admitting, or an argument that the demand is not worth covering below SQLite. Both are decisions, and they are the RC2 decisions.
+
+- `always-inline`, one site: SQLITE_INLINE is __attribute__((always_inline)) inline under GCC, and exactly one function, allocateSpace in the b-tree, is defined with it
+
+### Looked for and not there
+
+These rows are why the residue above can be believed. A list that only records what it found cannot be told apart from a list nobody finished, so what was searched for and missing is written down too.
+
+- `autoconf-probes`: the amalgamation is one translation unit compiled directly, so nothing interrogates the compiler before the build
+- `cmake-probes`: same reason as autoconf, there is no configure step of any kind in front of the amalgamation
+- `computed-goto`: no labels as values anywhere, which is worth knowing because the bytecode interpreter is exactly the shape that usually has them and SQLite uses a plain switch instead
+- `constant-time`: the phrase appears twice in comments about algorithmic complexity and there is no cryptographic constant time requirement in the file
+- `flexible-array-member`: the trailing empty brackets in the source are extern array declarations of unknown size rather than flexible members inside a structure
+- `inline-asm`: there is a __asm__ block for reading the cycle counter, but it is guarded on i386 and 32 bit x86 is not a target here, so on the machines this corpus runs on the count is nought
+- `k-and-r-idioms`: every definition is prototyped, and the lines that look like an identifier list are __declspec(dllexport) on the Windows exports
+- `libm-builtins`: none in the amalgamation, which is the split document 05.5 describes: the shell fails on __builtin_ceil and __builtin_floor while the library fails on atomics
+- `long-double`: no long double and no LDBL_ macros, since the whole value system is double
+- `rotate-idioms`: no rotate written as a shift pair and no rotate helper
+- `setjmp-longjmp`: no setjmp and no longjmp, since errors are returned as codes all the way up
+- `stdckdint`: the checked arithmetic goes through the GNU overflow builtins rather than the C23 header
+- `thread-local`: no _Thread_local and no __thread, because thread state is passed in the connection handle rather than kept in the compiler's storage
+- `visibility-attributes`: the amalgamation controls its exports with SQLITE_API and static rather than with a visibility attribute
+
 ## Features nothing on the list demands
 
 A tag nothing reaches is either a gap in the list, which is a project worth admitting, or a tag that should not be in the vocabulary. Both are only visible if the empty rows are.

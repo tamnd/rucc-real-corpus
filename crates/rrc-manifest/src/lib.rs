@@ -1,13 +1,14 @@
 //! The data model of the real corpus: what a project is, where its bytes come from, how it is
 //! graded, and what it is allowed to be excluded for.
 //!
-//! Nothing in this crate runs a compiler or touches the network. It reads five kinds of file and
+//! Nothing in this crate runs a compiler or touches the network. It reads six kinds of file and
 //! it says whether they are consistent with each other:
 //!
 //! - `projects/<name>/project.toml`, one per project, the schema in [`manifest`].
 //! - `features.toml`, the closed vocabulary every `demands` entry draws from, in [`features`].
 //! - `projects.lock`, the resolved pins and their hashes, in [`lockfile`].
 //! - `exclusions.toml`, the register of everything not being counted, in [`exclusions`].
+//! - `sqlite.toml`, what the amalgamation was measured to demand, in [`sqlite`].
 //! - the axes every one of those files grades a project on, in [`axes`].
 //!
 //! [`lint`] is the pass that catches the manifests that parse and still mean nothing. It is a
@@ -22,6 +23,7 @@ pub mod features;
 pub mod lint;
 pub mod lockfile;
 pub mod manifest;
+pub mod sqlite;
 
 pub use axes::{BuildSystem, Level, Oracle, Requirement, Rung, SuiteParser};
 pub use exclusions::{Exclusion, Exclusions};
@@ -31,3 +33,4 @@ pub use lockfile::{LockEntry, Lockfile};
 pub use manifest::{
     Abi, Archive, Driver, LevelFlags, Manifest, ManifestError, Program, Project, Source, Test,
 };
+pub use sqlite::{Measured, Sqlite};

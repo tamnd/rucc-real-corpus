@@ -8,7 +8,7 @@ use crate::cli::Format;
 use crate::commands::Done;
 use crate::corpus::Loaded;
 use rrc_report::Report;
-use rrc_report::features::{Map, render};
+use rrc_report::features::{Column, Map, render};
 use rrc_run::record::RunRecord;
 use std::path::Path;
 
@@ -66,7 +66,8 @@ fn features(loaded: &Loaded, input: Option<&Path>) -> Result<String, String> {
         &loaded.corpus.exclusions,
         &records,
     );
-    Ok(render(&map, &provenance(input, &records)))
+    let column = Column::of(&map, &loaded.corpus.sqlite);
+    Ok(render(&map, &column, &provenance(input, &records)))
 }
 
 /// The line section 10.6's staleness rule asks the committed file to carry.
