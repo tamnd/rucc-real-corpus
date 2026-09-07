@@ -14,7 +14,9 @@ use rrc_manifest::axes::{Level, Rung};
 use std::path::PathBuf;
 
 /// What the user asked for.
-#[derive(Debug, Clone, PartialEq, Eq)]
+///
+/// Not `Eq`, because a diff carries the threshold it was given and that is a fraction.
+#[derive(Debug, Clone, PartialEq)]
 pub enum Command {
     /// What is on the list, filtered.
     List {
@@ -50,6 +52,8 @@ pub enum Command {
     Abi(AbiPlan),
     /// The mixed build and the bisection over it, from `spec/08-oracles.md` section 8.6.
     Bisect(BisectPlan),
+    /// What changed between two runs, from `spec/11-reporting.md` section 11.4.
+    Diff(DiffPlan),
     /// Schema, vocabulary and lockfile agreement.
     Lint,
     /// Render records that already exist.
@@ -173,7 +177,7 @@ impl Default for Options {
 }
 
 /// A parsed command line.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Invocation {
     /// The command.
     pub command: Command,
@@ -226,6 +230,7 @@ fn command(args: &[String]) -> Result<Command, String> {
         "run" => run(&args[1..]).map(Command::Run),
         "abi" => abi(&args[1..]).map(Command::Abi),
         "bisect" => bisect(&args[1..]).map(Command::Bisect),
+        "diff" => diff(&args[1..]).map(Command::Diff),
         "report" => report(&args[1..]),
         other => Err(format!(
             "there is no `{other}` command, and `rrc help` lists the ones there are"
@@ -387,6 +392,55 @@ fn bisect(args: &[String]) -> Result<BisectPlan, String> {
     })
 }
 
+/// What a diff compares.
+#[derive(Debug, Clone, PartialEq)]
+pub struct DiffPlan {
+    /// The earlier run.
+    pub before: PathBuf,
+    /// The later one.
+    pub after: PathBuf,
+    /// How far a size or a build time has to move before it is worth a line, as a fraction.
+    pub threshold: f64,
+}
+
+fn diff(args: &[String]) -> Result<DiffPlan, String> {
+    let mut runs: Vec<PathBuf> = Vec::new();
+    let mut threshold = rrc_report::diff::MOVED;
+    let mut index = 0;
+    while index < args.len() {
+        let arg = args[index].as_str();
+        match arg {
+            "--threshold" => {
+                let given = value(args, &mut index, "--threshold")?;
+                let percent: f64 = given.parse().map_err(|_| {
+                    format!("`{given}` is not a percentage, and `--threshold` wants one")
+                })?;
+                if percent < 0.0 {
+                    return Err(
+                        "`--threshold` cannot be negative, since it is a distance".to_string()
+                    );
+                }
+                threshold = percent / 100.0;
+            }
+            other if other.starts_with('-') => return Err(unknown(other, "diff")),
+            other => runs.push(other.into()),
+        }
+        index += 1;
+    }
+    let [before, after] = runs.as_slice() else {
+        return Err(
+            "`rrc diff` wants two runs, the earlier one first, each either a records.jsonl \
+             or the directory holding one"
+                .to_string(),
+        );
+    };
+    Ok(DiffPlan {
+        before: before.clone(),
+        after: after.clone(),
+        threshold,
+    })
+}
+
 fn report(args: &[String]) -> Result<Command, String> {
     let mut input = PathBuf::from("runs/latest/records.jsonl");
     let mut format = Format::Markdown;
@@ -482,6 +536,7 @@ rrc, the harness for rucc-real-corpus
   rrc run [--rung 0,1] [--levels O0,O2]     the scheduler, the normal entry point
   rrc abi [<project>...] [--levels O2]      the four way abi cross check, on its own
   rrc bisect <project> [--level O2]         the mixed build, until the failure has a file name
+  rrc diff <run-a> <run-b>                  what changed between two runs
   rrc lint                                  schema, vocabulary and lockfile agreement
   rrc report [--input FILE] [--format md]   render records that already exist
 
@@ -507,6 +562,10 @@ Options for bisect:
   --project NAME  the project, and a bare name means the same thing
   --limit N       how many builds the search may spend, defaulting to 30
   --out DIR       where the record goes, defaulting to runs/latest
+
+Options for diff:
+
+  --threshold N   how far a size or a build time has to move to be worth a line, in percent
 
 Options for fetch:
 
@@ -654,6 +713,22 @@ mod tests {
     }
 
     #[test]
+    fn diff_takes_two_runs_in_the_order_they_happened() {
+        let Command::Diff(plan) = parsed("diff runs/monday runs/tuesday --threshold 10") else {
+            panic!("not a diff");
+        };
+        assert_eq!(plan.before, PathBuf::from("runs/monday"));
+        assert_eq!(plan.after, PathBuf::from("runs/tuesday"));
+        assert!((plan.threshold - 0.10).abs() < f64::EPSILON);
+    }
+
+    #[test]
+    fn diff_with_one_run_says_it_wants_two_rather_than_comparing_something_to_itself() {
+        let why = parse(&args("diff runs/latest")).unwrap_err();
+        assert!(why.contains("two runs"), "{why}");
+    }
+
+    #[test]
     fn an_unknown_command_points_at_the_help_rather_than_just_complaining() {
         let why = parse(&args("frobnicate")).unwrap_err();
         assert!(why.contains("rrc help"));
@@ -681,7 +756,7 @@ mod tests {
     fn every_command_in_the_spec_table_is_in_the_usage_text() {
         let usage = usage();
         for command in [
-            "list", "fetch", "build", "test", "run", "abi", "bisect", "lint", "report",
+            "list", "fetch", "build", "test", "run", "abi", "bisect", "diff", "lint", "report",
         ] {
             assert!(
                 usage.contains(&format!("rrc {command}")),

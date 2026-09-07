@@ -55,6 +55,7 @@ cargo run -p rrc -- test --project c4     build one project and run its own suit
 cargo run -p rrc -- run                   rungs 0 and 1 at four optimization levels, which is the per commit budget
 cargo run -p rrc -- abi zlib              the four way abi cross check on one project, without the graded run beside it
 cargo run -p rrc -- bisect zlib           the mixed build, until the failure has a file name on it
+cargo run -p rrc -- diff old new          what changed between two runs, which is the regression suite
 cargo run -p rrc -- report --input runs/latest/records.jsonl
 ```
 
@@ -63,6 +64,8 @@ Point it at the two compilers with `--rucc` and `--gcc`, which default to `rucc`
 A project with an `[abi]` table also gets built four ways at every level it runs at, crossing the two compilers over a static archive and a program that calls into it. That is the one check on the ladder no single compiler run can do: a compiler can be self consistently wrong about struct passing, bit-field layout, the varargs save area or a struct returned wider than the register pair, and pass its own suite forever, because both halves of every call agree with each other. Those results go in `abi.jsonl` and get their own section in the report. `spec/08-oracles.md` section 8.5 has the reasoning, including why the driver has to print the same thing twice before anything is crossed.
 
 When a project's suite fails and nothing in the failure names a file, `rrc bisect` builds the tree with gcc except for a subset built with the compiler under test, runs the suite and searches over the subset. On a project with five hundred files that is about nine builds to get to one file. It says `not localized` rather than naming a file it is not sure of, and it refuses outright on a build that compiles several sources in one command, because a build like that cannot be split a file at a time. `spec/08-oracles.md` section 8.6 has the rest, including why every link goes to gcc and how the translation units get enumerated.
+
+`rrc diff` compares two runs and prints four sections. Regressions, which is a cell that was passing and is not, and the only section that fails CI. Progressions, which is a cell that was not passing and is, with a cell that quietly started passing under an exclusion called out as a stale entry rather than good news. Movements, which is a cell that went from one way of failing to another, and is the result a report that only counts red throws away: a build that got further and then produced a wrong answer is progress and a new miscompilation at once. And cost changes, which are refused outright when the two runs came from different machines, because a size measured on one says nothing about a size measured on the other.
 
 Exit codes are `0` when there is nothing for a person to look at, `1` when the run happened and something in it wants attention, and `2` when the run did not happen at all because the command line was wrong or the corpus would not load. A failing project and a broken invocation are different problems and CI should be able to tell them apart.
 
