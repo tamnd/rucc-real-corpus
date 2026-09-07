@@ -185,6 +185,7 @@ dependencies = [
  "rrc-manifest",
  "rrc-run",
  "serde_json",
+ "toml",
 ]
 
 [[package]]

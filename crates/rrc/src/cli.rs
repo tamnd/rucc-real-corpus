@@ -62,8 +62,14 @@ pub enum Command {
     Lint,
     /// Render records that already exist.
     Report {
-        /// The JSON Lines log to read.
-        input: PathBuf,
+        /// The JSON Lines log to read, when one was asked for by name.
+        ///
+        /// An option rather than a path with a default, because the feature map treats the two
+        /// cases differently. Every other format renders a run and has to have one. The map is
+        /// mostly a fact about the manifests, so a bare `--features` is the corpus alone, which is
+        /// reproducible on a machine with no compiler and is therefore the form that gets
+        /// committed. Naming a log adds the outcome column, which is what the nightly does.
+        input: Option<PathBuf>,
         /// Markdown or the status line.
         format: Format,
     },
@@ -179,6 +185,13 @@ pub enum Format {
     Markdown,
     /// The one line the badge reads.
     Status,
+    /// The feature demand map of `spec/10-feature-demand.md` section 10.6.
+    ///
+    /// A format rather than a command of its own, because it is the same records rendered a
+    /// different way, and because the records existing without a report is the invariant the whole
+    /// reporting design rests on. It reads the corpus as well, which no other format does, since
+    /// the map is mostly a fact about the manifests and only partly about a run.
+    Features,
 }
 
 /// Everything that is not specific to one command.
@@ -571,19 +584,21 @@ fn diff(args: &[String]) -> Result<DiffPlan, String> {
 }
 
 fn report(args: &[String]) -> Result<Command, String> {
-    let mut input = PathBuf::from("runs/latest/records.jsonl");
+    let mut input = None;
     let mut format = Format::Markdown;
     let mut index = 0;
     while index < args.len() {
         match args[index].as_str() {
-            "--input" => input = value(args, &mut index, "--input")?.into(),
+            "--input" => input = Some(value(args, &mut index, "--input")?.into()),
+            "--features" => format = Format::Features,
             "--format" => {
                 format = match value(args, &mut index, "--format")?.as_str() {
                     "md" | "markdown" => Format::Markdown,
                     "status" => Format::Status,
+                    "features" => Format::Features,
                     other => {
                         return Err(format!(
-                            "`{other}` is not a format, and the ones there are are `md` and `status`"
+                            "`{other}` is not a format, and the ones there are are `md`, `status` and `features`"
                         ));
                     }
                 };
@@ -670,6 +685,7 @@ rrc, the harness for rucc-real-corpus
   rrc reduce <project> [--file inflate.c]   cut a failing file down to a case for rucc-corpus
   rrc lint                                  schema, vocabulary and lockfile agreement
   rrc report [--input FILE] [--format md]   render records that already exist
+  rrc report --features                     the feature demand map, which is what to do next
 
 Options that apply to all of them:
 

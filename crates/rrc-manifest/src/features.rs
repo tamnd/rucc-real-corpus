@@ -85,6 +85,28 @@ pub enum FeatureKind {
     Lto,
 }
 
+impl FeatureKind {
+    /// The name a report prints, which is the spelling `features.toml` uses.
+    #[must_use]
+    pub const fn name(self) -> &'static str {
+        match self {
+            Self::GnuBuiltin => "gnu-builtin",
+            Self::GnuExtension => "gnu-extension",
+            Self::Standard => "standard",
+            Self::Driver => "driver",
+            Self::Preprocessor => "preprocessor",
+            Self::Abi => "abi",
+            Self::Lto => "lto",
+        }
+    }
+}
+
+impl std::fmt::Display for FeatureKind {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(self.name())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
