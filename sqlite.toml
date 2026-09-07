@@ -1,0 +1,187 @@
+# What the SQLite amalgamation demands, for the column in `spec/10-feature-demand.md` section 10.7.
+#
+# The ladder's whole argument is that thirty small projects are the cheapest way to find out what
+# SQLite needs. That argument is only worth anything if somebody checks it, and checking it means
+# knowing what SQLite actually needs before we get there. So this file is that list, measured
+# against the pinned amalgamation rather than remembered or guessed, and it is what the SQLite
+# column is computed from until the project itself is admitted in RC5.
+#
+# Every row was counted in the source. A row with `sites = 0` was looked for and not found, and
+# those are kept, because a list that only records the hits cannot be told apart from a list nobody
+# finished. When the amalgamation is admitted, its manifest's `demands` field takes over as the
+# claim of record and this file stays as what we predicted, which is worth being able to compare.
+#
+# One finding runs through the whole file and is worth saying once here. SQLite does not probe the
+# compiler for any of the intrinsics below. It decides by version macro: the atomics are taken
+# whenever `GCC_VERSION` is at least 4.7 and the overflow builtins whenever it is at least 5.4. A
+# compiler that says it is GCC 16 gets every one of those paths and gets no say in the matter, so
+# none of them are optional for us in the way a configure probe would be.
+
+[source]
+version = "3.53.4"
+url = "https://sqlite.org/2026/sqlite-amalgamation-3530400.zip"
+sha256 = "1e71ddf93849c6a6ecf58b827c0692073d2dd7ee40196158068f7b29f422e87d"
+lines = 269649
+
+[[measured]]
+tag = "atomic-builtins"
+sites = 2
+evidence = "AtomicLoad and AtomicStore are defined as __atomic_load_n and __atomic_store_n at relaxed ordering, and are used throughout the connection and page cache code"
+
+[[measured]]
+tag = "bit-builtins"
+sites = 10
+evidence = "__builtin_clzll twice in the decimal and floating point conversion, and __builtin_bswap16, 32 and 64 eight times across the page format and the r-tree"
+
+[[measured]]
+tag = "overflow-builtins"
+sites = 3
+evidence = "sqlite3AddInt64, sqlite3SubInt64 and sqlite3MulInt64 are each one call to the matching __builtin_*_overflow"
+
+[[measured]]
+tag = "large-switch"
+sites = 188
+evidence = "the bytecode interpreter sqlite3VdbeExec is one function of about eight and a half thousand lines holding a single switch with 188 case labels"
+
+[[measured]]
+tag = "switch-dispatch"
+sites = 207
+evidence = "switch statements across the whole file, of which the interpreter is one"
+
+[[measured]]
+tag = "function-pointers"
+sites = 792
+evidence = "calls through a pointer, which is how the whole virtual file system, the virtual table interface and the user function registry work"
+
+[[measured]]
+tag = "deep-macros"
+sites = 163
+evidence = "macros whose definition continues over more than one line, on top of about three thousand three hundred ordinary ones"
+
+[[measured]]
+tag = "integer-conversion"
+sites = 931
+evidence = "explicit narrowing casts to u8, u16, u32, i64 and u64, which is how the record format is read and written"
+
+[[measured]]
+tag = "memcpy-idioms"
+sites = 1125
+evidence = "memcpy, memset and memmove calls, and there is a build option to replace memcpy with a macro, which is a hint about how hot they are"
+
+[[measured]]
+tag = "bit-manipulation"
+sites = 1082
+evidence = "masks and shifts, mostly in the varint encoding, the page header and the flag words"
+
+[[measured]]
+tag = "pointer-arithmetic"
+sites = 162
+evidence = "pointer walking over the page buffer and the token stream"
+
+[[measured]]
+tag = "float-arithmetic"
+sites = 213
+evidence = "double arithmetic in the value system, the arithmetic operators and the query planner cost model"
+
+[[measured]]
+tag = "double-formatting"
+sites = 27
+evidence = "sqlite3FpDecode and the conversions around it, which are SQLite's own float printing rather than the C library's"
+
+[[measured]]
+tag = "struct-layout"
+sites = 79
+evidence = "offsetof and sizeof over structures, which is how the page cache computes its own overhead"
+
+[[measured]]
+tag = "unaligned-access"
+sites = 22
+evidence = "the aligned and unaligned two byte readers, and the r-tree reading a coordinate straight out of a byte buffer"
+
+[[measured]]
+tag = "varargs-depth"
+sites = 43
+evidence = "va_start sites, nine of which forward the list to another variadic function rather than consuming it"
+
+[[measured]]
+tag = "recursion-depth"
+sites = 31
+evidence = "the expression tree walkers and the depth limit they check against, which exists because the recursion is real"
+
+[[measured]]
+tag = "always-inline"
+sites = 1
+evidence = "SQLITE_INLINE is __attribute__((always_inline)) inline under GCC, and exactly one function, allocateSpace in the b-tree, is defined with it"
+
+# Everything below was looked for and is not there. These are the rows that stop the list being a
+# guess: an absent demand is only informative if somebody went and checked.
+
+[[measured]]
+tag = "computed-goto"
+sites = 0
+evidence = "no labels as values anywhere, which is worth knowing because the bytecode interpreter is exactly the shape that usually has them and SQLite uses a plain switch instead"
+
+[[measured]]
+tag = "setjmp-longjmp"
+sites = 0
+evidence = "no setjmp and no longjmp, since errors are returned as codes all the way up"
+
+[[measured]]
+tag = "inline-asm"
+sites = 0
+evidence = "there is a __asm__ block for reading the cycle counter, but it is guarded on i386 and 32 bit x86 is not a target here, so on the machines this corpus runs on the count is nought"
+
+[[measured]]
+tag = "libm-builtins"
+sites = 0
+evidence = "none in the amalgamation, which is the split document 05.5 describes: the shell fails on __builtin_ceil and __builtin_floor while the library fails on atomics"
+
+[[measured]]
+tag = "flexible-array-member"
+sites = 0
+evidence = "the trailing empty brackets in the source are extern array declarations of unknown size rather than flexible members inside a structure"
+
+[[measured]]
+tag = "long-double"
+sites = 0
+evidence = "no long double and no LDBL_ macros, since the whole value system is double"
+
+[[measured]]
+tag = "thread-local"
+sites = 0
+evidence = "no _Thread_local and no __thread, because thread state is passed in the connection handle rather than kept in the compiler's storage"
+
+[[measured]]
+tag = "constant-time"
+sites = 0
+evidence = "the phrase appears twice in comments about algorithmic complexity and there is no cryptographic constant time requirement in the file"
+
+[[measured]]
+tag = "k-and-r-idioms"
+sites = 0
+evidence = "every definition is prototyped, and the lines that look like an identifier list are __declspec(dllexport) on the Windows exports"
+
+[[measured]]
+tag = "rotate-idioms"
+sites = 0
+evidence = "no rotate written as a shift pair and no rotate helper"
+
+[[measured]]
+tag = "stdckdint"
+sites = 0
+evidence = "the checked arithmetic goes through the GNU overflow builtins rather than the C23 header"
+
+[[measured]]
+tag = "visibility-attributes"
+sites = 0
+evidence = "the amalgamation controls its exports with SQLITE_API and static rather than with a visibility attribute"
+
+[[measured]]
+tag = "autoconf-probes"
+sites = 0
+evidence = "the amalgamation is one translation unit compiled directly, so nothing interrogates the compiler before the build"
+
+[[measured]]
+tag = "cmake-probes"
+sites = 0
+evidence = "same reason as autoconf, there is no configure step of any kind in front of the amalgamation"

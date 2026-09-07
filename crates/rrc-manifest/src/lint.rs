@@ -11,6 +11,7 @@ use crate::exclusions::Exclusions;
 use crate::features::Features;
 use crate::lockfile::Lockfile;
 use crate::manifest::Manifest;
+use crate::sqlite::Sqlite;
 use std::fmt;
 
 /// One thing wrong with the corpus.
@@ -39,6 +40,8 @@ pub struct Corpus {
     pub lockfile: Lockfile,
     /// The exclusion register.
     pub exclusions: Exclusions,
+    /// What the SQLite amalgamation was measured to demand.
+    pub sqlite: Sqlite,
 }
 
 /// Check every rule and return everything that is wrong, rather than the first thing.
@@ -54,6 +57,7 @@ pub fn check(corpus: &Corpus) -> Vec<Finding> {
     }
     check_names_are_unique(corpus, &mut findings);
     check_exclusions(corpus, &mut findings);
+    check_sqlite(corpus, &mut findings);
     findings
 }
 
@@ -583,6 +587,63 @@ fn check_exclusions(corpus: &Corpus, findings: &mut Vec<Finding>) {
     }
 }
 
+/// `sqlite.toml`, which the SQLite column of section 10.7 is computed from.
+///
+/// The rules are all about the column being readable. A tag outside the vocabulary produces a row
+/// that can never be matched to a project, which reads as a residue and is really a typo, and that
+/// is the one mistake here that would make the milestone's own decision come out wrong. The rest
+/// are about the file staying a measurement: a row with no evidence is a claim, a tag counted twice
+/// is two claims that can disagree, and a count with no pin on it is a number nobody can repeat.
+fn check_sqlite(corpus: &Corpus, findings: &mut Vec<Finding>) {
+    let mut push = |what: String| {
+        findings.push(Finding {
+            where_: "sqlite.toml".to_string(),
+            what,
+        });
+    };
+
+    if corpus.sqlite.measured.is_empty() {
+        return;
+    }
+
+    let source = &corpus.sqlite.source;
+    if !is_sha256(&source.sha256) {
+        push("the amalgamation sha256 is not 64 hex characters, so the counts below are against something nobody else can fetch".into());
+    }
+    if !source.url.starts_with("https://") {
+        push("the amalgamation url is not https".into());
+    }
+    if source.version.trim().is_empty() {
+        push("the amalgamation has no version, and a count with no release on it cannot be repeated after the next one comes out".into());
+    }
+    if source.lines == 0 {
+        push("the amalgamation is nought lines, which is not the file that was measured".into());
+    }
+
+    let mut seen: Vec<&str> = Vec::new();
+    for row in &corpus.sqlite.measured {
+        if !corpus.features.contains(&row.tag) {
+            push(format!(
+                "measures `{}`, which is not in features.toml, so the column would show it as a demand nothing in the corpus reaches when it is really a typo",
+                row.tag
+            ));
+        }
+        if seen.contains(&row.tag.as_str()) {
+            push(format!(
+                "measures `{}` twice, and the two counts can disagree",
+                row.tag
+            ));
+        }
+        seen.push(&row.tag);
+        if row.evidence.trim().is_empty() {
+            push(format!(
+                "counts {} sites of `{}` and does not say what was counted, and a number nobody can go and check is not a measurement",
+                row.sites, row.tag
+            ));
+        }
+    }
+}
+
 fn is_sha256(value: &str) -> bool {
     value.len() == 64 && value.bytes().all(|b| b.is_ascii_hexdigit())
 }
@@ -663,6 +724,7 @@ kind = "standard"
             manifests,
             features: toml::from_str(FEATURES).unwrap(),
             exclusions: Exclusions::default(),
+            sqlite: Sqlite::default(),
         }
     }
 
@@ -1101,6 +1163,69 @@ kind = "standard"
             findings
                 .iter()
                 .any(|f| f.what.contains("no longer asks for"))
+        );
+    }
+
+    /// A corpus with the SQLite measurements in it, pinned and consistent.
+    fn measuring(tag: &str, sites: u32) -> Corpus {
+        let mut corpus = corpus_of(SAMPLE);
+        corpus.sqlite = Sqlite {
+            source: crate::sqlite::Source {
+                version: "3.53.4".into(),
+                url: "https://sqlite.org/2026/sqlite-amalgamation-3530400.zip".into(),
+                sha256: "ab".repeat(32),
+                lines: 269_649,
+            },
+            measured: vec![crate::sqlite::Measured {
+                tag: tag.into(),
+                sites,
+                evidence: "counted in sqlite3.c".into(),
+            }],
+        };
+        corpus
+    }
+
+    #[test]
+    fn a_measured_corpus_is_quiet() {
+        assert_eq!(check(&measuring("pointer-arithmetic", 162)), Vec::new());
+    }
+
+    #[test]
+    fn a_measured_tag_outside_the_vocabulary_is_caught() {
+        // The one that would make RC2's own decision come out wrong. A typo here is a demand
+        // nothing in the corpus reaches, which is exactly what the residue is, so it would be
+        // counted as evidence that the ladder had missed something when it is a misspelling.
+        let findings = check(&measuring("pointer-arithemtic", 162));
+        assert!(findings.iter().any(|f| f.what.contains("really a typo")));
+    }
+
+    #[test]
+    fn a_measurement_with_no_evidence_is_caught() {
+        let mut corpus = measuring("pointer-arithmetic", 162);
+        corpus.sqlite.measured[0].evidence = "  ".into();
+        assert!(
+            check(&corpus)
+                .iter()
+                .any(|f| f.what.contains("not a measurement"))
+        );
+    }
+
+    #[test]
+    fn the_same_tag_measured_twice_is_caught() {
+        let mut corpus = measuring("pointer-arithmetic", 162);
+        let again = corpus.sqlite.measured[0].clone();
+        corpus.sqlite.measured.push(again);
+        assert!(check(&corpus).iter().any(|f| f.what.contains("twice")));
+    }
+
+    #[test]
+    fn counts_against_an_unpinned_amalgamation_are_caught() {
+        let mut corpus = measuring("pointer-arithmetic", 162);
+        corpus.sqlite.source.sha256 = "not a hash".into();
+        assert!(
+            check(&corpus)
+                .iter()
+                .any(|f| f.what.contains("nobody else can fetch"))
         );
     }
 
