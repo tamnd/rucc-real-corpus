@@ -48,6 +48,8 @@ pub enum Command {
     Run(RunPlan),
     /// The four way ABI cross check of `spec/08-oracles.md` section 8.5, on its own.
     Abi(AbiPlan),
+    /// The mixed build and the bisection over it, from `spec/08-oracles.md` section 8.6.
+    Bisect(BisectPlan),
     /// Schema, vocabulary and lockfile agreement.
     Lint,
     /// Render records that already exist.
@@ -114,6 +116,30 @@ impl Default for AbiPlan {
             out: PathBuf::from("runs/latest"),
         }
     }
+}
+
+/// What a bisection covers.
+///
+/// One project, because a bisection is a rescue for a failure somebody is already looking at and
+/// the whole point of it is that it costs a build per step. Running it across the corpus by
+/// accident would be an afternoon of machine time nobody asked for.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct BisectPlan {
+    /// The project.
+    pub project: String,
+    /// The level to bisect at.
+    pub level: Level,
+    /// How many builds the search is allowed.
+    pub limit: usize,
+    /// Where the record goes.
+    pub out: PathBuf,
+}
+
+impl BisectPlan {
+    /// Thirty builds, which is nine for a binary search over five hundred files and the rest for
+    /// the delta debugging pass when the search comes up empty. It is a number to be argued with
+    /// on the command line rather than a bound anything depends on.
+    pub const STEPS: usize = 30;
 }
 
 /// How a report is rendered.
@@ -199,6 +225,7 @@ fn command(args: &[String]) -> Result<Command, String> {
         }
         "run" => run(&args[1..]).map(Command::Run),
         "abi" => abi(&args[1..]).map(Command::Abi),
+        "bisect" => bisect(&args[1..]).map(Command::Bisect),
         "report" => report(&args[1..]),
         other => Err(format!(
             "there is no `{other}` command, and `rrc help` lists the ones there are"
@@ -317,6 +344,49 @@ fn abi(args: &[String]) -> Result<AbiPlan, String> {
     Ok(plan)
 }
 
+fn bisect(args: &[String]) -> Result<BisectPlan, String> {
+    let mut project = None;
+    let mut level = Level::O2;
+    let mut limit = BisectPlan::STEPS;
+    let mut out = PathBuf::from("runs/latest");
+    let mut index = 0;
+    while index < args.len() {
+        let arg = args[index].as_str();
+        match arg {
+            "--level" | "--levels" => level = parse_level(&value(args, &mut index, "--level")?)?,
+            "--project" => project = Some(value(args, &mut index, "--project")?),
+            "--limit" => {
+                let given = value(args, &mut index, "--limit")?;
+                limit = given.parse().map_err(|_| {
+                    format!("`{given}` is not a number of builds, and `--limit` wants one")
+                })?;
+            }
+            "--out" => out = value(args, &mut index, "--out")?.into(),
+            other if other.starts_with('-') => return Err(unknown(other, "bisect")),
+            other => project = Some(other.to_string()),
+        }
+        index += 1;
+    }
+    let Some(project) = project else {
+        return Err(
+            "`rrc bisect` wants a project, since a bisection is one build per step and \
+                    running it across the corpus is not something to do by accident"
+                .to_string(),
+        );
+    };
+    if limit == 0 {
+        return Err(
+            "`--limit 0` allows no builds at all, so there would be nothing to read".to_string(),
+        );
+    }
+    Ok(BisectPlan {
+        project,
+        level,
+        limit,
+        out,
+    })
+}
+
 fn report(args: &[String]) -> Result<Command, String> {
     let mut input = PathBuf::from("runs/latest/records.jsonl");
     let mut format = Format::Markdown;
@@ -411,6 +481,7 @@ rrc, the harness for rucc-real-corpus
   rrc test <project> [--level O2]           build then run the suite
   rrc run [--rung 0,1] [--levels O0,O2]     the scheduler, the normal entry point
   rrc abi [<project>...] [--levels O2]      the four way abi cross check, on its own
+  rrc bisect <project> [--level O2]         the mixed build, until the failure has a file name
   rrc lint                                  schema, vocabulary and lockfile agreement
   rrc report [--input FILE] [--format md]   render records that already exist
 
@@ -430,6 +501,12 @@ Options for abi:
 
   --project NAME  one project by name, repeatable, and a bare name means the same thing
   --out DIR       where the records go, defaulting to runs/latest
+
+Options for bisect:
+
+  --project NAME  the project, and a bare name means the same thing
+  --limit N       how many builds the search may spend, defaulting to 30
+  --out DIR       where the record goes, defaulting to runs/latest
 
 Options for fetch:
 
@@ -604,7 +681,7 @@ mod tests {
     fn every_command_in_the_spec_table_is_in_the_usage_text() {
         let usage = usage();
         for command in [
-            "list", "fetch", "build", "test", "run", "abi", "lint", "report",
+            "list", "fetch", "build", "test", "run", "abi", "bisect", "lint", "report",
         ] {
             assert!(
                 usage.contains(&format!("rrc {command}")),

@@ -22,7 +22,7 @@ use crate::exec::{self, Completed, Ending, Invocation};
 use crate::parse::{self, Counts};
 use crate::record::{Outcome, Phase, Provenance, RunRecord};
 use crate::sandbox::{Sandbox, Slot};
-use crate::shim::{Shim, Toolchain};
+use crate::shim::{Shim, Split, Toolchain};
 use crate::sizes::{self, Sizes};
 
 /// Which compiler a trial is being run with.
@@ -166,12 +166,59 @@ const fn reference_slot(slot: Slot) -> Slot {
     }
 }
 
+/// Which compiler each translation unit in a build gets.
+#[derive(Debug, Clone, Copy)]
+pub enum Dispatch<'a> {
+    /// One compiler for the whole tree, which is every ordinary trial.
+    Whole(Compiler),
+    /// The mixed build of `spec/08-oracles.md` section 8.6. The named translation units go to the
+    /// compiler under test and everything else, including every link, goes to the reference.
+    Mixed(&'a [String]),
+}
+
 /// Build and test, without grading.
 pub fn attempt(job: &Job<'_>, slot: Slot, compiler: Compiler) -> std::io::Result<Trial> {
+    attempt_with(job, slot, Dispatch::Whole(compiler))
+}
+
+/// Where a mixed build keeps the two files the dispatcher reads and writes.
+///
+/// Inside the sandbox rather than beside it, so that a tree somebody goes to look at afterwards
+/// carries the split it was built with.
+#[must_use]
+pub fn mixed_dir(sandbox: &Sandbox) -> PathBuf {
+    sandbox.root().join("mixed")
+}
+
+/// Build and test with the compilers handed out however the caller asked.
+pub fn attempt_with(job: &Job<'_>, slot: Slot, dispatch: Dispatch<'_>) -> std::io::Result<Trial> {
     let sandbox = Sandbox::create(job.workspace, slot, &job.manifest.project.name, job.level)?;
     sandbox.place_source(job.extracted)?;
+    let compiler = match dispatch {
+        Dispatch::Whole(compiler) => compiler,
+        // A mixed build's environment says the reference, because `CC` and the host compiler and
+        // everything else the environment carries should point at the same shim the build finds on
+        // `PATH`, and the shim is what does the choosing.
+        Dispatch::Mixed(_) => Compiler::Reference,
+    };
     let toolchain = toolchain_for(job.toolchain, compiler);
-    let shim = Shim::create(&sandbox.bin(), &toolchain)?;
+    let shim = match dispatch {
+        Dispatch::Whole(_) => Shim::create(&sandbox.bin(), &toolchain)?,
+        Dispatch::Mixed(ours) => {
+            let dir = mixed_dir(&sandbox);
+            std::fs::create_dir_all(&dir)?;
+            let split = Split {
+                ours: dir.join("ours.txt"),
+                journal: dir.join("journal.txt"),
+                root: build_dir(&sandbox, job.manifest),
+            };
+            let mut listed = ours.join("\n");
+            listed.push('\n');
+            std::fs::write(&split.ours, listed)?;
+            std::fs::write(&split.journal, "")?;
+            Shim::mixed(&sandbox.bin(), job.toolchain, &split)?
+        }
+    };
     let env = environment(&EnvPlan {
         sandbox: &sandbox,
         shim: &shim,
@@ -275,7 +322,7 @@ struct Step {
     invocation: Invocation,
 }
 
-fn build_dir(sandbox: &Sandbox, manifest: &Manifest) -> PathBuf {
+pub(crate) fn build_dir(sandbox: &Sandbox, manifest: &Manifest) -> PathBuf {
     manifest
         .build
         .subdir

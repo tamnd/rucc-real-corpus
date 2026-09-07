@@ -15,7 +15,7 @@
 //! data that answers open question one.
 
 use rrc_manifest::manifest::HostCc;
-use std::path::{Path, PathBuf};
+use std::path::{Component, Path, PathBuf};
 
 /// The compilers a run has available.
 #[derive(Debug, Clone)]
@@ -49,6 +49,31 @@ pub enum EntryKind {
     /// quietly compile instead of preprocessing, which is worse than either alternative. The
     /// argument is `-E` and it is not a flag chosen to make anything pass.
     PreprocessorWrapper,
+    /// A script that picks one of the two compilers and execs it with the arguments untouched.
+    ///
+    /// This is the mixed build of `spec/08-oracles.md` section 8.6, and it is the one place the
+    /// shim is allowed to be a script rather than a symlink. It still adds nothing: it reads the
+    /// command line, decides which compiler the translation unit belongs to, and passes `"$@"`
+    /// through. The rule the shim exists to protect is that no flag is added anywhere, and a
+    /// dispatcher that only chooses `argv[0]` does not break it.
+    Dispatcher,
+}
+
+/// The two files a mixed build reads and writes, from `spec/08-oracles.md` section 8.6.
+///
+/// Paths in both files are relative to `root`, which is the directory the build runs in, so that
+/// a project whose Makefile changes directory and a project whose Makefile does not name the same
+/// translation unit the same way.
+#[derive(Debug, Clone)]
+pub struct Split {
+    /// One relative source path per line, each going to the compiler under test. An empty file is
+    /// the whole tree built with the reference, which is how a run enumerates before it bisects.
+    pub ours: PathBuf,
+    /// One line per compile, which is how the harness learns what the translation units are and
+    /// whether the build is object level separable at all.
+    pub journal: PathBuf,
+    /// What the paths in the other two files are relative to.
+    pub root: PathBuf,
 }
 
 /// The `bin` directory a build sees first.
@@ -67,22 +92,51 @@ impl Shim {
     /// report it as ours. The host compiler is steered through the environment instead, in
     /// [`crate::env`], which is where `CC_FOR_BUILD` and `HOSTCC` are set.
     pub fn create(dir: &Path, toolchain: &Toolchain) -> std::io::Result<Self> {
+        Self::write(dir, toolchain, None)
+    }
+
+    /// The same shim, except that `cc` and `gcc` choose per translation unit.
+    ///
+    /// Everything that is not a compile goes to the reference, which includes every link. That is
+    /// deliberate rather than incidental: a bisection step has to change which files were ours and
+    /// nothing else, and a link driver that changed with the set would put a second variable in
+    /// every measurement. `cpp` goes to the reference for the same reason.
+    pub fn mixed(dir: &Path, toolchain: &Toolchain, split: &Split) -> std::io::Result<Self> {
+        Self::write(dir, toolchain, Some(split))
+    }
+
+    fn write(dir: &Path, toolchain: &Toolchain, split: Option<&Split>) -> std::io::Result<Self> {
         std::fs::create_dir_all(dir)?;
         let mut entries = Vec::new();
 
         for name in ["cc", "gcc"] {
             let entry = ShimEntry {
                 name: name.to_string(),
-                target: toolchain.under_test.clone(),
-                kind: EntryKind::Symlink,
+                target: if split.is_some() {
+                    toolchain.reference.clone()
+                } else {
+                    toolchain.under_test.clone()
+                },
+                kind: if split.is_some() {
+                    EntryKind::Dispatcher
+                } else {
+                    EntryKind::Symlink
+                },
             };
-            write_symlink(dir, &entry)?;
+            match split {
+                Some(split) => write_dispatcher(dir, &entry, toolchain, split)?,
+                None => write_symlink(dir, &entry)?,
+            }
             entries.push(entry);
         }
 
         let cpp = ShimEntry {
             name: "cpp".to_string(),
-            target: toolchain.under_test.clone(),
+            target: if split.is_some() {
+                toolchain.reference.clone()
+            } else {
+                toolchain.under_test.clone()
+            },
             kind: EntryKind::PreprocessorWrapper,
         };
         write_preprocessor(dir, &cpp)?;
@@ -150,6 +204,82 @@ fn write_symlink(dir: &Path, entry: &ShimEntry) -> std::io::Result<()> {
     #[cfg(not(unix))]
     std::fs::copy(&entry.target, &link).map(|_| ())?;
     Ok(())
+}
+
+/// The dispatcher, which is the whole of the mixed build's mechanism.
+///
+/// It walks the command line for source files, writes down what it saw, and execs one of the two
+/// compilers with `"$@"` untouched. A translation unit named in the split file sends the whole
+/// invocation to the compiler under test. Anything else, and every command with no source file in
+/// it at all, goes to the reference.
+///
+/// The journal line says whether `-c` was there and which units the invocation named, because that
+/// is what decides whether the project is object level separable. A build that compiles and links
+/// in one command, or that hands two translation units to one invocation, cannot be split a file at
+/// a time, and section 8.6 lists that as a requirement rather than something to work around.
+fn write_dispatcher(
+    dir: &Path,
+    entry: &ShimEntry,
+    toolchain: &Toolchain,
+    split: &Split,
+) -> std::io::Result<()> {
+    let path = dir.join(&entry.name);
+    std::fs::remove_file(&path).ok();
+    let script = format!(
+        r#"#!/bin/sh
+# The mixed build of spec 8.6. This picks which compiler runs and adds nothing to the command line.
+r={root}
+o={ours}
+j={journal}
+pick={reference}
+units=''
+dashc=''
+for a in "$@"; do
+  case "$a" in
+    -c) dashc=c ;;
+    -*) ;;
+    *.c)
+      d=$(dirname -- "$a")
+      b=$(basename -- "$a")
+      p=$(cd -- "$d" 2>/dev/null && pwd)
+      if [ -n "$p" ]; then
+        f="$p/$b"
+        case "$f" in "$r"/*) f=${{f#"$r"/}} ;; esac
+        units="$units $f"
+        if grep -qxF -- "$f" "$o" 2>/dev/null; then pick={under_test}; fi
+      fi
+      ;;
+  esac
+done
+if [ -n "$units" ]; then printf '%s%s\n' "${{dashc:-x}}" "$units" >> "$j"; fi
+exec "$pick" "$@"
+"#,
+        root = quote(&plain(&split.root)),
+        ours = quote(&split.ours),
+        journal = quote(&split.journal),
+        reference = quote(&toolchain.reference),
+        under_test = quote(&toolchain.under_test),
+    );
+    std::fs::write(&path, script)?;
+    make_executable(&path)
+}
+
+/// The same path with the `.` components dropped.
+///
+/// The dispatcher compares the root against what `pwd` printed, and `pwd` never prints a `.`. The
+/// corpus root arrives here as whatever the caller typed on the command line, which is usually a
+/// relative path made absolute by joining, so `a/./b` is normal and would silently fail to match.
+/// Nothing else is resolved, in particular no symlink, because `pwd` does not resolve those either.
+fn plain(path: &Path) -> PathBuf {
+    path.components()
+        .filter(|part| !matches!(part, Component::CurDir))
+        .collect()
+}
+
+/// A path as one single quoted shell word, so that a sandbox under a directory with a space in it
+/// does not turn into two arguments.
+fn quote(path: &Path) -> String {
+    format!("'{}'", path.display().to_string().replace('\'', r"'\''"))
 }
 
 fn write_preprocessor(dir: &Path, entry: &ShimEntry) -> std::io::Result<()> {

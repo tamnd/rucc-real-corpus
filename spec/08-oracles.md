@@ -90,6 +90,12 @@ Document 01.4's technique from Anthropic's compiler, made a first-class mode rat
 
 **What it cannot do.** A bug that requires two of our files to interact is found by bisection only if the bisection keeps both, which the standard algorithm does not guarantee. The harness falls back to a delta-debugging pass over the file set when the single-file bisection comes up empty, and reports `not localized` rather than a wrong answer when both fail.
 
+**The split is made by the shim and by nothing else.** `cc` and `gcc` stop being symlinks for the duration and become a dispatcher, which is the second and last exception to the rule in 07.7 that the shim adds nothing. The dispatcher reads the command line, works out which translation units it names, looks them up in the list of files that are ours, and execs one compiler or the other with the arguments untouched. No flag is added and none is removed. Everything that is not a compile goes to the reference, which includes every link and the preprocessor, because a bisection step has to change which files were ours and nothing else. The one place that cannot hold is a program compiled and linked in a single command, where the link rides along with the file it names, and a build that does that for a file with more than one unit on the command line is not separable anyway.
+
+**The translation units come from the build and not from a scan of the tree.** The same dispatcher writes one line per compile into a journal, saying whether `-c` was on the command line and which sources were named, and the first build of a bisection is both the passing baseline and the enumeration. A separate scan of the tree could disagree with what the build actually did, and on a project with generated sources or a configure script that picks half the files it would.
+
+**A file the build deleted behind itself was a probe.** Configure scripts compile throwaway programs to ask the compiler questions, and those are not translation units of the project: `conftest.c` is the famous name, zlib writes `ztest` and the process id, and each build system has its own spelling. The rule that does not need a list is that a source which is gone by the time the build finishes is dropped, because there is nothing left to hand to either compiler and its name is different on every run.
+
 ## 8.7 Flakiness
 
 **Two consecutive failures or it did not happen.** A project that fails once is re-run once immediately; a pass on the re-run records the outcome as `passed` and increments a flake counter on the project.

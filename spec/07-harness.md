@@ -33,6 +33,8 @@ rrc lint                                schema, vocabulary, licences, staleness
 
 `rrc abi` is the cross-check on its own, for working on a single project without paying for the graded run beside it. Document 12.1 puts the cross-check inside the per-commit budget rather than behind a flag, so `rrc run` does it too, for every project whose manifest has an `[abi]` table. It writes its own `abi.jsonl` next to the run records and its own section in the report, because a crossed pairing that disagrees is a different kind of result from a project whose suite failed and putting them in one table loses that.
 
+`rrc bisect` is a command of its own rather than a flag on the run, because it costs one full build and one full suite run per step and nobody reaches for it until they already have a failure they cannot attribute. It takes one project at one level, and it stops with a word rather than a file when the tree cannot be split, when the reference build already fails, or when no single file of ours accounts for the failure. Document 08.6 also describes the mixed build as a mode at R4 with a fixed tenth of the tree ours, and that belongs to the rung it is written for rather than to this command.
+
 **Document 02.4's one-command claim is `rrc run --rung 0,1,2`** on a machine with a Rust toolchain, GCC 16 and a network connection. If that sentence stops being true, claim four is falsified and document 12.4's release checklist is where it gets caught.
 
 ## 7.3 The record
