@@ -67,7 +67,13 @@ Honest arithmetic rather than a hope.
 
 Roughly **410 machine hours a month**, dominated by the three-host nightly. On rented CI that is a real line item; on one dedicated machine per host it is most of a machine's capacity and nothing else.
 
-**The two levers, in the order they should be pulled.** First, the fetch cache: eighty tarballs extracted six times per run is a large fraction of the nightly and copy-on-write extraction per document 07.4 removes nearly all of it. Second, the rung schedule: R4 and R5 are most of the wall clock and moving them to every other night halves the total at the cost of a day's latency on the slowest-moving rungs.
+**The three levers, in the order they should be pulled.** First, the fetch cache: eighty tarballs extracted six times per run is a large fraction of the nightly and copy-on-write extraction per document 07.4 removes nearly all of it. Second, the rung schedule: R4 and R5 are most of the wall clock and moving them to every other night halves the total at the cost of a day's latency on the slowest-moving rungs. Third, `--jobs`, which runs several cells at once.
+
+**What `--jobs` costs.** A cell is one build and one suite, and both of them spend most of their wall clock on one core waiting on the filesystem, so a serial run leaves most of a machine idle. Rung 0 on a ten core laptop takes 58 seconds at `--jobs 1` and 16 seconds at `--jobs auto`, with the same 44 of 48 cells passing and a report that is byte for byte the same. The price is that `build_seconds` on a loaded machine is not the same measurement as `build_seconds` on a quiet one, and a project that only fails under memory pressure fails somewhere else. So the number of cells in flight goes on every record as `concurrency`, a serial run says one, and any comparison of seconds across records that disagree about it is a comparison somebody has to justify.
+
+**The default is one, everywhere the numbers matter.** The table above is quoted at one cell at a time, the nightly runs at one unless a person dispatching it asks otherwise, and the 10% rule of section 12.6 is a statement about a serial run. `--jobs` is for the person waiting on an answer rather than on a timing, which on a differential against a compiler under development is most of the time somebody spends here.
+
+**What `--jobs` does not change** is which cells run, what each of them is given, or the order the report reads in. A worker takes a whole project and runs its levels in order, each cell still builds in its own sandbox with its own prefix and its own shim per document 07.4, and every source is extracted before the first worker starts so that no two of them are reading a tree a third is still writing.
 
 **The lever that is not available** is running fewer optimization levels, for document 08.4's reason.
 
@@ -86,6 +92,8 @@ Stated in advance because the alternative is that it is decided under pressure, 
 **Cached:** the fetched archives, keyed by SHA-256, and the extracted trees, keyed by the same. That is all.
 
 **Not cached:** anything built. No `ccache`, no reused object files, no incremental builds between runs. A corpus whose results depend on what was left over from the previous run is not measuring the compiler, and the determinism check of document 07.5 would be measuring the cache.
+
+**This is the answer to why a run is slow, and it is not going to change.** The work a run does is compiling forty projects from nothing, several times each, and the only honest ways to finish sooner are to do the work on more cores at once, to do less of it, or to make the compiler faster. Reusing yesterday's objects would make a run finish in a minute and answer a different question.
 
 **The cache is verified, not trusted.** The hash is checked on every cache hit, per document 06.3, because a corrupted cache entry that is silently reused is a wrong answer with no cause.
 

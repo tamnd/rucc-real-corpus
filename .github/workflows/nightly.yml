@@ -32,6 +32,13 @@ on:
         description: which rungs to run
         default: "0,1,2"
         required: false
+      # One by default even here, because the nightly is where the build times of section 12.5
+      # come from and a loaded machine reports different ones. Somebody who dispatched this run
+      # because they are waiting on the answer can say auto and take the trade knowingly.
+      jobs:
+        description: how many cells to run at once, a count or auto
+        default: "1"
+        required: false
 
 # Never two at once. Two nightlies would fetch into the same cache and commit the same report.
 concurrency:
@@ -125,7 +132,8 @@ jobs:
           set +e
           cargo run --release -p rrc -- \
             --rucc ${{ steps.cc.outputs.name }} --gcc ${{ steps.cc.outputs.name }} \
-            run --rung ${{ inputs.rungs || '0,1,2' }} ${{ matrix.reference && '--twice' || '' }}
+            run --rung ${{ inputs.rungs || '0,1,2' }} --jobs ${{ inputs.jobs || '1' }} \
+            ${{ matrix.reference && '--twice' || '' }}
           echo "status=$?" >> "$GITHUB_OUTPUT"
 
       # Configure twice and compare what the two decided, per section 8.8. With one compiler on

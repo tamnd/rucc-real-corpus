@@ -203,13 +203,13 @@ mod tests {
     use super::*;
     use crate::digest::sha256_bytes;
     use rrc_manifest::manifest::Mirror;
-    use std::cell::RefCell;
+    use std::sync::Mutex;
 
     /// A downloader that serves fixed bytes for known URLs and fails for anything else,
     /// recording what it was asked for.
     struct Fake {
         serves: Vec<(String, Vec<u8>)>,
-        asked: RefCell<Vec<String>>,
+        asked: Mutex<Vec<String>>,
     }
 
     impl Fake {
@@ -219,14 +219,14 @@ mod tests {
                     .into_iter()
                     .map(|(url, bytes)| (url.to_string(), bytes.as_ref().to_vec()))
                     .collect(),
-                asked: RefCell::new(Vec::new()),
+                asked: Mutex::new(Vec::new()),
             }
         }
     }
 
     impl Downloader for Fake {
         fn get(&self, url: &str, dest: &Path) -> Result<(), String> {
-            self.asked.borrow_mut().push(url.to_string());
+            self.asked.lock().unwrap().push(url.to_string());
             let bytes = self
                 .serves
                 .iter()
@@ -280,7 +280,7 @@ mod tests {
         fetch(&source, &cache, &net).unwrap();
         let again = fetch(&source, &cache, &net).unwrap();
         assert_eq!(again.provenance, Provenance::Cache);
-        assert_eq!(net.asked.borrow().len(), 1);
+        assert_eq!(net.asked.lock().unwrap().len(), 1);
         std::fs::remove_dir_all(&root).ok();
     }
 
@@ -422,7 +422,7 @@ mod tests {
             .to_string();
         assert!(error.contains("leaves the extracted tree"), "got {error}");
         assert_eq!(
-            net.asked.borrow().len(),
+            net.asked.lock().unwrap().len(),
             1,
             "the escaping submodule should never have been asked for"
         );

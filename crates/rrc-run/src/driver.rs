@@ -958,6 +958,9 @@ fn record(job: &Job<'_>, trial: &Trial, graded: Graded) -> RunRecord {
         oracle_declared: job.manifest.test.oracle,
         oracle_used: graded.oracle_used,
         parallel: job.manifest.build.parallel,
+        // One cell as far as the driver can see, since it was given one cell to do. The scheduler
+        // is the only thing that knows how many others were beside it, and it overwrites this.
+        concurrency: 1,
         // Set by the scheduler when the register covers this cell, since the driver builds and
         // grades a cell without knowing or caring whether anybody is counting it.
         observed_outcome: None,

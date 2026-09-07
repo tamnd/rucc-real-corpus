@@ -32,6 +32,8 @@ rrc lint                                schema, vocabulary, licences, staleness
 
 `rrc run` with no arguments runs what document 12.1's per-commit budget admits, which is rungs 0 and 1 at four levels. Everything wider is an explicit argument, so the cheap thing is the default and the expensive thing is a decision.
 
+`rrc run --jobs N` runs N cells at once, and `--jobs auto` uses the machine. One is the default, because one is the only setting whose `build_seconds` compare with each other and the cost table of document 12.5 is quoted at it. The record carries `concurrency` so that a number produced on a loaded machine is never mistaken for one produced on a quiet one. What is not affected is the answer: the cells, the report and its order are the same either way, since a worker takes a whole project and each cell already builds in its own sandbox.
+
 `rrc abi` is the cross-check on its own, for working on a single project without paying for the graded run beside it. Document 12.1 puts the cross-check inside the per-commit budget rather than behind a flag, so `rrc run` does it too, for every project whose manifest has an `[abi]` table. It writes its own `abi.jsonl` next to the run records and its own section in the report, because a crossed pairing that disagrees is a different kind of result from a project whose suite failed and putting them in one table loses that.
 
 `rrc bisect` is a command of its own rather than a flag on the run, because it costs one full build and one full suite run per step and nobody reaches for it until they already have a failure they cannot attribute. It takes one project at one level, and it stops with a word rather than a file when the tree cannot be split, when the reference build already fails, or when no single file of ours accounts for the failure. Document 08.6 also describes the mixed build as a mode at R4 with a fixed tenth of the tree ours, and that belongs to the rung it is written for rather than to this command.
@@ -49,17 +51,19 @@ project, pin-sha256, rung, level, host, gcc-version, rucc-version, rucc-commit,
 outcome, phase-reached, build-seconds, test-seconds, peak-rss,
 tests-run, tests-passed, tests-baseline,
 binary-bytes, text-bytes, data-bytes,
-first-diagnostic, log-path, oracle-used, oracle-declared, parallel,
+first-diagnostic, log-path, oracle-used, oracle-declared, parallel, concurrency,
 observed-outcome, excluded-by
 ```
 
-Four fields deserve a note.
+Five fields deserve a note.
 
 **`phase-reached`** is one of `fetched`, `configured`, `built`, `linked`, `tested`, and it is what makes "did not build" an informative outcome. A project that fails at `configured` and one that fails at `linked` are different bugs and a boolean loses that.
 
 **`first-diagnostic`** is the first `rucc: error:` line, normalized: paths made relative, addresses and temporary filenames stripped. It is the grouping key for document 11's failure clustering, and it is why forty projects failing on `E0686` show up as one row rather than forty.
 
 **`oracle-used` against `oracle-declared`** is document 06.5's guarantee made visible. When they differ, the project was graded weaker than its manifest claims and the report says so in a distinct column rather than a footnote.
+
+**`parallel` and `concurrency`** are two different questions and both of them are asked. `parallel` says whether the project's own build ran under `make -j`, because a bug that only appears there is a real bug and has to be attributable to the thing that caused it. `concurrency` says how many cells the scheduler had in flight while this one ran, and it is one on a run that was not given `--jobs`. Seconds and peak resident size measured at one are not the same measurement as seconds measured at ten, and document 12.5 is where that trade is described.
 
 **`observed-outcome` and `excluded-by`** are present on an excluded cell and absent everywhere else. An excluded cell is built and tested like any other and then has its outcome replaced with `excluded`, and `observed-outcome` is the outcome it produced before the replacement. Without it, document 09.5's conditions two and four have nothing to look at, since an entry that has stopped describing its cell is only visible if somebody ran the cell.
 

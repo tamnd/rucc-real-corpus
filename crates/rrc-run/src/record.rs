@@ -237,6 +237,15 @@ pub struct RunRecord {
     /// Whether the project's own build ran in parallel, since a bug that only appears under
     /// `make -j` is a real bug and has to be attributable.
     pub parallel: bool,
+    /// How many cells the scheduler was running at once while this one ran.
+    ///
+    /// One means the cell had the machine to itself, and its `build_seconds` can be compared with
+    /// any other cell that also says one. Anything higher means the number is a measurement of a
+    /// loaded machine and the comparison is not available, which is the whole cost of the third
+    /// lever in `spec/12-ci-and-cost.md` section 12.5. It is on the record rather than in the run
+    /// directory's metadata because the record is what a reader a year from now has.
+    #[serde(default = "alone")]
+    pub concurrency: usize,
     /// What the cell did before the register relabelled it, on an excluded cell only.
     ///
     /// An excluded cell is built and tested like any other and then has its outcome replaced, so
@@ -258,6 +267,14 @@ pub struct RunRecord {
     /// which version of the dependency this was, and the manifest will have moved on.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub built_against: Vec<BuiltAgainst>,
+}
+
+/// What `concurrency` means on a record written before the field existed.
+///
+/// Every one of those was written by a scheduler that ran one cell at a time, so one is the true
+/// answer rather than a guess, and a record read back from last month keeps timings that compare.
+fn alone() -> usize {
+    1
 }
 
 /// One corpus dependency a record rests on.
@@ -378,6 +395,7 @@ mod tests {
             oracle_declared: Oracle::SelfChecking,
             oracle_used: Oracle::SelfChecking,
             parallel: false,
+            concurrency: 1,
             observed_outcome: None,
             excluded_by: None,
             built_against: Vec::new(),

@@ -8,7 +8,12 @@ use std::path::Path;
 use std::process::Command;
 
 /// Something that can put the bytes at a URL into a file.
-pub trait Downloader {
+///
+/// `Send` and `Sync` because the scheduler of `spec/12-ci-and-cost.md` section 12.5 hands one
+/// downloader to several worker threads. Every implementation here is already a description of how
+/// to run curl and holds no mutable state, so the bound costs nothing and saying it here is
+/// cheaper than a lock around a struct that never needed one.
+pub trait Downloader: Send + Sync {
     /// Fetch `url` into `dest`, replacing whatever is there.
     ///
     /// The error is the message a human reads when every source has failed, so it should say

@@ -53,6 +53,7 @@ cargo run -p rrc -- fetch --record        the same, and write what it resolved i
 cargo run -p rrc -- build --project c4    build one project and stop at the binary
 cargo run -p rrc -- test --project c4     build one project and run its own suite
 cargo run -p rrc -- run                   rungs 0 and 1 at four optimization levels, which is the per commit budget
+cargo run -p rrc -- run --jobs auto        the same run with a cell per core, for when you want the answer and not the timings
 cargo run -p rrc -- abi zlib              the four way abi cross check on one project, without the graded run beside it
 cargo run -p rrc -- bisect zlib           the mixed build, until the failure has a file name on it
 cargo run -p rrc -- interrogate libpng    configure twice and compare what the two decided
@@ -61,6 +62,8 @@ cargo run -p rrc -- reduce zlib           cut the file a bisection named down to
 cargo run -p rrc -- report --input runs/latest/records.jsonl
 cargo run -p rrc -- report --features    the feature demand map, which is what to implement next
 ```
+
+A run builds every project from nothing, several times each, and nothing built is ever cached between runs, because a corpus whose result depends on what was left over from yesterday is measuring the leftovers. What can be spent instead is cores. `--jobs N` runs N cells at once and `--jobs auto` uses the machine, which on a ten core laptop takes rung 0 from 58 seconds to 16 with the same report coming out the other end. The default is one, because one is the only setting whose build times can be compared with each other, and each record says how many cells were in flight while it was made so that nobody has to guess later.
 
 Point it at the two compilers with `--rucc` and `--gcc`, which default to `rucc` and `gcc` on the path. Every run writes `records.jsonl`, one JSON object per project per level, and the Markdown report is rendered from that file rather than kept alongside it. The report format will change and the records have to outlive it, so `rrc report` re-renders an old run without rebuilding anything.
 
