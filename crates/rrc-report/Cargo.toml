@@ -12,5 +12,8 @@ rrc-manifest.workspace = true
 rrc-run.workspace = true
 serde_json.workspace = true
 
+[dev-dependencies]
+toml.workspace = true
+
 [lints]
 workspace = true

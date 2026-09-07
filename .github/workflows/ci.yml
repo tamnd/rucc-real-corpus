@@ -140,3 +140,11 @@ jobs:
         run: cargo test -p rrc-manifest --all-features
       - name: the lint, against the corpus itself
         run: cargo run -p rrc -- lint
+      # Section 10.6 says the map is generated and never edited by hand, and the way to hold
+      # somebody to that is to generate it again and see whether it moved. Without a run behind it
+      # the map is a fact about the manifests alone, so this needs no compiler and no network, and
+      # it fails the moment a project is admitted without its row being regenerated.
+      - name: the feature demand map is current
+        run: |
+          cargo run -p rrc -- report --features > /tmp/features.md
+          diff -u reports/features.md /tmp/features.md
