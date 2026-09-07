@@ -1,0 +1,35 @@
+[project]
+name = "libjpeg"
+rung = 2
+upstream = "https://www.ijg.org/"
+licence = "IJG"
+licence-file = "README"
+description = "the independent jpeg group's reference implementation, still the C that most jpeg decoding in the world descends from"
+# Written in 1991 and maintained since without being modernised, so it is the K and R survivor of
+# this rung: old style declarations behind macros, its own memory manager, and a discrete cosine
+# transform written as fixed point integer arithmetic with the scaling done by hand in shifts.
+demands = ["k-and-r-idioms", "integer-conversion", "autoconf-probes"]
+
+[source]
+url = "https://www.ijg.org/files/jpegsrc.v9f.tar.gz"
+sha256 = "04705c110cb2469caa79fb71fba3d7bf834914706e9641a4589485c1f832565b"
+strip-components = 1
+
+[build]
+system = "configure"
+expect-configure = ["checking whether the compiler supports GNU C... yes"]
+
+# Not a suite, and the harness said so before the manifest did. libjpeg's make check decodes the
+# reference jpeg four ways, encodes the reference ppm two ways, transcodes once, and then runs
+# seven cmp invocations against images that have been in the tarball since 1991. Nothing prints a
+# count. What it does instead is stronger than a count: cmp is byte for byte, so a single
+# coefficient wrong anywhere in the discrete cosine transform fails the build, and there is no
+# tolerance to hide in. That is the self-checking oracle exactly.
+[test]
+command = ["make", "check"]
+oracle = "self-checking"
+requires = ["sh"]
+
+[limits]
+build-seconds = 900
+test-seconds = 300
