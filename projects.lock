@@ -10,6 +10,14 @@ licence-sha256 = "a2010f343487d3f7618affe54f789f5487602331c0a8d03f49e9a7c547cf04
 verified = "2026-09-06"
 
 [[project]]
+name = "brotli"
+url = "https://github.com/google/brotli/archive/refs/tags/v1.2.0.tar.gz"
+sha256 = "816c96e8e8f193b40151dad7e8ff37b1221d019dbcb9c35cd3fadbfe6477dfec"
+bytes = 646315
+licence-sha256 = "3d180008e36922a4e8daec11c34c7af264fed5962d07924aea928c38e8663c94"
+verified = "2026-09-07"
+
+[[project]]
 name = "bzip2"
 url = "https://sourceware.org/pub/bzip2/bzip2-1.0.8.tar.gz"
 sha256 = "ab5a03176ee106d3f0fa90e381da478ddae405918153cca248e682cd0c4a2269"
@@ -88,6 +96,14 @@ sha256 = "2510b9b932ed2b14055d738576d97d62b76185122b6f014fb36bd641b967b525"
 bytes = 8886
 licence-sha256 = "c2b829605ee9c0b05c5c3708f308fc9b0954fb6ad1e0ab1add85f740a8827497"
 verified = "2026-09-06"
+
+[[project]]
+name = "libcheck"
+url = "https://github.com/libcheck/check/releases/download/0.15.2/check-0.15.2.tar.gz"
+sha256 = "a8de4e0bacfb4d76dd1c618ded263523b53b85d92a146d8835eb1a52932fa20a"
+bytes = 774985
+licence-sha256 = "a9bdde5616ecdd1e980b44f360600ee8783b1f99b8cc83a2beb163a0a390e861"
+verified = "2026-09-07"
 
 [[project]]
 name = "libexpat"
