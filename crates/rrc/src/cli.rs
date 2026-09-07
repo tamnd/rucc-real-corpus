@@ -11,6 +11,7 @@
 //! levels. The cheap thing is the default and the expensive thing is a decision somebody typed.
 
 use rrc_manifest::axes::{Level, Rung};
+use rrc_run::driver::Baseline;
 use std::path::PathBuf;
 
 /// What the user asked for.
@@ -95,6 +96,12 @@ pub struct RunPlan {
     /// One by default, which is the only setting whose build times compare with each other. See
     /// `spec/12-ci-and-cost.md` section 12.5 for what the higher settings buy and what they cost.
     pub jobs: usize,
+    /// Whether to build every cell a second time with the reference compiler.
+    ///
+    /// Measured by default, because a compile time, a run time, a peak memory and a binary size
+    /// are all ratios and none of them exists without the other half. It doubles the work of a
+    /// run, which is the honest price of the comparison.
+    pub baseline: Baseline,
     /// Where the records and the report go.
     pub out: PathBuf,
 }
@@ -108,6 +115,7 @@ impl Default for RunPlan {
             projects: Vec::new(),
             twice: false,
             jobs: 1,
+            baseline: Baseline::Measure,
             out: PathBuf::from("runs/latest"),
         }
     }
@@ -357,6 +365,7 @@ fn run(args: &[String]) -> Result<RunPlan, String> {
             "--project" => plan.projects.push(value(args, &mut index, "--project")?),
             "--out" => plan.out = value(args, &mut index, "--out")?.into(),
             "--twice" => plan.twice = true,
+            "--no-baseline" => plan.baseline = Baseline::Skip,
             "--jobs" => plan.jobs = parse_jobs(&value(args, &mut index, "--jobs")?)?,
             other => return Err(unknown(other, "run")),
         }
@@ -724,6 +733,8 @@ Options for run:
   --project NAME  one project by name, repeatable, and it walks every rung
   --twice         build everything twice into two roots and compare the bytes
   --jobs N        run N cells at once, or auto for one per core, defaulting to 1
+  --no-baseline   skip the gcc half of every cell, which halves the run and empties every
+                  column that compares one compiler against the other
   --out DIR       where the records and the report go, defaulting to runs/latest
 
 Options for abi:

@@ -156,20 +156,57 @@ impl Trial {
     }
 }
 
+/// Both halves of one cell, which is what a comparison against the baseline is made of.
+#[derive(Debug, Clone)]
+pub struct Both {
+    /// The compiler under test.
+    pub under_test: RunRecord,
+    /// The reference compiler on the same pin at the same level on the same machine, when it was
+    /// built. Nothing else is worth comparing a number against.
+    pub reference: Option<RunRecord>,
+}
+
+/// Whether to build the cell a second time with the reference compiler.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Baseline {
+    /// Build it. Every number in the report is a number against something, and this is the
+    /// something.
+    Measure,
+    /// Do not. Either the two compilers are the same binary, so the comparison would be a
+    /// compiler against itself, or somebody asked for a run half as long.
+    Skip,
+}
+
 /// Build and test one project at one level, and grade it.
 ///
 /// The D0 differential builds the project a second time with the real GCC and compares the two
 /// programs' output. That happens here rather than in the caller because a differential graded
 /// against a reference build from a different run would not be a differential.
-pub fn run(job: &Job<'_>, slot: Slot) -> std::io::Result<RunRecord> {
+///
+/// Under `Baseline::Measure` the reference half is built whatever the oracle is, because a compile
+/// time, a run time, a peak memory and a binary size are all ratios and none of them exists without
+/// it. That doubles the work of a cell, which is the honest price of the comparison and the reason
+/// the result cache is worth having.
+pub fn run(job: &Job<'_>, slot: Slot, baseline: Baseline) -> std::io::Result<Both> {
     let trial = attempt(job, slot, Compiler::UnderTest)?;
-    let reference = if job.manifest.test.oracle == Oracle::Differential && trial.test.is_some() {
+    // The differential oracle needs the reference half whatever the caller asked for, since it has
+    // nothing to grade against without one. Everything else builds it only for the numbers.
+    let graded_against_it = job.manifest.test.oracle == Oracle::Differential && trial.test.is_some();
+    let reference = if baseline == Baseline::Measure || graded_against_it {
         Some(attempt(job, reference_slot(slot), Compiler::Reference)?)
     } else {
         None
     };
     let graded = grade(job.manifest, &trial, reference.as_ref());
-    Ok(record(job, &trial, graded))
+    Ok(Both {
+        under_test: record(job, &trial, graded),
+        // Graded on its own rather than against itself. What the reference half is for is its
+        // seconds, its bytes and its test counts, and a project whose oracle is the differential
+        // has no second reference to hold this one up to.
+        reference: reference
+            .as_ref()
+            .map(|trial| record(job, trial, grade(job.manifest, trial, None))),
+    })
 }
 
 /// The reference half of a differential goes in the other slot, so the two trees have the same
@@ -1023,6 +1060,15 @@ mod tests {
     use rrc_manifest::axes::Rung;
     use std::path::Path;
 
+    /// The graded half of a cell, which is what almost every test here is about.
+    ///
+    /// `Baseline::Skip` rather than `Measure`, because these tests are about grading and a second
+    /// build with the reference compiler would double every one of them to check nothing. The two
+    /// tests that are about the baseline ask for it by name.
+    fn graded(job: &Job<'_>, slot: Slot) -> std::io::Result<RunRecord> {
+        Ok(run(job, slot, Baseline::Skip)?.under_test)
+    }
+
     const MANIFEST: &str = r#"
 [project]
 name = "sample"
@@ -1147,7 +1193,7 @@ oracle = "self-checking"
         )
         .unwrap();
         let manifest = two_program_manifest();
-        let record = run(&job(&f, &manifest), Slot::A).unwrap();
+        let record = graded(&job(&f, &manifest), Slot::A).unwrap();
         assert_eq!(record.outcome, Outcome::Passed);
         assert!(
             record.binary_bytes.is_some_and(|bytes| bytes > 0),
@@ -1162,7 +1208,7 @@ oracle = "self-checking"
         };
         std::fs::write(f.extracted.join("helper.c"), "int main(void){ return }\n").unwrap();
         let manifest = two_program_manifest();
-        let record = run(&job(&f, &manifest), Slot::A).unwrap();
+        let record = graded(&job(&f, &manifest), Slot::A).unwrap();
         assert_eq!(record.outcome, Outcome::DidNotBuild);
     }
 
@@ -1197,7 +1243,7 @@ oracle = "self-checking"
         let manifest = make_manifest();
         let mut job = job(&f, &manifest);
         job.level = Level::O0;
-        let record = run(&job, Slot::A).unwrap();
+        let record = graded(&job, Slot::A).unwrap();
         assert_eq!(
             record.outcome,
             Outcome::Passed,
@@ -1219,7 +1265,7 @@ oracle = "self-checking"
         let manifest = Manifest::from_str_named(&text, Path::new("test/project.toml")).unwrap();
         let mut job = job(&f, &manifest);
         job.level = Level::O0;
-        let record = run(&job, Slot::A).unwrap();
+        let record = graded(&job, Slot::A).unwrap();
         assert_eq!(
             record.outcome,
             Outcome::WrongAnswer,
@@ -1233,7 +1279,7 @@ oracle = "self-checking"
             return;
         };
         let manifest = manifest("");
-        let record = run(&job(&f, &manifest), Slot::A).unwrap();
+        let record = graded(&job(&f, &manifest), Slot::A).unwrap();
         assert_eq!(record.outcome, Outcome::Passed);
         assert_eq!(record.phase_reached, Phase::Tested);
         assert_eq!(record.rung, Rung::R0);
@@ -1255,7 +1301,7 @@ int main(void){ fprintf(stderr, "error: numeric value overflows 32-bit unsigned 
             return;
         };
         let manifest = manifest("");
-        let record = run(&job(&f, &manifest), Slot::A).unwrap();
+        let record = graded(&job(&f, &manifest), Slot::A).unwrap();
         assert_eq!(record.outcome, Outcome::Passed);
         assert_eq!(
             record.first_diagnostic, None,
@@ -1273,7 +1319,7 @@ int main(void){ fprintf(stderr, "error: the thing went wrong\n"); return 1; }
             return;
         };
         let manifest = manifest("");
-        let record = run(&job(&f, &manifest), Slot::A).unwrap();
+        let record = graded(&job(&f, &manifest), Slot::A).unwrap();
         assert!(record.outcome.is_failure());
         assert!(
             record.first_diagnostic.is_some(),
@@ -1305,7 +1351,7 @@ int main(void){ fprintf(stderr, "error: the thing went wrong\n"); return 1; }
         let manifest = manifest(&format!(
             "{AUTOMAKE}baseline-tests = 173\nbaseline-total = 175\n"
         ));
-        let record = run(&job(&f, &manifest), Slot::A).unwrap();
+        let record = graded(&job(&f, &manifest), Slot::A).unwrap();
         assert_eq!(
             record.outcome,
             Outcome::Passed,
@@ -1321,7 +1367,7 @@ int main(void){ fprintf(stderr, "error: the thing went wrong\n"); return 1; }
         let manifest = manifest(&format!(
             "{AUTOMAKE}baseline-tests = 173\nbaseline-total = 175\n"
         ));
-        let record = run(&job(&f, &manifest), Slot::A).unwrap();
+        let record = graded(&job(&f, &manifest), Slot::A).unwrap();
         assert_eq!(record.outcome, Outcome::WrongAnswer);
     }
 
@@ -1335,7 +1381,7 @@ int main(void){ fprintf(stderr, "error: the thing went wrong\n"); return 1; }
         let manifest = manifest(&format!(
             "{AUTOMAKE}baseline-tests = 173\nbaseline-total = 175\n"
         ));
-        let record = run(&job(&f, &manifest), Slot::A).unwrap();
+        let record = graded(&job(&f, &manifest), Slot::A).unwrap();
         assert_eq!(record.outcome, Outcome::WrongAnswer);
     }
 
@@ -1345,7 +1391,7 @@ int main(void){ fprintf(stderr, "error: the thing went wrong\n"); return 1; }
             return;
         };
         let manifest = manifest("");
-        let record = run(&job(&f, &manifest), Slot::A).unwrap();
+        let record = graded(&job(&f, &manifest), Slot::A).unwrap();
         assert_eq!(record.outcome, Outcome::WrongAnswer);
         assert_eq!(
             record.phase_reached,
@@ -1366,7 +1412,7 @@ int main(void){ fprintf(stderr, "error: the thing went wrong\n"); return 1; }
             return;
         };
         let manifest = manifest("");
-        let record = run(&job(&f, &manifest), Slot::A).unwrap();
+        let record = graded(&job(&f, &manifest), Slot::A).unwrap();
         assert_eq!(record.outcome, Outcome::DidNotBuild);
         assert_ne!(record.phase_reached, Phase::Tested);
         let diagnostic = record.first_diagnostic.unwrap();
@@ -1387,7 +1433,7 @@ int main(void){ fprintf(stderr, "error: the thing went wrong\n"); return 1; }
             return;
         };
         let manifest = manifest("");
-        let record = run(&job(&f, &manifest), Slot::A).unwrap();
+        let record = graded(&job(&f, &manifest), Slot::A).unwrap();
         assert_eq!(record.outcome, Outcome::Crashed);
     }
 
@@ -1397,7 +1443,7 @@ int main(void){ fprintf(stderr, "error: the thing went wrong\n"); return 1; }
             return;
         };
         let manifest = manifest("\noracle = \"suite\"\nparser = \"tap\"\nbaseline-tests = 12\n");
-        let record = run(&job(&f, &manifest), Slot::A).unwrap();
+        let record = graded(&job(&f, &manifest), Slot::A).unwrap();
         assert_eq!(record.outcome, Outcome::NotCompared);
         assert!(
             record.oracle_was_downgraded(),
@@ -1415,7 +1461,7 @@ int main(void){ printf("1..2\nok 1 one\nok 2 two\n"); return 0; }
             return;
         };
         let manifest = manifest("\noracle = \"suite\"\nparser = \"tap\"\nbaseline-tests = 1000\n");
-        let record = run(&job(&f, &manifest), Slot::A).unwrap();
+        let record = graded(&job(&f, &manifest), Slot::A).unwrap();
         assert_eq!(record.outcome, Outcome::WrongAnswer);
         assert_eq!(record.tests_passed, Some(2));
         assert!(record.missed_baseline());
@@ -1429,7 +1475,7 @@ int main(void){ printf("1..2\nok 1 one\nok 2 two\n"); return 0; }
         let manifest = manifest("\nrequires = [\"ruby\", \"tcl\"]\n");
         let mut job = job(&f, &manifest);
         job.extra_path = &[];
-        let record = run(&job, Slot::A).unwrap();
+        let record = graded(&job, Slot::A).unwrap();
         if record.outcome == Outcome::Skipped {
             assert_eq!(record.phase_reached, Phase::Fetched);
             assert!(
@@ -1495,7 +1541,7 @@ oracle = "self-checking"
             return;
         };
         let manifest = Manifest::from_str_named(PROBING, Path::new("test/project.toml")).unwrap();
-        let record = run(&job(&f, &manifest), Slot::A).unwrap();
+        let record = graded(&job(&f, &manifest), Slot::A).unwrap();
         assert_eq!(
             record.outcome,
             Outcome::DidNotBuild,
@@ -1518,7 +1564,7 @@ oracle = "self-checking"
             return;
         };
         let manifest = Manifest::from_str_named(PROBING, Path::new("test/project.toml")).unwrap();
-        let record = run(&job(&f, &manifest), Slot::A).unwrap();
+        let record = graded(&job(&f, &manifest), Slot::A).unwrap();
         assert_eq!(record.outcome, Outcome::Passed);
     }
 
@@ -1624,7 +1670,7 @@ oracle = "self-checking"
         }];
         let mut job = job(&dependent, &sample);
         job.needs = &prepared;
-        let record = run(&job, Slot::A).unwrap();
+        let record = graded(&job, Slot::A).unwrap();
         assert_eq!(
             record.outcome,
             Outcome::Passed,
@@ -1645,7 +1691,7 @@ oracle = "self-checking"
         };
         let sample =
             Manifest::from_str_named(NEEDS_WIDGET, Path::new("test/project.toml")).unwrap();
-        let record = run(&job(&dependent, &sample), Slot::A).unwrap();
+        let record = graded(&job(&dependent, &sample), Slot::A).unwrap();
         assert_eq!(record.outcome, Outcome::DidNotBuild);
         assert!(record.built_against.is_empty());
     }
@@ -1673,7 +1719,7 @@ oracle = "self-checking"
         }];
         let mut job = job(&dependent, &sample);
         job.needs = &prepared;
-        let record = run(&job, Slot::A).unwrap();
+        let record = graded(&job, Slot::A).unwrap();
         assert_eq!(record.outcome, Outcome::DidNotBuild);
         assert_eq!(record.phase_reached, Phase::Fetched);
         assert!(
@@ -1696,7 +1742,7 @@ int main(void){ printf("the same either way\n"); return 0; }
             return;
         };
         let manifest = manifest("\noracle = \"differential\"\n");
-        let record = run(&job(&f, &manifest), Slot::A).unwrap();
+        let record = graded(&job(&f, &manifest), Slot::A).unwrap();
         assert_eq!(record.outcome, Outcome::Passed);
         assert_eq!(record.oracle_used, Oracle::Differential);
     }
@@ -1712,12 +1758,12 @@ int main(void){ printf("42\n"); return 0; }
         };
         let good = manifest("\noracle = \"recorded\"\nexpect-output = \"42\"\n");
         assert_eq!(
-            run(&job(&f, &good), Slot::A).unwrap().outcome,
+            graded(&job(&f, &good), Slot::A).unwrap().outcome,
             Outcome::Passed
         );
         let bad = manifest("\noracle = \"recorded\"\nexpect-output = \"43\"\n");
         assert_eq!(
-            run(&job(&f, &bad), Slot::A).unwrap().outcome,
+            graded(&job(&f, &bad), Slot::A).unwrap().outcome,
             Outcome::WrongAnswer
         );
     }
@@ -1744,13 +1790,13 @@ int main(void){
         let good = manifest(
             "\noracle = \"recorded\"\nexpect-contains = \"Correct operation validated\"\n",
         );
-        let record = run(&job(&f, &good), Slot::A).unwrap();
+        let record = graded(&job(&f, &good), Slot::A).unwrap();
         assert_eq!(record.outcome, Outcome::Passed);
         assert_eq!(record.oracle_used, Oracle::Recorded);
 
         let bad = manifest("\noracle = \"recorded\"\nexpect-contains = \"Errors detected\"\n");
         assert_eq!(
-            run(&job(&f, &bad), Slot::A).unwrap().outcome,
+            graded(&job(&f, &bad), Slot::A).unwrap().outcome,
             Outcome::WrongAnswer,
             "the exit status is zero either way, which is the whole reason this field exists"
         );
@@ -1762,7 +1808,7 @@ int main(void){
             return;
         };
         let manifest = manifest("\noracle = \"recorded\"\n");
-        let record = run(&job(&f, &manifest), Slot::A).unwrap();
+        let record = graded(&job(&f, &manifest), Slot::A).unwrap();
         assert_eq!(record.outcome, Outcome::NotCompared);
         assert_eq!(
             record.oracle_used,
@@ -1786,7 +1832,7 @@ int main(void){
             Path::new("test/project.toml"),
         )
         .unwrap();
-        let record = run(&job(&f, &manifest), Slot::A).unwrap();
+        let record = graded(&job(&f, &manifest), Slot::A).unwrap();
         assert_eq!(record.outcome, Outcome::Passed);
     }
 }
