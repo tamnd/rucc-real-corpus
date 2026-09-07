@@ -27,9 +27,12 @@ pub fn run(loaded: &Loaded, options: &Options, plan: &BisectPlan) -> Result<Done
 
     // Its own workspace, for the same reason the cross check has one. A bisection rebuilds the
     // project thirty times and a run of the ordinary kind would delete the tree out from under it.
+    let needs = crate::commands::schedule::Needs::prepare(&setup, loaded, manifest)?;
+    let prepared = needs.prepared();
     let workspace = loaded.workspace().join("bisect");
-    let job =
-        crate::commands::schedule::job_for(&setup, manifest, plan.level, &extracted, &workspace);
+    let job = crate::commands::schedule::job_for(
+        &setup, manifest, plan.level, &extracted, &workspace, &prepared,
+    );
     let record = bisect::bisect(&job, plan.limit)
         .map_err(|why| format!("{} at {}: {why}", plan.project, plan.level.name()))?;
 

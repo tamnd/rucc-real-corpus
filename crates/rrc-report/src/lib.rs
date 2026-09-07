@@ -69,6 +69,7 @@ mod tests {
             parallel: false,
             observed_outcome: None,
             excluded_by: None,
+            built_against: Vec::new(),
         }
     }
 }

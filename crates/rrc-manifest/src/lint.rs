@@ -62,6 +62,7 @@ fn check_manifest(manifest: &Manifest, corpus: &Corpus, findings: &mut Vec<Findi
     check_project(manifest, corpus, &mut what);
     check_source(manifest, corpus, &mut what);
     check_build(manifest, &mut what);
+    check_needs(manifest, corpus, &mut what);
     check_abi(manifest, &mut what);
     check_test(manifest, &mut what);
     check_levels_and_limits(manifest, &mut what);
@@ -416,6 +417,81 @@ fn check_test(manifest: &Manifest, say: &mut Vec<String>) {
     }
 }
 
+/// `build.needs` builds another corpus project and links this one against it, which is the only
+/// place one manifest can make another one's build matter, so it is checked hard.
+///
+/// The rung rule is the one worth explaining. A project is only as easy as the hardest thing it
+/// has to build, so depending on something further up the ladder would put a project on a rung it
+/// does not really belong to, and the ladder is the thing this corpus is for. The depth rule is a
+/// limit rather than a principle: nothing has needed two levels yet, and a chain has to answer
+/// what happens when two dependents want the same dependency configured differently, which is a
+/// question worth leaving until something asks it. The rule about the dependent's own build system
+/// is the one that catches a silent failure rather than a loud one, and the comment on it says why.
+fn check_needs(manifest: &Manifest, corpus: &Corpus, say: &mut Vec<String>) {
+    // The prefix reaches the build through CPPFLAGS, LDFLAGS and PKG_CONFIG_PATH, so it only
+    // reaches a build that reads them. A direct build never does, because the harness writes that
+    // command line itself, and cmake does not read CPPFLAGS either. Both of those would build,
+    // ignore the prefix, and then either fail to find the header or quietly link the copy of the
+    // library the machine already had, which is the exact thing this feature exists to stop.
+    if !manifest.build.needs.is_empty()
+        && matches!(
+            manifest.build.system,
+            BuildSystem::Direct | BuildSystem::Cmake
+        )
+    {
+        say.push(format!(
+            "declares needs and is an A{} build, which never reads CPPFLAGS or LDFLAGS, so the dependency would be built and then ignored",
+            manifest.build.system.axis()
+        ));
+    }
+    for need in &manifest.build.needs {
+        if need.why.trim().is_empty() {
+            say.push(format!(
+                "needs `{}` and does not say why, and a dependency nobody justified is a dependency nobody will remove",
+                need.project
+            ));
+        }
+        if need.project == manifest.project.name {
+            say.push("needs itself, which cannot be built".into());
+            continue;
+        }
+        let Some(other) = corpus
+            .manifests
+            .iter()
+            .find(|other| other.project.name == need.project)
+        else {
+            say.push(format!(
+                "needs `{}`, which is not a project in this corpus, so there is nothing to build",
+                need.project
+            ));
+            continue;
+        };
+        if other.build.system != BuildSystem::Configure {
+            say.push(format!(
+                "needs `{}`, whose build system is not configure, and installing into a prefix is only implemented for configure",
+                need.project
+            ));
+        }
+        if !other.build.needs.is_empty() {
+            say.push(format!(
+                "needs `{}`, which has dependencies of its own, and only one level is implemented",
+                need.project
+            ));
+        }
+        if other.project.rung > manifest.project.rung {
+            say.push(format!(
+                "needs `{}`, which is on a higher rung, so this project is really as hard as that one and is not on the rung it claims",
+                need.project
+            ));
+        }
+    }
+    if !manifest.build.needs.is_empty() && manifest.abi.is_some() {
+        say.push(
+            "declares both needs and an abi cross check, and the cross check builds its own pair of files and would never link the dependency".into(),
+        );
+    }
+}
+
 /// `baseline-total` is the one field that lets a project be admitted while red, so it gets asked
 /// three questions rather than none.
 ///
@@ -551,33 +627,45 @@ summary = "pointer arithmetic on object interiors"
 kind = "standard"
 "#;
 
+    /// The lock entry a manifest would have if somebody had fetched it, which every test needs and
+    /// none of them are about.
+    fn locked(manifest: &Manifest) -> LockEntry {
+        LockEntry {
+            name: manifest.project.name.clone(),
+            url: manifest.source.url.clone(),
+            sha256: manifest.source.sha256.clone(),
+            bytes: 1,
+            licence_sha256: "ab".repeat(32),
+            verified: "2026-09-06".into(),
+            submodules: manifest
+                .source
+                .submodules
+                .iter()
+                .map(|sub| crate::lockfile::LockSubmodule {
+                    path: sub.path.clone(),
+                    url: sub.url.clone(),
+                    sha256: sub.sha256.clone(),
+                    bytes: 1,
+                })
+                .collect(),
+        }
+    }
+
     fn corpus_of(text: &str) -> Corpus {
-        let manifest = Manifest::from_str_named(text, Path::new("test/project.toml")).unwrap();
-        let lockfile = Lockfile {
-            projects: vec![LockEntry {
-                name: manifest.project.name.clone(),
-                url: manifest.source.url.clone(),
-                sha256: manifest.source.sha256.clone(),
-                bytes: 1,
-                licence_sha256: "ab".repeat(32),
-                verified: "2026-09-06".into(),
-                submodules: manifest
-                    .source
-                    .submodules
-                    .iter()
-                    .map(|sub| crate::lockfile::LockSubmodule {
-                        path: sub.path.clone(),
-                        url: sub.url.clone(),
-                        sha256: sub.sha256.clone(),
-                        bytes: 1,
-                    })
-                    .collect(),
-            }],
-        };
+        corpus_of_all(&[text])
+    }
+
+    fn corpus_of_all(texts: &[&str]) -> Corpus {
+        let manifests: Vec<Manifest> = texts
+            .iter()
+            .map(|text| Manifest::from_str_named(text, Path::new("test/project.toml")).unwrap())
+            .collect();
         Corpus {
-            manifests: vec![manifest],
+            lockfile: Lockfile {
+                projects: manifests.iter().map(locked).collect(),
+            },
+            manifests,
             features: toml::from_str(FEATURES).unwrap(),
-            lockfile,
             exclusions: Exclusions::default(),
         }
     }
@@ -863,6 +951,141 @@ kind = "standard"
             findings
                 .iter()
                 .any(|f| f.what.contains("no entry in projects.lock"))
+        );
+    }
+
+    /// A pair of manifests shaped like mpfr and gmp: one configure project that needs another
+    /// configure project on the same rung, which is the only arrangement the harness implements.
+    ///
+    /// Built by editing parsed manifests rather than by writing a second block of toml, because
+    /// every one of these tests is about one field and a second literal manifest would mean seven
+    /// copies of the same twenty lines drifting apart.
+    fn needing() -> Corpus {
+        let mut corpus = corpus_of_all(&[SAMPLE, SAMPLE]);
+        for manifest in &mut corpus.manifests {
+            manifest.build.system = BuildSystem::Configure;
+            manifest.build.sources.clear();
+            manifest.build.output = None;
+        }
+        corpus.manifests[1].project.name = "sample-lib".into();
+        corpus.manifests[1].source.url = "https://example.invalid/lib.tar.gz".into();
+        corpus.lockfile.projects[1].name = "sample-lib".into();
+        corpus.lockfile.projects[1].url = "https://example.invalid/lib.tar.gz".into();
+        corpus.manifests[0].build.needs = vec![crate::manifest::Need {
+            project: "sample-lib".into(),
+            why: "the sample links it".into(),
+        }];
+        corpus
+    }
+
+    #[test]
+    fn a_project_that_needs_another_one_properly_is_quiet() {
+        assert_eq!(check(&needing()), Vec::new());
+    }
+
+    #[test]
+    fn a_dependency_with_no_reason_is_caught() {
+        let mut corpus = needing();
+        corpus.manifests[0].build.needs[0].why = "  ".into();
+        assert!(
+            check(&corpus)
+                .iter()
+                .any(|f| f.what.contains("does not say why"))
+        );
+    }
+
+    #[test]
+    fn a_project_that_needs_itself_is_caught() {
+        let mut corpus = needing();
+        corpus.manifests[0].build.needs[0].project = "jsmn".into();
+        assert!(
+            check(&corpus)
+                .iter()
+                .any(|f| f.what.contains("needs itself"))
+        );
+    }
+
+    #[test]
+    fn a_dependency_that_is_not_in_the_corpus_is_caught() {
+        let mut corpus = needing();
+        corpus.manifests[0].build.needs[0].project = "libnothing".into();
+        assert!(
+            check(&corpus)
+                .iter()
+                .any(|f| f.what.contains("not a project in this corpus"))
+        );
+    }
+
+    #[test]
+    fn a_dependency_that_does_not_configure_is_caught() {
+        // The prefix is handed over by running the dependency's configure with a --prefix, so a
+        // dependency with no configure has nowhere to be told to install.
+        let mut corpus = needing();
+        corpus.manifests[1].build.system = BuildSystem::Make;
+        assert!(
+            check(&corpus)
+                .iter()
+                .any(|f| f.what.contains("only implemented for configure"))
+        );
+    }
+
+    #[test]
+    fn a_dependency_with_dependencies_of_its_own_is_caught() {
+        let mut corpus = needing();
+        corpus.manifests[1].build.needs = vec![crate::manifest::Need {
+            project: "jsmn".into(),
+            why: "reasons".into(),
+        }];
+        assert!(
+            check(&corpus)
+                .iter()
+                .any(|f| f.what.contains("only one level is implemented"))
+        );
+    }
+
+    #[test]
+    fn a_dependency_on_a_higher_rung_is_caught() {
+        let mut corpus = needing();
+        corpus.manifests[1].project.rung = crate::axes::Rung::R3;
+        assert!(
+            check(&corpus)
+                .iter()
+                .any(|f| f.what.contains("is not on the rung it claims"))
+        );
+    }
+
+    #[test]
+    fn a_build_that_would_ignore_the_prefix_is_caught() {
+        // The silent one. A cmake build would compile, never look at CPPFLAGS, and then link
+        // whichever copy of the library the machine already had, and the run would look green.
+        let mut corpus = needing();
+        corpus.manifests[0].build.system = BuildSystem::Cmake;
+        assert!(
+            check(&corpus)
+                .iter()
+                .any(|f| f.what.contains("built and then ignored"))
+        );
+    }
+
+    #[test]
+    fn a_project_that_needs_something_and_also_cross_checks_the_abi_is_caught() {
+        let mut corpus = needing();
+        corpus.manifests[0].abi = Some(crate::manifest::Abi {
+            archive: crate::manifest::Archive {
+                output: "libsample.a".into(),
+                sources: vec!["lib.c".into()],
+            },
+            driver: crate::manifest::Driver {
+                output: "abi-driver".into(),
+                sources: vec!["driver.c".into()],
+                link: Vec::new(),
+            },
+            flags: Vec::new(),
+        });
+        assert!(
+            check(&corpus)
+                .iter()
+                .any(|f| f.what.contains("would never link the dependency"))
         );
     }
 

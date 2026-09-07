@@ -61,9 +61,12 @@ pub fn run(loaded: &Loaded, options: &Options, plan: &ReducePlan) -> Result<Done
     // compiles a file with are computed by its build system, and half of them usually come out of
     // a generated header, so there is nowhere else to read them from and guessing produces a case
     // that reproduces nothing.
+    let needs = crate::commands::schedule::Needs::prepare(&setup, loaded, manifest)?;
+    let prepared = needs.prepared();
     let workspace = loaded.workspace().join("reduce");
-    let job =
-        crate::commands::schedule::job_for(&setup, manifest, plan.level, &extracted, &workspace);
+    let job = crate::commands::schedule::job_for(
+        &setup, manifest, plan.level, &extracted, &workspace, &prepared,
+    );
     let trial = driver::attempt_with(&job, Slot::A, Dispatch::Mixed(&[]))
         .map_err(|why| format!("building {} to see how it compiles: {why}", plan.project))?;
 
@@ -139,9 +142,12 @@ fn localize(
 ) -> Result<Result<String, String>, String> {
     let manifest = loaded.get(&plan.project)?;
     let extracted = loaded.extracted(&manifest.project.name);
+    let needs = crate::commands::schedule::Needs::prepare(setup, loaded, manifest)?;
+    let prepared = needs.prepared();
     let workspace = loaded.workspace().join("bisect");
-    let job =
-        crate::commands::schedule::job_for(setup, manifest, plan.level, &extracted, &workspace);
+    let job = crate::commands::schedule::job_for(
+        setup, manifest, plan.level, &extracted, &workspace, &prepared,
+    );
     let record = bisect::bisect(&job, plan.limit)
         .map_err(|why| format!("{} at {}: {why}", plan.project, plan.level.name()))?;
 

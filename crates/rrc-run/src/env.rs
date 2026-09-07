@@ -55,6 +55,13 @@ pub struct EnvPlan<'a> {
     /// a Homebrew prefix holding GCC 16 or tclsh. Named explicitly so that they are part of the
     /// record rather than an accident of who ran it.
     pub extra_path: &'a [PathBuf],
+    /// Where the corpus dependencies of `build.needs` were installed, when there are any.
+    ///
+    /// Inside the sandbox, so it goes away with everything else and so its length is the same in
+    /// both slots of a differential. A project with no `needs` has no prefix at all rather than an
+    /// empty one, because an `-I` pointing at a directory that does not exist is the kind of thing
+    /// that works everywhere until the one compiler that warns about it.
+    pub prefix: Option<&'a Path>,
     /// Anything the manifest asks for on top.
     pub project_env: &'a BTreeMap<String, String>,
 }
@@ -93,6 +100,26 @@ pub fn environment(plan: &EnvPlan<'_>) -> BTreeMap<String, String> {
         env.insert(name.into(), display(&host));
     }
 
+    // Where a corpus dependency ends up, said in the three ways a build system might ask. An
+    // autotools configure reads CPPFLAGS and LDFLAGS, anything with a .pc file is found through
+    // PKG_CONFIG_PATH, and PATH is here because some libraries install a config script rather
+    // than a .pc file. All three point at one directory inside the sandbox, so a build that finds
+    // the library found the one this corpus built and not one the machine happened to have.
+    if let Some(prefix) = plan.prefix {
+        env.insert(
+            "CPPFLAGS".into(),
+            format!("-I{}", display(&prefix.join("include"))),
+        );
+        env.insert(
+            "LDFLAGS".into(),
+            format!("-L{}", display(&prefix.join("lib"))),
+        );
+        env.insert(
+            "PKG_CONFIG_PATH".into(),
+            display(&prefix.join("lib").join("pkgconfig")),
+        );
+    }
+
     // The manifest goes last and can override everything above it. That is on purpose: it is
     // one file, it is reviewed, and a project that genuinely needs a different `LC_ALL` should
     // be able to say so in the one place that gets read.
@@ -120,6 +147,10 @@ fn cflags(plan: &EnvPlan<'_>) -> String {
 
 fn path_for(plan: &EnvPlan<'_>) -> String {
     let mut dirs = vec![plan.shim.dir().to_path_buf()];
+    // In front of the discovered prefixes, so that a library this corpus built wins over a copy
+    // of the same library that happens to be installed on the machine. That is the whole reason
+    // `build.needs` exists rather than a note in the readme saying which packages to install.
+    dirs.extend(plan.prefix.map(|prefix| prefix.join("bin")));
     dirs.extend(plan.extra_path.iter().cloned());
     dirs.extend(SYSTEM_PATH.iter().map(PathBuf::from));
     dirs.iter()
@@ -188,6 +219,7 @@ mod tests {
             flags: &[],
             host_cc: HostCc::Reference,
             extra_path: &[],
+            prefix: None,
             project_env,
         }
     }
@@ -200,6 +232,43 @@ mod tests {
         let path = &env["PATH"];
         assert!(path.starts_with(&f.shim.dir().to_string_lossy().into_owned()));
         assert!(path.ends_with("/sbin"));
+        std::fs::remove_dir_all(&f.root).ok();
+    }
+
+    #[test]
+    fn a_project_with_no_dependencies_gets_no_prefix_variables_at_all() {
+        // Not empty ones. An `-I` on a directory that does not exist is the kind of thing that
+        // works on every compiler until it meets the one that warns about it, and a warning that
+        // only appears in one slot of a differential is a difference the report has to explain.
+        let f = fixture("no-prefix");
+        let empty = BTreeMap::new();
+        let env = environment(&plan(&f, &empty));
+        assert!(!env.contains_key("CPPFLAGS"));
+        assert!(!env.contains_key("LDFLAGS"));
+        assert!(!env.contains_key("PKG_CONFIG_PATH"));
+        std::fs::remove_dir_all(&f.root).ok();
+    }
+
+    #[test]
+    fn a_dependency_prefix_is_said_the_three_ways_a_build_might_ask() {
+        let f = fixture("prefix");
+        let empty = BTreeMap::new();
+        let prefix = f.sandbox.root().join("prefix");
+        let mut plan = plan(&f, &empty);
+        plan.prefix = Some(&prefix);
+        let env = environment(&plan);
+        assert_eq!(env["CPPFLAGS"], format!("-I{}/include", prefix.display()));
+        assert_eq!(env["LDFLAGS"], format!("-L{}/lib", prefix.display()));
+        assert_eq!(
+            env["PKG_CONFIG_PATH"],
+            format!("{}/lib/pkgconfig", prefix.display())
+        );
+        // In front of everything the machine has, which is the whole point: a library this corpus
+        // built has to win over a copy of the same library that happens to be installed.
+        let path = &env["PATH"];
+        let bin = format!("{}/bin", prefix.display());
+        assert!(path.contains(&bin));
+        assert!(path.find(&bin) < path.find("/usr/bin"));
         std::fs::remove_dir_all(&f.root).ok();
     }
 

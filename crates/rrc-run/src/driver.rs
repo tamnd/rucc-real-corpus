@@ -20,7 +20,7 @@ use crate::diagnostic::Normalizer;
 use crate::env::{EnvPlan, environment};
 use crate::exec::{self, Completed, Ending, Invocation};
 use crate::parse::{self, Counts};
-use crate::record::{Outcome, Phase, Provenance, RunRecord};
+use crate::record::{BuiltAgainst, Outcome, Phase, Provenance, RunRecord};
 use crate::sandbox::{Sandbox, Slot};
 use crate::shim::{Shim, Split, Toolchain};
 use crate::sizes::{self, Sizes};
@@ -85,9 +85,24 @@ pub struct Job<'a> {
     pub provenance: &'a Provenance,
     /// Prefixes added to `PATH` for tools the base system does not carry.
     pub extra_path: &'a [PathBuf],
+    /// The corpus projects named in `build.needs`, fetched and ready to build, in the order the
+    /// manifest lists them.
+    pub needs: &'a [Prepared<'a>],
     /// The pin's hash, copied onto the record so a result can never be read against the wrong
     /// version of the source.
     pub pin_sha256: &'a str,
+}
+
+/// One corpus dependency, with its manifest and its extracted pin.
+///
+/// Fetched by the caller rather than here, because fetching is the scheduler's job and because a
+/// dependency that cannot be downloaded should say so before a sandbox is created.
+#[derive(Debug, Clone, Copy)]
+pub struct Prepared<'a> {
+    /// The dependency's own manifest, which decides how it is configured and what flags it needs.
+    pub manifest: &'a Manifest,
+    /// Its extracted pin.
+    pub extracted: &'a Path,
 }
 
 /// What one build and one test did, before anything has been graded.
@@ -190,6 +205,33 @@ pub fn mixed_dir(sandbox: &Sandbox) -> PathBuf {
     sandbox.root().join("mixed")
 }
 
+/// The `cc` the build will find on `PATH`, which is either one compiler or the pair of them with
+/// a list saying which translation units go to which.
+fn shim_for(
+    job: &Job<'_>,
+    sandbox: &Sandbox,
+    dispatch: Dispatch<'_>,
+    toolchain: &Toolchain,
+) -> std::io::Result<Shim> {
+    match dispatch {
+        Dispatch::Whole(_) => Shim::create(&sandbox.bin(), toolchain),
+        Dispatch::Mixed(ours) => {
+            let dir = mixed_dir(sandbox);
+            std::fs::create_dir_all(&dir)?;
+            let split = Split {
+                ours: dir.join("ours.txt"),
+                journal: dir.join("journal.txt"),
+                root: build_dir(sandbox, job.manifest),
+            };
+            let mut listed = ours.join("\n");
+            listed.push('\n');
+            std::fs::write(&split.ours, listed)?;
+            std::fs::write(&split.journal, "")?;
+            Shim::mixed(&sandbox.bin(), job.toolchain, &split)
+        }
+    }
+}
+
 /// Build and test with the compilers handed out however the caller asked.
 pub fn attempt_with(job: &Job<'_>, slot: Slot, dispatch: Dispatch<'_>) -> std::io::Result<Trial> {
     let sandbox = Sandbox::create(job.workspace, slot, &job.manifest.project.name, job.level)?;
@@ -202,23 +244,8 @@ pub fn attempt_with(job: &Job<'_>, slot: Slot, dispatch: Dispatch<'_>) -> std::i
         Dispatch::Mixed(_) => Compiler::Reference,
     };
     let toolchain = toolchain_for(job.toolchain, compiler);
-    let shim = match dispatch {
-        Dispatch::Whole(_) => Shim::create(&sandbox.bin(), &toolchain)?,
-        Dispatch::Mixed(ours) => {
-            let dir = mixed_dir(&sandbox);
-            std::fs::create_dir_all(&dir)?;
-            let split = Split {
-                ours: dir.join("ours.txt"),
-                journal: dir.join("journal.txt"),
-                root: build_dir(&sandbox, job.manifest),
-            };
-            let mut listed = ours.join("\n");
-            listed.push('\n');
-            std::fs::write(&split.ours, listed)?;
-            std::fs::write(&split.journal, "")?;
-            Shim::mixed(&sandbox.bin(), job.toolchain, &split)?
-        }
-    };
+    let shim = shim_for(job, &sandbox, dispatch, &toolchain)?;
+    let prefix = (!job.needs.is_empty()).then(|| needs_prefix(&sandbox));
     // A direct build never reads CFLAGS, because the harness writes that command line itself and
     // puts the same flags on it. Passing them here anyway keeps the two paths saying the same
     // thing, and costs a variable nobody looks at.
@@ -231,6 +258,7 @@ pub fn attempt_with(job: &Job<'_>, slot: Slot, dispatch: Dispatch<'_>) -> std::i
         flags: &flags,
         host_cc: job.manifest.build.host_cc,
         extra_path: job.extra_path,
+        prefix: prefix.as_deref(),
         project_env: &job.manifest.build.env,
     });
 
@@ -253,6 +281,17 @@ pub fn attempt_with(job: &Job<'_>, slot: Slot, dispatch: Dispatch<'_>) -> std::i
     trial.missing = missing_requirements(job.manifest, &env);
     if !trial.missing.is_empty() {
         return Ok(trial);
+    }
+
+    // Before the project's own build, and counted in the same seconds, because a dependency that
+    // will not compile is this project failing to build and not a separate kind of event. The
+    // diagnostic that comes back is the dependency's, which is the right one to report: it names
+    // the file the compiler actually choked on.
+    if let Some(prefix) = &prefix {
+        install_needs(job, &mut trial, &shim, &toolchain, prefix)?;
+        if !trial.built() {
+            return Ok(trial);
+        }
     }
 
     let workdir = build_dir(&trial.sandbox, job.manifest);
@@ -311,6 +350,119 @@ pub fn attempt_with(job: &Job<'_>, slot: Slot, dispatch: Dispatch<'_>) -> std::i
     }
     trial.test = Some(completed);
     Ok(trial)
+}
+
+/// Where `build.needs` installs to, which is one directory shared by every dependency.
+///
+/// Public because a person looking at a sandbox afterwards wants to know where the library that
+/// got linked in came from, and because the staleness check has to be able to find it.
+#[must_use]
+pub fn needs_prefix(sandbox: &Sandbox) -> PathBuf {
+    sandbox.root().join("prefix")
+}
+
+/// Build each corpus dependency with the same compiler and install it into the shared prefix.
+///
+/// Each one gets its own environment rather than sharing the dependent's, because the flags in
+/// `[build]` belong to the project that declared them. gmp needs `-std=gnu17` and mpfr does not,
+/// and giving mpfr gmp's flags would be a quiet way of building the wrong thing.
+///
+/// Only a `configure` dependency is handled and the lint refuses anything else. That is a real
+/// limit rather than an oversight: a prefix is an autotools idea, and the moment a cmake or a
+/// hand written Makefile has to be installed somewhere the question of what `make install` even
+/// means stops having one answer. gmp is what this was written for and gmp is a configure project.
+fn install_needs(
+    job: &Job<'_>,
+    trial: &mut Trial,
+    shim: &Shim,
+    toolchain: &Toolchain,
+    prefix: &Path,
+) -> std::io::Result<()> {
+    for need in job.needs {
+        let name = &need.manifest.project.name;
+        let root = trial.sandbox.root().join("needs").join(name);
+        if root.exists() {
+            std::fs::remove_dir_all(&root)?;
+        }
+        crate::sandbox::clone_tree(need.extracted, &root)?;
+        let workdir = need
+            .manifest
+            .build
+            .subdir
+            .as_ref()
+            .map_or_else(|| root.clone(), |subdir| root.join(subdir));
+
+        let flags = need.manifest.build.flag_list();
+        let env = environment(&EnvPlan {
+            sandbox: &trial.sandbox,
+            shim,
+            toolchain,
+            level: job.level,
+            flags: &flags,
+            host_cc: need.manifest.build.host_cc,
+            extra_path: job.extra_path,
+            prefix: Some(prefix),
+            project_env: &need.manifest.build.env,
+        });
+
+        let normalizer = Normalizer::rooted_at(trial.sandbox.root());
+        for step in need_steps(need, &env, &workdir, prefix) {
+            let completed = exec::run(&step.invocation)?;
+            trial.build_seconds += completed.seconds;
+            log(
+                &trial.sandbox,
+                &format!("{name}-{}", step.name),
+                &step.invocation,
+                &completed,
+            )?;
+            let finished = completed.ending.is_success();
+            if trial.first_diagnostic.is_none() {
+                trial.first_diagnostic = normalizer.first(&completed.stderr);
+            }
+            trial.build = Some(completed);
+            if !finished {
+                return Ok(());
+            }
+        }
+        // Deliberately left at whatever it was. A dependency that built proves nothing about the
+        // project, and moving the phase forward here would make a project that failed at its own
+        // configure look like it had got further than it did.
+    }
+    Ok(())
+}
+
+/// Configure, build and install one dependency.
+///
+/// `DESTDIR=` on the install line rather than in the environment. The environment's `DESTDIR`
+/// points inside the sandbox so that a stray `make install` in somebody's test suite cannot
+/// escape, and that is still what everything else wants. Here the install is the point and the
+/// prefix is already inside the sandbox, so staging it a second time would put the library
+/// somewhere the dependent's `-L` is not looking.
+fn need_steps(
+    need: &Prepared<'_>,
+    env: &BTreeMap<String, String>,
+    workdir: &Path,
+    prefix: &Path,
+) -> Vec<Step> {
+    let limit = Duration::from_secs(need.manifest.limits.build_seconds);
+    let at = |name: &str, program: &str, args: Vec<String>| Step {
+        name: name.to_string(),
+        reaches: Phase::Fetched,
+        invocation: Invocation {
+            program: resolve(program, env, workdir),
+            args,
+            cwd: workdir.to_path_buf(),
+            env: env.clone(),
+            timeout: limit,
+        },
+    };
+    let mut configure = vec![format!("--prefix={}", prefix.display())];
+    configure.extend(need.manifest.build.configure.clone());
+    vec![
+        at("configure", "./configure", configure),
+        at("make", "make", need.manifest.build.targets.clone()),
+        at("install", "make", vec!["install".into(), "DESTDIR=".into()]),
+    ]
 }
 
 /// A reference trial uses the real GCC for everything, including anything the manifest wanted
@@ -758,6 +910,14 @@ fn record(job: &Job<'_>, trial: &Trial, graded: Graded) -> RunRecord {
         // grades a cell without knowing or caring whether anybody is counting it.
         observed_outcome: None,
         excluded_by: None,
+        built_against: job
+            .needs
+            .iter()
+            .map(|need| BuiltAgainst {
+                project: need.manifest.project.name.clone(),
+                pin_sha256: need.manifest.source.sha256.clone(),
+            })
+            .collect(),
     }
 }
 
@@ -899,6 +1059,7 @@ oracle = "self-checking"
             toolchain: &fixture.toolchain,
             provenance: &fixture.provenance,
             extra_path: &[],
+            needs: &[],
             pin_sha256: &fixture.pin,
         }
     }
@@ -1304,6 +1465,170 @@ oracle = "self-checking"
         let manifest = Manifest::from_str_named(PROBING, Path::new("test/project.toml")).unwrap();
         let record = run(&job(&f, &manifest), Slot::A).unwrap();
         assert_eq!(record.outcome, Outcome::Passed);
+    }
+
+    /// Make an ordinary file executable, which two of these fixtures need and neither is about.
+    fn make_runnable(path: &Path) {
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            std::fs::set_permissions(path, std::fs::Permissions::from_mode(0o755)).unwrap();
+        }
+    }
+
+    const WIDGET: &str = r#"
+[project]
+name = "widget"
+rung = 2
+upstream = "https://example.invalid/widget"
+licence = "MIT"
+licence-file = "LICENSE"
+description = "a library that exists only in this test"
+demands = ["pointer-arithmetic"]
+
+[source]
+url = "https://example.invalid/widget.tar.gz"
+sha256 = "1111111111111111111111111111111111111111111111111111111111111111"
+
+[build]
+system = "configure"
+
+[test]
+command = ["make", "check"]
+oracle = "suite"
+parser = "automake"
+baseline-tests = 1
+"#;
+
+    const NEEDS_WIDGET: &str = r#"
+[project]
+name = "sample"
+rung = 2
+upstream = "https://example.invalid/sample"
+licence = "MIT"
+licence-file = "LICENSE"
+description = "a project that cannot build without the widget library"
+demands = ["pointer-arithmetic"]
+
+[source]
+url = "https://example.invalid/sample.tar.gz"
+sha256 = "0000000000000000000000000000000000000000000000000000000000000000"
+
+[build]
+system = "configure"
+output = "sample"
+
+[test]
+command = ["./sample"]
+oracle = "self-checking"
+"#;
+
+    /// A dependency that installs one header into whatever prefix it is configured with, and a
+    /// dependent whose only source includes that header by angle brackets.
+    ///
+    /// Angle brackets rather than quotes on purpose. A quoted include would be found next to
+    /// main.c and the test would pass whether or not the prefix ever arrived, which is the failure
+    /// mode this whole test exists to rule out.
+    fn widget_fixtures(name: &str) -> Option<(Fixture, Fixture)> {
+        let dependent = fixture(
+            &format!("{name}-dependent"),
+            "#include <widget.h>\nint main(void){ return WIDGET_OK ? 0 : 1; }\n",
+        )?;
+        let configure = dependent.extracted.join("configure");
+        std::fs::write(
+            &configure,
+            "#!/bin/sh\nprintf 'all:\\n\\t$(CC) $(CFLAGS) $(CPPFLAGS) main.c -o sample\\n' > Makefile\n",
+        )
+        .unwrap();
+        make_runnable(&configure);
+
+        let library = fixture(&format!("{name}-library"), "")?;
+        std::fs::remove_file(library.extracted.join("main.c")).ok();
+        std::fs::write(library.extracted.join("widget.h"), "#define WIDGET_OK 1\n").unwrap();
+        let configure = library.extracted.join("configure");
+        std::fs::write(
+            &configure,
+            "#!/bin/sh\nprefix=\nfor arg in \"$@\"; do\n  case $arg in --prefix=*) prefix=${arg#--prefix=} ;; esac\ndone\nprintf 'all:\\n\\t@true\\ninstall:\\n\\tmkdir -p %s/include\\n\\tcp widget.h %s/include/widget.h\\n' \"$prefix\" \"$prefix\" > Makefile\n",
+        )
+        .unwrap();
+        make_runnable(&configure);
+        Some((dependent, library))
+    }
+
+    #[test]
+    fn a_project_builds_against_a_dependency_this_corpus_built_and_says_so_on_the_record() {
+        let Some((dependent, library)) = widget_fixtures("needs") else {
+            return;
+        };
+        let widget = Manifest::from_str_named(WIDGET, Path::new("test/project.toml")).unwrap();
+        let sample =
+            Manifest::from_str_named(NEEDS_WIDGET, Path::new("test/project.toml")).unwrap();
+        let prepared = [Prepared {
+            manifest: &widget,
+            extracted: &library.extracted,
+        }];
+        let mut job = job(&dependent, &sample);
+        job.needs = &prepared;
+        let record = run(&job, Slot::A).unwrap();
+        assert_eq!(
+            record.outcome,
+            Outcome::Passed,
+            "the header the dependency installed should have reached the dependent's compile, got {:?}",
+            record.first_diagnostic
+        );
+        assert_eq!(record.built_against.len(), 1);
+        assert_eq!(record.built_against[0].project, "widget");
+        assert_eq!(record.built_against[0].pin_sha256, widget.source.sha256);
+    }
+
+    #[test]
+    fn the_same_project_without_the_dependency_does_not_build() {
+        // The other half of the test above. Without it, a machine that happened to have widget.h
+        // installed would make that one pass for the wrong reason and nobody would find out.
+        let Some((dependent, _library)) = widget_fixtures("needs-missing") else {
+            return;
+        };
+        let sample =
+            Manifest::from_str_named(NEEDS_WIDGET, Path::new("test/project.toml")).unwrap();
+        let record = run(&job(&dependent, &sample), Slot::A).unwrap();
+        assert_eq!(record.outcome, Outcome::DidNotBuild);
+        assert!(record.built_against.is_empty());
+    }
+
+    #[test]
+    fn a_dependency_that_will_not_build_is_the_dependent_failing_to_build() {
+        // And the diagnostic is the dependency's, because that is the file the compiler choked on.
+        // The phase stays where it was, so a project that never reached its own configure does not
+        // read as having got further than it did.
+        let Some((dependent, library)) = widget_fixtures("needs-broken") else {
+            return;
+        };
+        std::fs::write(
+            library.extracted.join("configure"),
+            "#!/bin/sh\necho 'widget.c:3:9: error: no lowering for the widget builtin' >&2\nexit 1\n",
+        )
+        .unwrap();
+        make_runnable(&library.extracted.join("configure"));
+        let widget = Manifest::from_str_named(WIDGET, Path::new("test/project.toml")).unwrap();
+        let sample =
+            Manifest::from_str_named(NEEDS_WIDGET, Path::new("test/project.toml")).unwrap();
+        let prepared = [Prepared {
+            manifest: &widget,
+            extracted: &library.extracted,
+        }];
+        let mut job = job(&dependent, &sample);
+        job.needs = &prepared;
+        let record = run(&job, Slot::A).unwrap();
+        assert_eq!(record.outcome, Outcome::DidNotBuild);
+        assert_eq!(record.phase_reached, Phase::Fetched);
+        assert!(
+            record
+                .first_diagnostic
+                .as_deref()
+                .is_some_and(|said| said.contains("no lowering for the widget builtin")),
+            "the dependency's own diagnostic should be the one reported, got {:?}",
+            record.first_diagnostic
+        );
     }
 
     #[test]

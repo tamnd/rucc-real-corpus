@@ -299,6 +299,10 @@ pub fn cross(job: &Job<'_>, abi: &Abi, pairing: Pairing) -> std::io::Result<Cros
         flags: &flags,
         host_cc: job.manifest.build.host_cc,
         extra_path: job.extra_path,
+        // No prefix here, and the lint keeps it that way by refusing an abi project with
+        // `build.needs`. The cross check compiles a fixed pair of translation units the harness
+        // wrote itself, so there is nothing for a dependency to be linked into.
+        prefix: None,
         project_env: &job.manifest.build.env,
     });
 
@@ -780,6 +784,7 @@ int main(void) {
             toolchain: &fixture.toolchain,
             provenance: &fixture.provenance,
             extra_path: &[],
+            needs: &[],
             pin_sha256: &fixture.pin,
         }
     }
