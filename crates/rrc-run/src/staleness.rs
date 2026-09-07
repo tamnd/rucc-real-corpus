@@ -57,24 +57,38 @@ pub fn check(records: &[RunRecord], register: &Exclusions) -> Vec<Stale> {
         // Condition four. Only when the reason names a diagnostic, since an entry whose reason is
         // prose has nothing to compare against and inventing a comparison would be worse than
         // having none.
+        let said = record.first_diagnostic.as_deref().unwrap_or("");
         if let Some(code) = diagnostic_in(&entry.why) {
-            let said = record.first_diagnostic.as_deref().unwrap_or("");
             if !said.contains(&code) {
                 found.push(stale(format!(
                     "is excluded for {code} and now fails with `{said}`, which is a different bug wearing an old exclusion"
                 )));
             }
+            continue;
+        }
+
+        // Condition four again, for the one kind of prose reason that can still be checked. An
+        // entry whose issue carries the `upstream:` prefix of section 9.6 says the failure is not
+        // ours, and a cell that comes back with a diagnostic only the compiler under test prints
+        // contradicts that no matter how the reason is worded.
+        if entry.issue.trim_start().starts_with("upstream:")
+            && let Some(code) = diagnostic_in(said)
+        {
+            found.push(stale(format!(
+                "is excluded as an upstream failure and now fails with `{said}`, and {code} is the compiler under test talking rather than the project"
+            )));
         }
     }
     found
 }
 
-/// The diagnostic code a reason names, if it names one.
+/// The diagnostic code a piece of text names, if it names one.
 ///
-/// A code is the letter E and four digits, which is the shape the compiler prints. Anything else
-/// in the reason is prose and is left alone.
-fn diagnostic_in(why: &str) -> Option<String> {
-    why.split(|c: char| !c.is_ascii_alphanumeric())
+/// A code is the letter E and four digits, which is the shape the compiler under test prints and
+/// gcc does not. Anything else is prose and is left alone. Used on an entry's reason to find what
+/// it claims, and on a `first-diagnostic` to find out who is talking.
+fn diagnostic_in(text: &str) -> Option<String> {
+    text.split(|c: char| !c.is_ascii_alphanumeric())
         .find(|word| {
             word.len() == 5
                 && word.starts_with('E')
@@ -116,6 +130,13 @@ mod tests {
                 since: "2026-09-06".into(),
             }],
         }
+    }
+
+    fn upstream_entry(why: &str) -> Exclusions {
+        let mut register = entry(why);
+        register.entries[0].issue =
+            "upstream:https://github.com/tamnd/rucc-real-corpus/issues/21".into();
+        register
     }
 
     fn excluded(observed: Outcome, said: &str) -> RunRecord {
@@ -191,6 +212,36 @@ mod tests {
     fn a_reason_that_is_only_prose_has_nothing_to_compare_and_produces_nothing() {
         let record = excluded(Outcome::Crashed, "segmentation fault");
         assert!(check(&[record], &entry("the decoder frees a null pointer")).is_empty());
+    }
+
+    #[test]
+    fn an_upstream_entry_over_a_cell_the_compiler_under_test_rejected_is_the_hole_this_closes() {
+        let record = excluded(
+            Outcome::DidNotBuild,
+            "sink.c:12:5: error: file scope asm [E0519]",
+        );
+        let found = check(
+            &[record],
+            &upstream_entry("the header lays the symbols out wrong above -O0"),
+        );
+        assert_eq!(found.len(), 1);
+        assert!(found[0].what.contains("E0519"));
+        assert!(found[0].what.contains("upstream"));
+    }
+
+    #[test]
+    fn an_upstream_entry_over_a_cell_gcc_itself_fails_is_still_the_entry_it_always_was() {
+        let record = excluded(
+            Outcome::WrongAnswer,
+            "assertion failed: &data[size] == &end",
+        );
+        assert!(
+            check(
+                &[record],
+                &upstream_entry("the header lays the symbols out wrong above -O0")
+            )
+            .is_empty()
+        );
     }
 
     #[test]
