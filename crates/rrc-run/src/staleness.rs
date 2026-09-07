@@ -216,7 +216,10 @@ mod tests {
 
     #[test]
     fn an_upstream_entry_over_a_cell_the_compiler_under_test_rejected_is_the_hole_this_closes() {
-        let record = excluded(Outcome::DidNotBuild, "sink.c:12:5: error: file scope asm [E0519]");
+        let record = excluded(
+            Outcome::DidNotBuild,
+            "sink.c:12:5: error: file scope asm [E0519]",
+        );
         let found = check(
             &[record],
             &upstream_entry("the header lays the symbols out wrong above -O0"),
@@ -228,7 +231,10 @@ mod tests {
 
     #[test]
     fn an_upstream_entry_over_a_cell_gcc_itself_fails_is_still_the_entry_it_always_was() {
-        let record = excluded(Outcome::WrongAnswer, "assertion failed: &data[size] == &end");
+        let record = excluded(
+            Outcome::WrongAnswer,
+            "assertion failed: &data[size] == &end",
+        );
         assert!(
             check(
                 &[record],
