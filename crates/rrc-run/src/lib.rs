@@ -47,6 +47,7 @@ pub mod driver;
 pub mod env;
 pub mod exec;
 pub mod interrogate;
+pub mod memory;
 pub mod parse;
 pub mod record;
 pub mod reduce;

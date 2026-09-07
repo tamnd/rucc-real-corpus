@@ -25,7 +25,7 @@ use rrc_fetch::{Cache, Downloader};
 use rrc_manifest::axes::Level;
 use rrc_manifest::manifest::Manifest;
 use rrc_run::abi::{self, AbiRecord};
-use rrc_run::driver::{self, Compiler, Job, Prepared};
+use rrc_run::driver::{self, Baseline, Compiler, Job, Prepared};
 use rrc_run::env;
 use rrc_run::interrogate::{self, Divergence, Names, Where};
 use rrc_run::record::{Outcome, Provenance, RecordLog, RunRecord};
@@ -113,6 +113,9 @@ fn found(compiler: &Path, flag: &str) -> Result<PathBuf, String> {
 pub struct Cell {
     /// The record, which is the thing the harness exists to make.
     pub record: RunRecord,
+    /// The same cell built with the reference compiler, when the baseline was measured. This is
+    /// the other half of every ratio in the report.
+    pub reference: Option<RunRecord>,
     /// Products that differed between two builds of the same source, when `--twice` was asked
     /// for. Empty otherwise, and empty is also what a deterministic compiler produces.
     pub differences: Vec<Difference>,
@@ -125,6 +128,7 @@ pub fn cell(
     manifest: &Manifest,
     level: Level,
     twice: bool,
+    baseline: Baseline,
 ) -> Result<Cell, String> {
     // Found before the build and applied after it. Spec 9.5 is explicit that an excluded cell is
     // built and tested like any other and that the exclusion changes how the result is counted
@@ -150,8 +154,9 @@ pub fn cell(
     let prepared = needs.prepared();
     let workspace = loaded.workspace();
     let job = job_for(setup, manifest, level, &extracted, &workspace, &prepared);
-    let mut record = driver::run(&job, Slot::A)
+    let both = driver::run(&job, Slot::A, baseline)
         .map_err(|why| format!("{} at {}: {why}", manifest.project.name, level.name()))?;
+    let mut record = both.under_test;
     if let Some(entry) = entry {
         relabel(&mut record, &entry.issue);
     }
@@ -171,6 +176,7 @@ pub fn cell(
 
     Ok(Cell {
         record,
+        reference: both.reference,
         differences,
     })
 }
@@ -334,7 +340,10 @@ pub fn build(loaded: &Loaded, options: &Options, name: &str, level: Level) -> Re
 pub fn test(loaded: &Loaded, options: &Options, name: &str, level: Level) -> Result<Done, String> {
     let manifest = loaded.get(name)?;
     let setup = Setup::new(options)?;
-    let cell = cell(&setup, loaded, manifest, level, false)?;
+    // One project at one level, asked for by hand. The baseline half is measured, because
+    // `rrc test` is what somebody runs while looking at one cell and the comparison is most of
+    // what there is to look at.
+    let cell = cell(&setup, loaded, manifest, level, false, Baseline::Measure)?;
     let ok = !cell.record.outcome.is_failure();
     let text = describe(&cell.record);
     Ok(if ok {
@@ -737,14 +746,24 @@ pub fn run(loaded: &Loaded, options: &Options, plan: &RunPlan) -> Result<Done, S
 
     let out = absolute(loaded, &plan.out);
     let records_at = out.join("records.jsonl");
+    let baseline_at = out.join("reference.jsonl");
     // Cleared rather than appended to, because a second run into the same directory that keeps
     // the first run's records produces a report that counts some cells twice.
     std::fs::remove_file(&records_at).ok();
+    std::fs::remove_file(&baseline_at).ok();
     let log = RecordLog::append(&records_at)
         .map_err(|why| format!("opening {}: {why}", records_at.display()))?;
 
     let setup = Setup::new(options)?;
-    let collector = Collector::around(log);
+    let plan = &measuring(plan, &setup);
+    let baseline = match plan.baseline {
+        Baseline::Skip => None,
+        Baseline::Measure => Some(
+            RecordLog::append(&baseline_at)
+                .map_err(|why| format!("opening {}: {why}", baseline_at.display()))?,
+        ),
+    };
+    let collector = Collector::around(log, baseline);
     if plan.jobs > 1 {
         eprintln!(
             "extracting {} before starting, then {} cells at a time\n",
@@ -757,11 +776,16 @@ pub fn run(loaded: &Loaded, options: &Options, plan: &RunPlan) -> Result<Done, S
         one_at_a_time(&setup, loaded, &chosen, plan, &collector)?;
     }
 
-    let (records, differences, crossed) = collector.sorted();
+    let Gathered {
+        records,
+        reference,
+        differences,
+        crossed,
+    } = collector.sorted();
     write_abi(&out, &crossed)?;
 
     let stale = staleness::check(&records, &loaded.corpus.exclusions);
-    let report = rrc_report::Report::of(&records, &[]);
+    let report = rrc_report::Report::of(&records, &reference);
     let mut markdown = report.markdown();
     markdown.push_str(&register(&stale));
     markdown.push_str(&crossings(&crossed));
@@ -775,6 +799,9 @@ pub fn run(loaded: &Loaded, options: &Options, plan: &RunPlan) -> Result<Done, S
     let mut said = String::new();
     let _ = writeln!(said, "{}", report.summary.status_line());
     let _ = writeln!(said, "records  {}", records_at.display());
+    if plan.baseline == Baseline::Measure {
+        let _ = writeln!(said, "baseline {}", baseline_at.display());
+    }
     let _ = writeln!(said, "report   {}", report_at.display());
     if !stale.is_empty() {
         let how_many = if stale.len() == 1 {
@@ -812,6 +839,8 @@ struct Finished {
     place: (usize, usize),
     /// The record.
     record: RunRecord,
+    /// The reference half, when the baseline was measured.
+    reference: Option<RunRecord>,
     /// The products that differed between two builds, when `--twice` asked for two.
     diverged: Option<Diverged>,
     /// The cross check record, on a project that has an `[abi]` table.
@@ -825,13 +854,15 @@ struct Finished {
 /// in is a run somebody has to reconcile by hand.
 struct Collector {
     log: std::sync::Mutex<RecordLog>,
+    baseline: Option<std::sync::Mutex<RecordLog>>,
     finished: std::sync::Mutex<Vec<Finished>>,
 }
 
 impl Collector {
-    fn around(log: RecordLog) -> Self {
+    fn around(log: RecordLog, baseline: Option<RecordLog>) -> Self {
         Self {
             log: std::sync::Mutex::new(log),
+            baseline: baseline.map(std::sync::Mutex::new),
             finished: std::sync::Mutex::new(Vec::new()),
         }
     }
@@ -855,6 +886,15 @@ impl Collector {
                 );
             }
         }
+        // A separate file rather than a field on the record, because the reference half is a run
+        // and not a footnote on another one. It is written under the same lock discipline so that
+        // a worker cannot interleave half a line into it.
+        if let (Some(log), Some(record)) = (&self.baseline, &finished.reference) {
+            log.lock()
+                .map_err(|_| POISONED.to_string())?
+                .write(record)
+                .map_err(|why| format!("writing a baseline record: {why}"))?;
+        }
         self.finished
             .lock()
             .map_err(|_| POISONED.to_string())?
@@ -863,22 +903,66 @@ impl Collector {
     }
 
     /// Everything that finished, back in the order the run asked for it.
-    fn sorted(self) -> (Vec<RunRecord>, Vec<Diverged>, Vec<AbiRecord>) {
+    fn sorted(self) -> Gathered {
         let mut finished = self
             .finished
             .into_inner()
             .unwrap_or_else(std::sync::PoisonError::into_inner);
         finished.sort_by_key(|one| one.place);
-        let mut records = Vec::with_capacity(finished.len());
-        let mut differences = Vec::new();
-        let mut crossed = Vec::new();
+        let mut gathered = Gathered {
+            records: Vec::with_capacity(finished.len()),
+            reference: Vec::new(),
+            differences: Vec::new(),
+            crossed: Vec::new(),
+        };
         for one in finished {
-            records.push(one.record);
-            differences.extend(one.diverged);
-            crossed.extend(one.crossed);
+            gathered.records.push(one.record);
+            gathered.reference.extend(one.reference);
+            gathered.differences.extend(one.diverged);
+            gathered.crossed.extend(one.crossed);
         }
-        (records, differences, crossed)
+        gathered
     }
+}
+
+/// The plan with the baseline turned off when there is nothing to compare against.
+///
+/// The nightly control run points both flags at the same gcc, and so does anybody who has not built
+/// the compiler under test yet. Building every cell twice with one compiler to measure it against
+/// itself is an hour spent producing a column of `1.00x`, so the run says what it noticed and does
+/// not do it. The comparison is refused rather than faked, which is the same rule section 11.4
+/// applies to two runs from different machines.
+fn measuring(plan: &RunPlan, setup: &Setup) -> RunPlan {
+    let mut plan = plan.clone();
+    if plan.baseline == Baseline::Measure && same_binary(setup) {
+        eprintln!(
+            "--rucc and --gcc are the same binary, so there is no baseline to measure against\n"
+        );
+        plan.baseline = Baseline::Skip;
+    }
+    plan
+}
+
+/// Whether the two compilers are one compiler.
+///
+/// Canonicalized, so that a symlink and its target are recognized as one. A path that will not
+/// canonicalize is compared as it was given, since the alternative is to claim two compilers are
+/// the same because neither of them resolved.
+fn same_binary(setup: &Setup) -> bool {
+    let real = |path: &std::path::Path| path.canonicalize().unwrap_or_else(|_| path.to_path_buf());
+    real(&setup.toolchain.under_test) == real(&setup.toolchain.reference)
+}
+
+/// Everything a finished run has to show for itself, in the order the run asked for it.
+struct Gathered {
+    /// One per cell, from the compiler under test.
+    records: Vec<RunRecord>,
+    /// One per cell from the reference compiler, or empty when the baseline was not measured.
+    reference: Vec<RunRecord>,
+    /// The products that differed between two builds of the same source.
+    differences: Vec<Diverged>,
+    /// The cross check records, from the projects that have an `[abi]` table.
+    crossed: Vec<AbiRecord>,
 }
 
 /// What is said when a worker died holding a lock.
@@ -896,11 +980,15 @@ fn one_cell(
     level: Level,
     place: (usize, usize),
 ) -> Result<Finished, String> {
-    let cell = cell(setup, loaded, manifest, level, plan.twice)?;
+    let cell = cell(setup, loaded, manifest, level, plan.twice, plan.baseline)?;
     let mut record = cell.record;
     // Stamped here rather than in the driver, because the driver builds one cell and has no way of
     // knowing how many others were in flight beside it.
     record.concurrency = plan.jobs;
+    let reference = cell.reference.map(|mut record| {
+        record.concurrency = plan.jobs;
+        record
+    });
     let diverged = (!cell.differences.is_empty()).then(|| Diverged {
         project: manifest.project.name.clone(),
         level,
@@ -913,6 +1001,7 @@ fn one_cell(
     Ok(Finished {
         place,
         record,
+        reference,
         diverged,
         crossed,
     })
@@ -1331,7 +1420,7 @@ command = ["./sample"]
         // the collector is handed its cells backwards here and has to put them back.
         let at = std::env::temp_dir().join(format!("rrc-order-{}.jsonl", std::process::id()));
         std::fs::remove_file(&at).ok();
-        let collector = Collector::around(RecordLog::append(&at).unwrap());
+        let collector = Collector::around(RecordLog::append(&at).unwrap(), None);
         for place in [(2, 0), (0, 1), (1, 0), (0, 0)] {
             let mut record = a_record(Outcome::Passed);
             record.project = format!("p{}l{}", place.0, place.1);
@@ -1342,6 +1431,7 @@ command = ["./sample"]
                     Finished {
                         place,
                         record,
+                        reference: None,
                         diverged: None,
                         crossed: None,
                     },
@@ -1349,8 +1439,12 @@ command = ["./sample"]
                 .unwrap();
         }
 
-        let (records, _, _) = collector.sorted();
-        let order: Vec<&str> = records.iter().map(|one| one.project.as_str()).collect();
+        let order: Vec<String> = collector
+            .sorted()
+            .records
+            .iter()
+            .map(|one| one.project.clone())
+            .collect();
         assert_eq!(order, ["p0l0", "p0l1", "p1l0", "p2l0"]);
 
         // The log is the other half of the promise. It is written as cells finish, so it holds
