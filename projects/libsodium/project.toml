@@ -1,0 +1,42 @@
+[project]
+name = "libsodium"
+rung = 2
+upstream = "https://github.com/jedisct1/libsodium"
+licence = "ISC"
+licence-file = "LICENSE"
+description = "the modern cryptography library, written so that every operation takes the same time no matter what the secret is"
+# The only project on this rung where the compiler being clever is the bug. Constant time code is
+# written as arithmetic over masks precisely so that there is no branch on a secret, and an
+# optimiser that recognises the pattern and puts the branch back has broken the library while
+# leaving every test passing. That is why constant-time is the first tag rather than a footnote.
+demands = ["constant-time", "bit-manipulation", "autoconf-probes"]
+
+[source]
+url = "https://download.libsodium.org/libsodium/releases/libsodium-1.0.20.tar.gz"
+sha256 = "ebb65ef6ca439333c2bb41a0c1990587288da07f6c7fd07cb3a18cc18d30ce19"
+strip-components = 1
+
+[build]
+system = "configure"
+expect-configure = ["checking whether the compiler supports GNU C... yes"]
+
+# Eighty, and each one is a separate binary that runs a primitive against test vectors and diffs
+# its whole output against a recorded file, so a single wrong byte anywhere fails one of the eighty
+# and names which primitive it was. That is the most precise oracle on this rung by a distance.
+# Measured with gcc 16.2.0, TOTAL 80, PASS 80, SKIP 0, FAIL 0.
+#
+# What it does not check is the thing libsodium is here for. A constant time routine that has been
+# turned back into a branch on a secret gives the right answer, so all eighty still pass. Catching
+# that needs the timing work of a later rung, and until then this project is here to be built and
+# read rather than to be graded. Worth saying rather than leaving somebody to assume the green
+# means more than it does.
+[test]
+command = ["make", "check"]
+oracle = "suite"
+parser = "automake"
+baseline-tests = 80
+requires = ["sh"]
+
+[limits]
+build-seconds = 1800
+test-seconds = 1800
