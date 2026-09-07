@@ -1035,6 +1035,10 @@ fn record(job: &Job<'_>, trial: &Trial, graded: Graded) -> RunRecord {
                 pin_sha256: need.manifest.source.sha256.clone(),
             })
             .collect(),
+        // This one was just built. The only thing that ever sets it is the cache handing a record
+        // back, and it does that on the way out rather than here, so a record cannot claim to have
+        // been reused because a field was copied from somewhere.
+        reused: false,
     }
 }
 
