@@ -25,6 +25,7 @@ rrc run --rung 0,1,2 --levels O0,O2     the scheduler; the normal entry point
 rrc abi [<project>...] [--levels O2]    the four way cross-check of 08.5, on its own
 rrc bisect <project> --level O2         the mixed build of document 08.6
 rrc report --format md|json|junit       render records
+rrc report --pages [--check]            the committed tree of pages of document 11.7
 rrc diff <run-a> <run-b>                what changed between two runs
 rrc reduce <project> [--file a.c]       the reduction pipeline of document 13.4
 rrc lint                                schema, vocabulary, licences, staleness

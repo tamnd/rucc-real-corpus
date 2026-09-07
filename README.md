@@ -61,6 +61,8 @@ cargo run -p rrc -- diff old new          what changed between two runs, which i
 cargo run -p rrc -- reduce zlib           cut the file a bisection named down to a case worth keeping
 cargo run -p rrc -- report --input runs/latest/records.jsonl
 cargo run -p rrc -- report --features    the feature demand map, which is what to implement next
+cargo run -p rrc -- report --pages       write the committed report tree under reports/
+cargo run -p rrc -- report --pages --check   say which of those pages are out of date
 ```
 
 A run builds every project from nothing, several times each, and nothing built is ever cached between runs, because a corpus whose result depends on what was left over from yesterday is measuring the leftovers. What can be spent instead is cores. `--jobs N` runs N cells at once and `--jobs auto` uses the machine, which on a ten core laptop takes rung 0 from 58 seconds to 16 with the same report coming out the other end. The default is one, because one is the only setting whose build times can be compared with each other, and each record says how many cells were in flight while it was made so that nobody has to guess later.
@@ -94,6 +96,25 @@ Sixteen documents under `spec/`. Start with `spec/00-README.md`.
 ## Status
 
 The harness runs and rung zero is full. Manifests, pinned fetching, the sandbox, the driver, the report and the `rrc` binary are all in, and the corpus holds all twelve rung zero projects plus `libjansson`, which is admitted early out of rung order because it is the smallest project that asks for the atomic builtins. Against GCC 16 on both reference hosts every cell passes except two that GCC 16 fails on its own, which are on the exclusion register with an issue each. The milestones are RC0 to RC5 in `spec/14-milestones.md`, tracked as issues, and RC5's exit criterion is the compiler's own M5 exit criterion. RC2 is a deliberate decision point: if the ladder turns out not to reach what SQLite needs, it gets cut there and the remaining effort goes straight at the amalgamation.
+
+## Where it stands
+
+Everything between the two markers below is written by `rrc report --pages` from the records of the last nightly, and CI checks on every pull request that it still matches. Do not edit it by hand, and do edit everything around it.
+
+<!-- rrc:begin -->
+**56 of 184 cells passed.** Run on linux-x86_64, with rucc 0.7.8 against gcc-16 (GCC) 16.2.0.
+
+| outcome | cells | what it means |
+| --- | ---: | --- |
+| passed | 56 | built, linked, ran its own suite, and the oracle agreed |
+| did not build | 119 | the compiler under test would not compile or link it |
+| not compared | 4 | it built, and nothing here could say whether it is right |
+| excluded | 5 | on the exclusion register, with an issue behind it |
+
+Of the 24 cells whose suite prints a count on both compilers, 23 pass exactly as many of the project's own tests as the GCC 16 build does.
+
+The full report is under [`reports/`](reports/README.md): [what it cost against GCC 16](reports/cost.md), [what failed and why](reports/failures.md), and [one page per project](reports/projects/README.md).
+<!-- rrc:end -->
 
 ## Licence
 
