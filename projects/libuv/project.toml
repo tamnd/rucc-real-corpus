@@ -1,0 +1,51 @@
+[project]
+name = "libuv"
+rung = 2
+upstream = "https://github.com/libuv/libuv"
+licence = "MIT"
+licence-file = "LICENSE"
+description = "the asynchronous io library node is built on, and the largest test suite on this rung"
+# thread-local and struct-layout are the two that matter. libuv keeps per thread state in __thread
+# variables on the platforms that have them, and the whole library is written around structs that
+# the caller allocates and libuv casts between, so a uv_handle_t and the uv_tcp_t it is the first
+# member of have to agree about where everything is. function-pointers is there because every
+# callback in the library goes through one and there are a lot of them.
+demands = ["thread-local", "struct-layout", "function-pointers"]
+
+# The dist tarball rather than the github tag, because it is what libuv publishes and signs. It
+# ships no configure, only the autotools inputs, so this takes the cmake path rather than needing
+# an autoreconf the base system does not have.
+[source]
+url = "https://dist.libuv.org/dist/v1.51.0/libuv-v1.51.0.tar.gz"
+sha256 = "5f0557b90b1106de71951a3c3931de5e0430d78da1d9a10287ebc7a3f78ef8eb"
+strip-components = 1
+
+[build]
+system = "cmake"
+configure = ["-DLIBUV_BUILD_TESTS=ON"]
+
+# The test binary directly rather than through ctest, for two reasons. The first is resolution.
+# libuv registers exactly two ctest entries, one per link mode, and each one runs the whole suite,
+# so ctest reports two numbers for four hundred and forty five cases and one broken test shows up
+# as half the project failing. The binary prints TAP on its own, which is where ctest was getting
+# the detail from anyway, so reading it directly turns two numbers into four hundred and forty
+# five. The second reason is that running both link modes back to back is not safe. Doing that,
+# udp_multicast_join6 failed in the second of the two, and the same binary run on its own passed
+# four times in a row, which reads like the first run leaving a multicast group joined rather than
+# like anything either compiler did. A test that fails depending on what ran before it is a test
+# that will eventually fail on a green build and get blamed on the compiler.
+#
+# The working directory is the source root, which is where the harness runs the test command and
+# is what libuv's own ctest entry sets, so the suite finds the fixture files and the helper
+# processes it spawns.
+#
+# Four hundred and forty five of four hundred and forty five under gcc 16.2.0.
+[test]
+command = ["./build/uv_run_tests_a"]
+oracle = "suite"
+parser = "tap"
+baseline-tests = 445
+
+[limits]
+build-seconds = 1800
+test-seconds = 1800
