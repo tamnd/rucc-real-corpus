@@ -33,8 +33,13 @@ pub struct Compile {
     /// Whether `-c` was on the command line, which is the difference between producing an object
     /// and producing a program.
     pub compiling: bool,
+    /// The directory the compile ran in, which a Makefile that descends into subdirectories makes
+    /// necessary and which nothing else records.
+    pub directory: String,
     /// The translation units the invocation named, relative to the build directory.
     pub units: Vec<String>,
+    /// The whole command line, so that a reduction can preprocess the file the way the build did.
+    pub argv: Vec<String>,
 }
 
 impl Compile {
@@ -64,8 +69,8 @@ impl Compile {
             return None;
         }
         Some(Self {
-            compiling: self.compiling,
             units,
+            ..self.clone()
         })
     }
 
@@ -89,24 +94,29 @@ impl Compile {
 /// a single command is how configure works rather than a project that cannot be split.
 pub fn read_journal(at: &Path) -> std::io::Result<Vec<Compile>> {
     let text = std::fs::read_to_string(at)?;
-    Ok(text
-        .lines()
-        .filter_map(|line| {
-            let (mark, rest) = line.split_at(line.char_indices().nth(1)?.0);
-            let units: Vec<String> = rest
-                .split_whitespace()
-                .filter(|unit| !is_conftest(unit))
-                .map(ToString::to_string)
-                .collect();
-            if units.is_empty() {
-                return None;
-            }
-            Some(Compile {
-                compiling: mark == "c",
-                units,
-            })
-        })
-        .collect())
+    Ok(text.lines().filter_map(one_line).collect())
+}
+
+/// One tab separated journal line: the mark, the directory, the units, then the command line.
+fn one_line(line: &str) -> Option<Compile> {
+    let mut fields = line.split('\t');
+    let mark = fields.next()?;
+    let directory = fields.next()?.to_string();
+    let units: Vec<String> = fields
+        .next()?
+        .split_whitespace()
+        .filter(|unit| !is_conftest(unit))
+        .map(ToString::to_string)
+        .collect();
+    if units.is_empty() {
+        return None;
+    }
+    Some(Compile {
+        compiling: mark == "c",
+        directory,
+        units,
+        argv: fields.map(ToString::to_string).collect(),
+    })
 }
 
 fn is_conftest(unit: &str) -> bool {
@@ -499,7 +509,11 @@ mod tests {
     #[test]
     fn a_journal_line_says_which_units_and_whether_it_was_a_compile() {
         let at = std::env::temp_dir().join("rrc-bisect-journal.txt");
-        std::fs::write(&at, "c src/a.c\nc src/b.c\nx main.c other.c\n").unwrap();
+        std::fs::write(
+            &at,
+            "c\t/build\tsrc/a.c\tcc\t-c\tsrc/a.c\nc\t/build\tsrc/b.c\tcc\t-c\tsrc/b.c\nx\t/build\tmain.c other.c\tcc\tmain.c\tother.c\n",
+        )
+        .unwrap();
         let compiles = read_journal(&at).unwrap();
         assert_eq!(compiles.len(), 3);
         assert!(compiles[0].separable());
@@ -514,7 +528,11 @@ mod tests {
     #[test]
     fn configures_throwaway_programs_are_not_translation_units() {
         let at = std::env::temp_dir().join("rrc-bisect-conftest.txt");
-        std::fs::write(&at, "x conftest.c\nc src/a.c\nx sub/conftest.c\n").unwrap();
+        std::fs::write(
+            &at,
+            "x\t/build\tconftest.c\tcc\tconftest.c\nc\t/build\tsrc/a.c\tcc\t-c\tsrc/a.c\nx\t/build\tsub/conftest.c\tcc\tsub/conftest.c\n",
+        )
+        .unwrap();
         let compiles = read_journal(&at).unwrap();
         assert_eq!(
             compiles.len(),
@@ -534,7 +552,9 @@ mod tests {
 
         let real = Compile {
             compiling: true,
+            directory: root.display().to_string(),
             units: vec!["src/a.c".to_string()],
+            argv: Vec::new(),
         };
         assert_eq!(real.surviving(&root).unwrap().units, ["src/a.c"]);
 
@@ -542,7 +562,9 @@ mod tests {
         // is different on every run and there is nothing left to hand to either compiler.
         let probe = Compile {
             compiling: false,
+            directory: root.display().to_string(),
             units: vec!["ztest14839.c".to_string()],
+            argv: Vec::new(),
         };
         assert!(probe.surviving(&root).is_none());
 

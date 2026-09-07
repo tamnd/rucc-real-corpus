@@ -81,6 +81,7 @@ fn dispatch(invocation: Invocation) -> Result<Done, String> {
         Command::Abi(plan) => commands::schedule::abi_only(&open(&options)?, &options, &plan),
         Command::Bisect(plan) => commands::bisect::run(&open(&options)?, &options, &plan),
         Command::Diff(plan) => commands::diff::run(&plan),
+        Command::Reduce(plan) => commands::reduce::run(&open(&options)?, &options, &plan),
     }
 }
 
