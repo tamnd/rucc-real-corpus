@@ -55,12 +55,15 @@ impl Setup {
     /// is the one place both of them are named, and because every error further in is a symptom
     /// of this one wearing a worse disguise.
     pub fn new(options: &Options) -> Result<Self, String> {
+        // Both are pinned to a path here and nowhere later. `--rucc gcc-16` is a name, and a name
+        // is what a shell resolves per invocation against whatever `PATH` happens to be, which is
+        // not the same thing twice when the shim is rewriting `PATH` for every build. Worse, the
+        // shim points `cc` at whatever it is given, so a name became a dangling symlink first on
+        // `PATH` and every build silently used the system compiler while the record said GCC 16.
         let toolchain = Toolchain {
-            under_test: options.under_test.clone(),
-            reference: options.reference.clone(),
+            under_test: found(&options.under_test, "--rucc")?,
+            reference: found(&options.reference, "--gcc")?,
         };
-        found(&toolchain.under_test, "--rucc")?;
-        found(&toolchain.reference, "--gcc")?;
         // Discovered once and then both used and recorded, which was the intent from the start and
         // was not what happened. The prefixes were being found by a function nothing called, so
         // every build got `/usr/bin` and the three system directories after it and nothing else,
@@ -89,14 +92,13 @@ impl Setup {
 /// this was written for and wrong on a machine that has the corpus checked out and the compiler
 /// not built yet. That is a normal thing to be, and it deserves one sentence rather than a
 /// half hour in a config.log.
-fn found(compiler: &Path, flag: &str) -> Result<(), String> {
-    if shim::resolves(compiler) {
-        return Ok(());
-    }
-    Err(format!(
-        "no compiler at {}, so pass {flag} PATH to say where it is",
-        compiler.display()
-    ))
+fn found(compiler: &Path, flag: &str) -> Result<PathBuf, String> {
+    shim::locate(compiler).ok_or_else(|| {
+        format!(
+            "no compiler at {}, so pass {flag} PATH to say where it is",
+            compiler.display()
+        )
+    })
 }
 
 /// What one cell produced.
