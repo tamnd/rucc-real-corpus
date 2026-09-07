@@ -102,14 +102,16 @@ The harness runs and rung zero is full. Manifests, pinned fetching, the sandbox,
 Everything between the two markers below is written by `rrc report --pages` from the records of the last nightly, and CI checks on every pull request that it still matches. Do not edit it by hand, and do edit everything around it.
 
 <!-- rrc:begin -->
-**71 of 78 cells passed.** Run on macos-aarch64, with gcc-16 (Homebrew GCC 16.2.0) 16.2.0 against gcc-16 (Homebrew GCC 16.2.0) 16.2.0.
+**56 of 184 cells passed.** Run on linux-x86_64, with rucc 0.7.8 against gcc-16 (GCC) 16.2.0.
 
 | outcome | cells | what it means |
 | --- | ---: | --- |
-| passed | 71 | built, linked, ran its own suite, and the oracle agreed |
-| wrong answer | 2 | it built and ran and produced the wrong answer |
-| did not build | 1 | the compiler under test would not compile or link it |
-| excluded | 4 | on the exclusion register, with an issue behind it |
+| passed | 56 | built, linked, ran its own suite, and the oracle agreed |
+| did not build | 119 | the compiler under test would not compile or link it |
+| not compared | 4 | it built, and nothing here could say whether it is right |
+| excluded | 5 | on the exclusion register, with an issue behind it |
+
+Of the 24 cells whose suite prints a count on both compilers, 23 pass exactly as many of the project's own tests as the GCC 16 build does.
 
 The full report is under [`reports/`](reports/README.md): [what it cost against GCC 16](reports/cost.md), [what failed and why](reports/failures.md), and [one page per project](reports/projects/README.md).
 <!-- rrc:end -->
