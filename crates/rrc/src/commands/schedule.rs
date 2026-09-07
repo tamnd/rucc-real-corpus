@@ -2,9 +2,17 @@
 //! some work.
 //!
 //! There is no cleverness in the scheduling. Projects in the order the directories were walked,
-//! levels in the order the rung lists them, one cell at a time. Parallelism across cells would
-//! shorten a run and would also make build times meaningless and make a project that fails only
-//! under memory pressure fail somewhere else, so it is not here and it is not an oversight.
+//! levels in the order the rung lists them, one cell at a time by default. That default is the
+//! only setting whose build times can be compared with each other, and it is the one the nightly
+//! numbers of `spec/12-ci-and-cost.md` are quoted at.
+//!
+//! `--jobs` runs several cells at once for the person who is waiting on the answer rather than on
+//! the timings. The cost is real and is not hidden: a loaded machine reports longer builds, and a
+//! project that only fails under memory pressure moves. So the number of cells in flight goes on
+//! every record it produced, and a reader who cares about seconds can filter on it. What does not
+//! change is which cells run, in what order they are reported, or what each of them was given: a
+//! worker takes a whole project, its levels stay in order, and each cell still builds in its own
+//! sandbox with its own prefix and its own shim.
 //!
 //! Records are appended as the run proceeds rather than written at the end, because a corpus run
 //! is long enough that somebody stopping it halfway through is a normal event, and the records
@@ -631,6 +639,14 @@ fn write_abi(out: &std::path::Path, records: &[AbiRecord]) -> Result<PathBuf, St
 
 /// A count of cells with the noun after it, because a report that says `1 cells` reads like nobody
 /// looked at it.
+fn projects(how_many: usize) -> String {
+    if how_many == 1 {
+        "1 project".to_string()
+    } else {
+        format!("{how_many} projects")
+    }
+}
+
 fn cells(how_many: usize) -> String {
     if how_many == 1 {
         "1 cell".to_string()
@@ -724,48 +740,24 @@ pub fn run(loaded: &Loaded, options: &Options, plan: &RunPlan) -> Result<Done, S
     // Cleared rather than appended to, because a second run into the same directory that keeps
     // the first run's records produces a report that counts some cells twice.
     std::fs::remove_file(&records_at).ok();
-    let mut log = RecordLog::append(&records_at)
+    let log = RecordLog::append(&records_at)
         .map_err(|why| format!("opening {}: {why}", records_at.display()))?;
 
     let setup = Setup::new(options)?;
-    let mut records = Vec::new();
-    let mut differences = Vec::new();
-    let mut crossed = Vec::new();
-
-    for manifest in chosen {
-        for level in levels_for(manifest, plan) {
-            let cell = cell(&setup, loaded, manifest, level, plan.twice)?;
-            eprintln!(
-                "{:<24} {:<4} {}",
-                manifest.project.name,
-                level.name(),
-                cell.record.outcome
-            );
-            log.write(&cell.record)
-                .map_err(|why| format!("writing a record: {why}"))?;
-            if !cell.differences.is_empty() {
-                differences.push(Diverged {
-                    project: manifest.project.name.clone(),
-                    level,
-                    products: cell.differences,
-                });
-            }
-            records.push(cell.record);
-
-            // Spec 12.1 puts the cross check in the per commit budget rather than behind a flag,
-            // and a project pays for it only by having an `[abi]` table. It runs after the graded
-            // cell rather than before, so a project that does not build at all says so first.
-            if let Some(record) = cross(&setup, loaded, manifest, level)? {
-                eprintln!(
-                    "{:<24} {:<4} abi, {}",
-                    manifest.project.name,
-                    level.name(),
-                    record.summary()
-                );
-                crossed.push(record);
-            }
-        }
+    let collector = Collector::around(log);
+    if plan.jobs > 1 {
+        eprintln!(
+            "extracting {} before starting, then {} cells at a time\n",
+            projects(chosen.len()),
+            plan.jobs
+        );
+        prefetch(&setup, loaded, &chosen)?;
+        concurrently(&setup, loaded, &chosen, plan, &collector)?;
+    } else {
+        one_at_a_time(&setup, loaded, &chosen, plan, &collector)?;
     }
+
+    let (records, differences, crossed) = collector.sorted();
     write_abi(&out, &crossed)?;
 
     let stale = staleness::check(&records, &loaded.corpus.exclusions);
@@ -811,6 +803,217 @@ pub fn run(loaded: &Loaded, options: &Options, plan: &RunPlan) -> Result<Done, S
     } else {
         Done::good(said)
     })
+}
+
+/// One cell's worth of output, held with its place in the run so the order a report reads in does
+/// not depend on which worker finished first.
+struct Finished {
+    /// Which project, and which of its levels, counting from the start of the run.
+    place: (usize, usize),
+    /// The record.
+    record: RunRecord,
+    /// The products that differed between two builds, when `--twice` asked for two.
+    diverged: Option<Diverged>,
+    /// The cross check record, on a project that has an `[abi]` table.
+    crossed: Option<AbiRecord>,
+}
+
+/// Where finished cells go, and the one place that writes to the record log or to the terminal.
+///
+/// Both are behind the same lock rather than two, because the progress line and the record are one
+/// event, and a run whose terminal output and record file disagree about the order things happened
+/// in is a run somebody has to reconcile by hand.
+struct Collector {
+    log: std::sync::Mutex<RecordLog>,
+    finished: std::sync::Mutex<Vec<Finished>>,
+}
+
+impl Collector {
+    fn around(log: RecordLog) -> Self {
+        Self {
+            log: std::sync::Mutex::new(log),
+            finished: std::sync::Mutex::new(Vec::new()),
+        }
+    }
+
+    /// Record one finished cell and say so on standard error.
+    fn keep(&self, project: &str, level: Level, finished: Finished) -> Result<(), String> {
+        {
+            let mut log = self.log.lock().map_err(|_| POISONED.to_string())?;
+            log.write(&finished.record)
+                .map_err(|why| format!("writing a record: {why}"))?;
+            eprintln!(
+                "{project:<24} {:<4} {}",
+                level.name(),
+                finished.record.outcome
+            );
+            if let Some(record) = &finished.crossed {
+                eprintln!(
+                    "{project:<24} {:<4} abi, {}",
+                    level.name(),
+                    record.summary()
+                );
+            }
+        }
+        self.finished
+            .lock()
+            .map_err(|_| POISONED.to_string())?
+            .push(finished);
+        Ok(())
+    }
+
+    /// Everything that finished, back in the order the run asked for it.
+    fn sorted(self) -> (Vec<RunRecord>, Vec<Diverged>, Vec<AbiRecord>) {
+        let mut finished = self
+            .finished
+            .into_inner()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        finished.sort_by_key(|one| one.place);
+        let mut records = Vec::with_capacity(finished.len());
+        let mut differences = Vec::new();
+        let mut crossed = Vec::new();
+        for one in finished {
+            records.push(one.record);
+            differences.extend(one.diverged);
+            crossed.extend(one.crossed);
+        }
+        (records, differences, crossed)
+    }
+}
+
+/// What is said when a worker died holding a lock.
+///
+/// A worker only dies by panicking, the panic is already on standard error, and the run is over
+/// either way. This message exists so that the second failure does not hide the first.
+const POISONED: &str = "a worker stopped while holding the run's log, so the run is incomplete";
+
+/// Build, test and cross check one project at one level.
+fn one_cell(
+    setup: &Setup,
+    loaded: &Loaded,
+    plan: &RunPlan,
+    manifest: &Manifest,
+    level: Level,
+    place: (usize, usize),
+) -> Result<Finished, String> {
+    let cell = cell(setup, loaded, manifest, level, plan.twice)?;
+    let mut record = cell.record;
+    // Stamped here rather than in the driver, because the driver builds one cell and has no way of
+    // knowing how many others were in flight beside it.
+    record.concurrency = plan.jobs;
+    let diverged = (!cell.differences.is_empty()).then(|| Diverged {
+        project: manifest.project.name.clone(),
+        level,
+        products: cell.differences,
+    });
+    // Spec 12.1 puts the cross check in the per commit budget rather than behind a flag, and a
+    // project pays for it only by having an `[abi]` table. It runs after the graded cell rather
+    // than before, so a project that does not build at all says so first.
+    let crossed = cross(setup, loaded, manifest, level)?;
+    Ok(Finished {
+        place,
+        record,
+        diverged,
+        crossed,
+    })
+}
+
+/// The scheduler as it has always been. Projects in the order the directories were walked, levels
+/// in the order the rung lists them, one cell at a time and the machine to itself.
+fn one_at_a_time(
+    setup: &Setup,
+    loaded: &Loaded,
+    chosen: &[&Manifest],
+    plan: &RunPlan,
+    collector: &Collector,
+) -> Result<(), String> {
+    for (which, manifest) in chosen.iter().enumerate() {
+        for (index, level) in levels_for(manifest, plan).into_iter().enumerate() {
+            let finished = one_cell(setup, loaded, plan, manifest, level, (which, index))?;
+            collector.keep(&manifest.project.name, level, finished)?;
+        }
+    }
+    Ok(())
+}
+
+/// The same run with a worker per job, taking a project at a time.
+///
+/// A project and not a cell is the unit a worker takes, because the four levels of one project all
+/// read the same extracted tree and the two that share a project are the two most likely to want
+/// the same page cache. It also keeps each project's levels in order on one worker, so the O0 line
+/// still arrives before the Os line for the project a person is watching.
+fn concurrently(
+    setup: &Setup,
+    loaded: &Loaded,
+    chosen: &[&Manifest],
+    plan: &RunPlan,
+    collector: &Collector,
+) -> Result<(), String> {
+    let next = std::sync::atomic::AtomicUsize::new(0);
+    let failures = std::sync::Mutex::new(Vec::new());
+    std::thread::scope(|scope| {
+        for _ in 0..plan.jobs.min(chosen.len()) {
+            scope.spawn(|| {
+                loop {
+                    // A worker that finds an error already recorded stops taking new work rather
+                    // than finishing the corpus, because the run is going to end in that error and
+                    // the cells after it are an hour spent on a report nobody will read.
+                    let stop = failures.lock().is_ok_and(|held| !held.is_empty());
+                    if stop {
+                        return;
+                    }
+                    let which = next.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+                    let Some(manifest) = chosen.get(which) else {
+                        return;
+                    };
+                    for (index, level) in levels_for(manifest, plan).into_iter().enumerate() {
+                        let outcome =
+                            one_cell(setup, loaded, plan, manifest, level, (which, index))
+                                .and_then(|finished| {
+                                    collector.keep(&manifest.project.name, level, finished)
+                                });
+                        if let Err(why) = outcome {
+                            if let Ok(mut held) = failures.lock() {
+                                held.push((which, why));
+                            }
+                            return;
+                        }
+                    }
+                }
+            });
+        }
+    });
+
+    let mut failures = failures
+        .into_inner()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    failures.sort_by_key(|(which, _)| *which);
+    match failures.into_iter().next() {
+        None => Ok(()),
+        Some((_, why)) => Err(why),
+    }
+}
+
+/// Fetch and extract everything the run will need, before any worker starts.
+///
+/// Serial and up front rather than per cell, because two workers extracting the same tree at the
+/// same time is a torn tree, and the project that reads a dependency's source while another worker
+/// is still writing it fails in a way that has nothing to do with either compiler. Extraction is a
+/// small part of a run and the stamp of `rrc fetch` makes the second call a stat, so paying for it
+/// once at the start is close to free and removes the only shared writable thing a cell touches.
+fn prefetch(setup: &Setup, loaded: &Loaded, chosen: &[&Manifest]) -> Result<(), String> {
+    for manifest in chosen {
+        let extracted = loaded.extracted(&manifest.project.name);
+        fetch::ensure(
+            manifest,
+            &setup.cache,
+            setup.downloader.as_ref(),
+            &extracted,
+        )?;
+        // Prepared and dropped. What is wanted is the extraction it does on the way.
+        Needs::prepare(setup, loaded, manifest)?;
+    }
+    Ok(())
 }
 
 /// The levels one project runs at in this plan.
@@ -1103,6 +1306,49 @@ command = ["./sample"]
         assert!(found.contains("tamnd/rucc#412"));
     }
 
+    #[test]
+    fn cells_are_reported_in_the_order_the_run_asked_for_and_not_the_order_they_finished() {
+        // The whole risk of running several cells at once is that the report becomes a race, so
+        // the collector is handed its cells backwards here and has to put them back.
+        let at = std::env::temp_dir().join(format!("rrc-order-{}.jsonl", std::process::id()));
+        std::fs::remove_file(&at).ok();
+        let collector = Collector::around(RecordLog::append(&at).unwrap());
+        for place in [(2, 0), (0, 1), (1, 0), (0, 0)] {
+            let mut record = a_record(Outcome::Passed);
+            record.project = format!("p{}l{}", place.0, place.1);
+            collector
+                .keep(
+                    &record.project.clone(),
+                    Level::O2,
+                    Finished {
+                        place,
+                        record,
+                        diverged: None,
+                        crossed: None,
+                    },
+                )
+                .unwrap();
+        }
+
+        let (records, _, _) = collector.sorted();
+        let order: Vec<&str> = records.iter().map(|one| one.project.as_str()).collect();
+        assert_eq!(order, ["p0l0", "p0l1", "p1l0", "p2l0"]);
+
+        // The log is the other half of the promise. It is written as cells finish, so it holds
+        // every record even when the run is stopped, and it holds each of them once.
+        let written = std::fs::read_to_string(&at).unwrap();
+        assert_eq!(written.lines().count(), 4);
+        std::fs::remove_file(&at).ok();
+    }
+
+    #[test]
+    fn a_serial_run_says_so_on_every_record_it_writes() {
+        // `concurrency` is what a reader compares build times on, so the default has to be the
+        // honest one rather than absent.
+        assert_eq!(RunPlan::default().jobs, 1);
+        assert_eq!(a_record(Outcome::Passed).concurrency, 1);
+    }
+
     fn a_record(outcome: Outcome) -> RunRecord {
         RunRecord {
             project: "jsmn".to_string(),
@@ -1132,6 +1378,7 @@ command = ["./sample"]
             oracle_declared: rrc_manifest::axes::Oracle::SelfChecking,
             oracle_used: rrc_manifest::axes::Oracle::SelfChecking,
             parallel: false,
+            concurrency: 1,
             observed_outcome: None,
             excluded_by: None,
             built_against: Vec::new(),

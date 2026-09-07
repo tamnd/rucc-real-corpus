@@ -90,6 +90,11 @@ pub struct RunPlan {
     pub projects: Vec<String>,
     /// Build everything twice and compare the bytes.
     pub twice: bool,
+    /// How many cells to run at once.
+    ///
+    /// One by default, which is the only setting whose build times compare with each other. See
+    /// `spec/12-ci-and-cost.md` section 12.5 for what the higher settings buy and what they cost.
+    pub jobs: usize,
     /// Where the records and the report go.
     pub out: PathBuf,
 }
@@ -102,6 +107,7 @@ impl Default for RunPlan {
             levels: None,
             projects: Vec::new(),
             twice: false,
+            jobs: 1,
             out: PathBuf::from("runs/latest"),
         }
     }
@@ -351,6 +357,7 @@ fn run(args: &[String]) -> Result<RunPlan, String> {
             "--project" => plan.projects.push(value(args, &mut index, "--project")?),
             "--out" => plan.out = value(args, &mut index, "--out")?.into(),
             "--twice" => plan.twice = true,
+            "--jobs" => plan.jobs = parse_jobs(&value(args, &mut index, "--jobs")?)?,
             other => return Err(unknown(other, "run")),
         }
         index += 1;
@@ -622,6 +629,25 @@ fn unknown(arg: &str, command: &str) -> String {
     format!("`rrc {command}` does not take `{arg}`")
 }
 
+/// How many cells to run at once, either a count or `auto`.
+///
+/// `auto` is the machine's own parallelism and not some fraction of it. A cell is one build and
+/// one suite, both of which spend most of their time on one core waiting on the filesystem, so a
+/// worker per core is the setting that finishes soonest on every machine this has been run on.
+/// Zero is refused rather than treated as `auto`, because a person who typed it meant something
+/// and we do not know what.
+fn parse_jobs(text: &str) -> Result<usize, String> {
+    if text.trim() == "auto" {
+        return Ok(std::thread::available_parallelism().map_or(1, std::num::NonZeroUsize::get));
+    }
+    match text.trim().parse::<usize>() {
+        Ok(0) | Err(_) => Err(format!(
+            "`{text}` is not a number of jobs, which is a count of one or more, or `auto`"
+        )),
+        Ok(jobs) => Ok(jobs),
+    }
+}
+
 /// A comma separated list of rung numbers.
 fn parse_rungs(text: &str) -> Result<Vec<Rung>, String> {
     let mut rungs = Vec::new();
@@ -697,6 +723,7 @@ Options for run:
 
   --project NAME  one project by name, repeatable, and it walks every rung
   --twice         build everything twice into two roots and compare the bytes
+  --jobs N        run N cells at once, or auto for one per core, defaulting to 1
   --out DIR       where the records and the report go, defaulting to runs/latest
 
 Options for abi:
@@ -786,6 +813,31 @@ mod tests {
             "each rung brings its own required levels"
         );
         assert!(!plan.twice);
+        assert_eq!(
+            plan.jobs, 1,
+            "one cell at a time is the only setting whose build times compare, so it is what a \
+             person gets without asking for anything else"
+        );
+    }
+
+    #[test]
+    fn jobs_is_a_count_or_the_machine_itself() {
+        let Command::Run(plan) = parsed("run --jobs 6") else {
+            panic!("not a run");
+        };
+        assert_eq!(plan.jobs, 6);
+
+        let Command::Run(plan) = parsed("run --jobs auto") else {
+            panic!("not a run");
+        };
+        assert!(plan.jobs >= 1, "auto is a count and never zero");
+
+        // Zero cells at once is not a slower run, it is no run at all, and guessing that somebody
+        // meant one is how a person waits an hour for an empty report.
+        let why = parse(&args("run --jobs 0")).unwrap_err();
+        assert!(why.contains("count of one or more"), "{why}");
+        let why = parse(&args("run --jobs many")).unwrap_err();
+        assert!(why.contains("count of one or more"), "{why}");
     }
 
     #[test]

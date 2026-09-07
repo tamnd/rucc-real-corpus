@@ -147,6 +147,7 @@ mod tests {
             oracle_declared: Oracle::SelfChecking,
             oracle_used: Oracle::SelfChecking,
             parallel: false,
+            concurrency: 1,
             observed_outcome: Some(observed),
             excluded_by: Some("https://github.com/tamnd/rucc/issues/311".into()),
             built_against: Vec::new(),

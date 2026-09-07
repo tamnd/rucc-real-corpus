@@ -14,7 +14,9 @@
 //!
 //! The two runs need not come from the same machine. When they do not, the outcome sections still
 //! mean what they say and the cost section is refused rather than rendered with a disclaimer
-//! nobody reads.
+//! nobody reads. A run given `--jobs` is the same problem one step in: it happened on the same
+//! machine, but not on a quiet one, so its build times are dropped from the cost section while its
+//! sizes stay, since a byte count does not care what else was compiling at the time.
 
 use rrc_manifest::axes::Level;
 use rrc_run::record::{Outcome, RunRecord};
@@ -71,8 +73,14 @@ pub struct CostChange {
     pub level: Level,
     /// Text and data bytes before and after, when both runs measured them.
     pub bytes: Option<(u64, u64)>,
-    /// Build seconds before and after.
-    pub seconds: (f64, f64),
+    /// Build seconds before and after, when the two are the same measurement.
+    ///
+    /// Nothing when the runs disagree about how many cells were in flight, or when either of them
+    /// had more than one. Seconds measured on a loaded machine and seconds measured on a quiet one
+    /// are two different numbers with the same name, and subtracting them produces a cost change
+    /// that is really a scheduling change. The size stays comparable, because a byte count does
+    /// not care what else the machine was doing.
+    pub seconds: Option<(f64, f64)>,
 }
 
 impl CostChange {
@@ -87,10 +95,12 @@ impl CostChange {
         moved(before as f64, after as f64)
     }
 
-    /// How far the build time moved, as a fraction.
+    /// How far the build time moved, as a fraction, or nothing when the two runs did not measure
+    /// it the same way.
     #[must_use]
     pub fn time_moved(&self) -> Option<f64> {
-        moved(self.seconds.0, self.seconds.1)
+        let (before, after) = self.seconds?;
+        moved(before, after)
     }
 
     /// The line a report prints.
@@ -104,12 +114,10 @@ impl CostChange {
                 percent(fraction)
             );
         }
-        if let Some(fraction) = self.time_moved() {
+        if let (Some(fraction), Some((before, after))) = (self.time_moved(), self.seconds) {
             let _ = write!(
                 said,
-                ", build {:.1} to {:.1} seconds, {}",
-                self.seconds.0,
-                self.seconds.1,
+                ", build {before:.1} to {after:.1} seconds, {}",
                 percent(fraction)
             );
         }
@@ -316,10 +324,21 @@ fn cost_change(
         project: cell.0.to_string(),
         level: cell.1,
         bytes,
-        seconds: (before.build_seconds, after.build_seconds),
+        seconds: comparable_seconds(before, after),
     };
     let past = |moved: Option<f64>| moved.is_some_and(|fraction| fraction.abs() > threshold);
     (past(change.size_moved()) || past(change.time_moved())).then_some(change)
+}
+
+/// The two build times, when they are the same measurement.
+///
+/// A run given `--jobs` says so on every record it wrote, and the point of that field is exactly
+/// this: a cell that took forty seconds beside nine others and a cell that took thirty with the
+/// machine to itself have not told us anything about the compiler. Both runs at one is the only
+/// pair that compares, and it is what every run without `--jobs` produces.
+fn comparable_seconds(before: &RunRecord, after: &RunRecord) -> Option<(f64, f64)> {
+    (before.concurrency == 1 && after.concurrency == 1)
+        .then_some((before.build_seconds, after.build_seconds))
 }
 
 /// Text and data together, which is the number section 11.3 reports.
@@ -458,6 +477,41 @@ mod tests {
         let diff = Diff::of(&[before], &[big]);
         assert_eq!(diff.cost.len(), 1);
         assert!(diff.cost[0].render().contains("+30.0%"));
+    }
+
+    #[test]
+    fn a_build_time_from_a_run_that_had_ten_cells_in_flight_is_not_compared_with_one_that_had_the_machine()
+     {
+        let mut before = at("zlib", Level::O2, Outcome::Passed);
+        before.text_bytes = Some(100_000);
+        before.build_seconds = 10.0;
+
+        // Same cell, same machine, and the second run was given `--jobs auto`. The build took four
+        // times as long because nine other cells were compiling beside it, which is a fact about
+        // the scheduler and would read as a compiler that got four times slower.
+        let mut loaded = before.clone();
+        loaded.build_seconds = 40.0;
+        loaded.concurrency = 10;
+        assert!(
+            Diff::of(&[before.clone()], &[loaded.clone()])
+                .cost
+                .is_empty(),
+            "seconds measured at ten cells in flight are not the same measurement as seconds \
+             measured at one"
+        );
+
+        // The size is still the size, so a run that also grew the binary still says so.
+        let mut bigger = loaded;
+        bigger.text_bytes = Some(130_000);
+        let diff = Diff::of(&[before], &[bigger]);
+        assert_eq!(diff.cost.len(), 1);
+        let line = diff.cost[0].render();
+        assert!(line.contains("+30.0%"), "{line}");
+        assert!(
+            !line.contains("seconds"),
+            "the byte count survives the concurrency and the timing does not, so only one of them \
+             is on the line: {line}"
+        );
     }
 
     #[test]
