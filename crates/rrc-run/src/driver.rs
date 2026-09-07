@@ -322,7 +322,12 @@ struct Step {
     invocation: Invocation,
 }
 
-pub(crate) fn build_dir(sandbox: &Sandbox, manifest: &Manifest) -> PathBuf {
+/// Where a project's build actually runs, which is the source tree or a subdirectory of it.
+///
+/// Public because the journal's names are relative to this and anything reading the journal has to
+/// be able to join them back onto something.
+#[must_use]
+pub fn build_dir(sandbox: &Sandbox, manifest: &Manifest) -> PathBuf {
     manifest
         .build
         .subdir

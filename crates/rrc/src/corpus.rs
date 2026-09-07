@@ -12,7 +12,7 @@ use rrc_manifest::features::Features;
 use rrc_manifest::lint::Corpus;
 use rrc_manifest::lockfile::Lockfile;
 use rrc_manifest::manifest::Manifest;
-use std::path::{Path, PathBuf};
+use std::path::{Component, Path, PathBuf};
 
 /// A corpus and the directory it was read from.
 #[derive(Debug)]
@@ -77,13 +77,22 @@ impl Loaded {
 /// thing a corpus cannot be without, and checking for it means a mistyped `--corpus` fails with
 /// a sentence rather than quietly loading nothing and reporting that everything passed.
 pub fn find(start: &Path) -> Result<PathBuf, String> {
-    let mut here = if start.is_absolute() {
+    let joined = if start.is_absolute() {
         start.to_path_buf()
     } else {
         std::env::current_dir()
             .map_err(|why| format!("cannot tell what the working directory is: {why}"))?
             .join(start)
     };
+    // Without the `.` components. The default corpus is `.`, so joining it onto the working
+    // directory produces a root ending in a dot, and that dot then turns up in the middle of every
+    // sandbox path, every command line the shim journals and every path this prints. Nothing else
+    // is resolved here, in particular no symlink, because a sandbox path that does not match what
+    // the build's own `pwd` printed is worse than an untidy one.
+    let mut here: PathBuf = joined
+        .components()
+        .filter(|part| !matches!(part, Component::CurDir))
+        .collect();
 
     loop {
         if here.join("projects").is_dir() {

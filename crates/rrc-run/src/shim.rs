@@ -213,10 +213,13 @@ fn write_symlink(dir: &Path, entry: &ShimEntry) -> std::io::Result<()> {
 /// invocation to the compiler under test. Anything else, and every command with no source file in
 /// it at all, goes to the reference.
 ///
-/// The journal line says whether `-c` was there and which units the invocation named, because that
-/// is what decides whether the project is object level separable. A build that compiles and links
-/// in one command, or that hands two translation units to one invocation, cannot be split a file at
-/// a time, and section 8.6 lists that as a requirement rather than something to work around.
+/// The journal line is tab separated: whether `-c` was there, the directory the compile ran in, the
+/// units it named, and then the whole command line one argument to a field. The first two fields
+/// are what decides whether the project is object level separable, since a build that compiles and
+/// links in one command, or that hands two translation units to one invocation, cannot be split a
+/// file at a time. The rest is for `spec/13-rucc-corpus.md` section 13.4: a reduction has to
+/// preprocess the file the way the build did, and the flags the build chose are not recoverable
+/// from anywhere else.
 fn write_dispatcher(
     dir: &Path,
     entry: &ShimEntry,
@@ -251,7 +254,11 @@ for a in "$@"; do
       ;;
   esac
 done
-if [ -n "$units" ]; then printf '%s%s\n' "${{dashc:-x}}" "$units" >> "$j"; fi
+if [ -n "$units" ]; then
+  {{ printf '%s\t%s\t%s' "${{dashc:-x}}" "$PWD" "${{units# }}"
+     for a in "$@"; do printf '\t%s' "$a"; done
+     printf '\n'; }} >> "$j"
+fi
 exec "$pick" "$@"
 "#,
         root = quote(&plain(&split.root)),

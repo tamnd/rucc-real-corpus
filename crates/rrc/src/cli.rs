@@ -54,6 +54,8 @@ pub enum Command {
     Bisect(BisectPlan),
     /// What changed between two runs, from `spec/11-reporting.md` section 11.4.
     Diff(DiffPlan),
+    /// The reduction pipeline of `spec/13-rucc-corpus.md` section 13.4.
+    Reduce(ReducePlan),
     /// Schema, vocabulary and lockfile agreement.
     Lint,
     /// Render records that already exist.
@@ -230,6 +232,7 @@ fn command(args: &[String]) -> Result<Command, String> {
         "run" => run(&args[1..]).map(Command::Run),
         "abi" => abi(&args[1..]).map(Command::Abi),
         "bisect" => bisect(&args[1..]).map(Command::Bisect),
+        "reduce" => reduce(&args[1..]).map(Command::Reduce),
         "diff" => diff(&args[1..]).map(Command::Diff),
         "report" => report(&args[1..]),
         other => Err(format!(
@@ -392,6 +395,89 @@ fn bisect(args: &[String]) -> Result<BisectPlan, String> {
     })
 }
 
+/// What a reduction works on.
+///
+/// One project and one file, because a reduction runs the compiler thousands of times on one
+/// translation unit. `file` is optional and a reduction without it pays for a bisection first,
+/// which is the ordinary way in: somebody has a red cell, they bisect it to a file, and then they
+/// reduce that file. Giving the file skips the search for anybody who already knows the answer.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ReducePlan {
+    /// The project.
+    pub project: String,
+    /// The level the finding is at.
+    pub level: Level,
+    /// The file, relative to the build directory, or nothing to bisect for it.
+    pub file: Option<String>,
+    /// How many builds a bisection run from here may spend.
+    pub limit: usize,
+    /// Whether to run the built in line reducer over the case.
+    pub shrink: bool,
+    /// How many times the check script may run.
+    pub budget: usize,
+    /// Where the kit goes.
+    pub out: PathBuf,
+}
+
+impl ReducePlan {
+    /// Two thousand check runs, which is a few minutes on a preprocessed file and is enough for
+    /// the line pass to get the headers off. A real reducer spends far more than this and is meant
+    /// to, which is why it gets handed the kit rather than being reimplemented here.
+    pub const CHECKS: usize = 2000;
+}
+
+fn reduce(args: &[String]) -> Result<ReducePlan, String> {
+    let mut project = None;
+    let mut level = Level::O2;
+    let mut file = None;
+    let mut limit = BisectPlan::STEPS;
+    let mut shrink = true;
+    let mut budget = ReducePlan::CHECKS;
+    let mut out = PathBuf::from("runs/reduce");
+    let mut index = 0;
+    while index < args.len() {
+        let arg = args[index].as_str();
+        match arg {
+            "--level" | "--levels" => level = parse_level(&value(args, &mut index, "--level")?)?,
+            "--project" => project = Some(value(args, &mut index, "--project")?),
+            "--file" => file = Some(value(args, &mut index, "--file")?),
+            "--limit" => {
+                let given = value(args, &mut index, "--limit")?;
+                limit = given.parse().map_err(|_| {
+                    format!("`{given}` is not a number of builds, and `--limit` wants one")
+                })?;
+            }
+            "--checks" => {
+                let given = value(args, &mut index, "--checks")?;
+                budget = given.parse().map_err(|_| {
+                    format!("`{given}` is not a number of checks, and `--checks` wants one")
+                })?;
+            }
+            "--no-shrink" => shrink = false,
+            "--out" => out = value(args, &mut index, "--out")?.into(),
+            other if other.starts_with('-') => return Err(unknown(other, "reduce")),
+            other => project = Some(other.to_string()),
+        }
+        index += 1;
+    }
+    let Some(project) = project else {
+        return Err(
+            "`rrc reduce` wants a project, and a file with `--file` when you already \
+                    know which one, since without it the reduction pays for a bisection first"
+                .to_string(),
+        );
+    };
+    Ok(ReducePlan {
+        project,
+        level,
+        file,
+        limit,
+        shrink,
+        budget,
+        out,
+    })
+}
+
 /// What a diff compares.
 #[derive(Debug, Clone, PartialEq)]
 pub struct DiffPlan {
@@ -537,6 +623,7 @@ rrc, the harness for rucc-real-corpus
   rrc abi [<project>...] [--levels O2]      the four way abi cross check, on its own
   rrc bisect <project> [--level O2]         the mixed build, until the failure has a file name
   rrc diff <run-a> <run-b>                  what changed between two runs
+  rrc reduce <project> [--file inflate.c]   cut a failing file down to a case for rucc-corpus
   rrc lint                                  schema, vocabulary and lockfile agreement
   rrc report [--input FILE] [--format md]   render records that already exist
 
@@ -566,6 +653,13 @@ Options for bisect:
 Options for diff:
 
   --threshold N   how far a size or a build time has to move to be worth a line, in percent
+
+Options for reduce:
+
+  --file PATH     the file to reduce, relative to the build directory, skipping the bisection
+  --checks N      how many times the check script may run, defaulting to 2000
+  --no-shrink     write the kit and stop, leaving every line of it for a real reducer
+  --out DIR       where the kit goes, defaulting to runs/reduce
 
 Options for fetch:
 
@@ -756,12 +850,42 @@ mod tests {
     fn every_command_in_the_spec_table_is_in_the_usage_text() {
         let usage = usage();
         for command in [
-            "list", "fetch", "build", "test", "run", "abi", "bisect", "diff", "lint", "report",
+            "list", "fetch", "build", "test", "run", "abi", "bisect", "diff", "reduce", "lint",
+            "report",
         ] {
             assert!(
                 usage.contains(&format!("rrc {command}")),
                 "{command} is undocumented"
             );
         }
+    }
+
+    #[test]
+    fn a_reduction_takes_the_file_when_the_person_already_knows_it() {
+        let Command::Reduce(plan) = parsed("reduce zlib --file inflate.c --level O0") else {
+            panic!("not a reduction");
+        };
+        assert_eq!(plan.project, "zlib");
+        assert_eq!(plan.file.as_deref(), Some("inflate.c"));
+        assert_eq!(plan.level, Level::O0);
+        assert!(
+            plan.shrink,
+            "the line pass is the default, since it is free"
+        );
+    }
+
+    #[test]
+    fn a_reduction_with_no_project_says_what_it_would_have_cost() {
+        let why = parse(&args("reduce")).unwrap_err();
+        assert!(why.contains("pays for a bisection first"));
+    }
+
+    #[test]
+    fn no_shrink_writes_the_kit_and_leaves_the_cutting_to_something_else() {
+        let Command::Reduce(plan) = parsed("reduce lz4 --no-shrink") else {
+            panic!("not a reduction");
+        };
+        assert!(!plan.shrink);
+        assert_eq!(plan.file, None);
     }
 }

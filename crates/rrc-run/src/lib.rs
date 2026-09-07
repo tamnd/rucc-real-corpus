@@ -27,6 +27,8 @@
 //!   the two halves, which is the one check on the ladder no single compiler run can do.
 //! - [`bisect`] builds the tree with the reference except for a subset built with the compiler
 //!   under test, and searches over the subset until the failure has a file name on it.
+//! - [`reduce`] takes the file a bisection named and cuts it down to something small enough to
+//!   keep in rucc-corpus, which is what stops a finding having to be found twice.
 //! - [`twice`] compares two builds of the same project, which is what the isolation work was for.
 //! - [`staleness`] re-reads the exclusion register against what the excluded cells actually did.
 //!
@@ -43,6 +45,7 @@ pub mod env;
 pub mod exec;
 pub mod parse;
 pub mod record;
+pub mod reduce;
 pub mod sandbox;
 pub mod shim;
 pub mod sizes;
@@ -57,6 +60,7 @@ pub use env::{EnvPlan, SOURCE_DATE_EPOCH, environment};
 pub use exec::{Completed, Ending, Invocation};
 pub use parse::{Counts, counts};
 pub use record::{Outcome, Phase, Provenance, RecordLog, RunRecord, read_log};
+pub use reduce::{Finding, Kit, Shrunk};
 pub use sandbox::{Sandbox, Slot};
 pub use shim::{EntryKind, Shim, ShimEntry, Split, Toolchain};
 pub use sizes::{Sizes, measure};

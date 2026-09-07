@@ -9,6 +9,7 @@ pub mod diff;
 pub mod fetch;
 pub mod lint;
 pub mod list;
+pub mod reduce;
 pub mod report;
 pub mod schedule;
 
