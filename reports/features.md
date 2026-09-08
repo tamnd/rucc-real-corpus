@@ -12,12 +12,12 @@ Weight is what to do next. It is the sum over the held up projects of six minus 
 
 | feature | kind | demanded by | held up | weight | issue |
 |---|---|---|---|---|---|
-| `pointer-arithmetic` | standard | 13 | 0 | 0 | none open |
+| `pointer-arithmetic` | standard | 14 | 0 | 0 | none open |
 | `autoconf-probes` | driver | 11 | 0 | 0 | none open |
-| `bit-manipulation` | standard | 10 | 0 | 0 | none open |
+| `bit-manipulation` | standard | 11 | 0 | 0 | none open |
 | `function-pointers` | standard | 9 | 0 | 0 | none open |
 | `integer-conversion` | standard | 9 | 0 | 0 | none open |
-| `switch-dispatch` | standard | 8 | 0 | 0 | none open |
+| `switch-dispatch` | standard | 9 | 0 | 0 | none open |
 | `struct-layout` | abi | 7 | 0 | 0 | none open |
 | `deep-macros` | preprocessor | 6 | 0 | 0 | none open |
 | `setjmp-longjmp` | standard | 5 | 0 | 0 | none open |
@@ -63,6 +63,7 @@ arithmetic on object interiors, one past the end comparisons, and pointer differ
 - `libconfig`, R2, not measured
 - `libpsl`, R2, not measured
 - `libyaml`, R2, not measured
+- `chibi-scheme`, R3, not measured
 
 ### `autoconf-probes`
 
@@ -93,6 +94,7 @@ shifts, masks and bit level packing across byte boundaries
 - `libsodium`, R2, not measured
 - `libtommath`, R2, not measured
 - `zstd`, R2, not measured
+- `chibi-scheme`, R3, not measured
 - `femtolisp`, R3, not measured
 
 ### `function-pointers`
@@ -135,6 +137,7 @@ a state machine written as a switch, with deliberate fall through between cases
 - `libexpat`, R2, not measured
 - `libyaml`, R2, not measured
 - `pcre2`, R2, not measured
+- `chibi-scheme`, R3, not measured
 
 ### `struct-layout`
 
