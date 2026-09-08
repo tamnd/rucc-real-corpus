@@ -4,6 +4,8 @@
 
 Rung R0, pinned at `9210e1041923`, run on linux-x86_64.
 
+The pinned archive is 5 files, 2,398 lines, 89.2 KiB, counted before anything is built. Every number below is against that.
+
 ## What happened
 
 | level | outcome | reached | graded by |
@@ -26,16 +28,16 @@ Rung R0, pinned at `9210e1041923`, run on linux-x86_64.
 
 | level | compile | gcc 16 | vs gcc | suite | gcc 16 | vs gcc | build memory | gcc 16 | vs gcc |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| O0 | 0.36s | 0.43s | 0.82x | 0.09s | 0.13s | 0.71x | 10.9 MiB | 37.6 MiB | 0.29x |
-| O1 | 0.21s | 0.55s | 0.38x | 0.06s | 0.04s | not measured | 10.7 MiB | 45.8 MiB | 0.23x |
-| O2 | 0.20s | 1.36s | 0.15x | 0.03s | 0.05s | 0.69x | 11.1 MiB | 57.2 MiB | 0.19x |
-| Os | 0.41s | 0.85s | 0.48x | 0.07s | 0.03s | not measured | 10.7 MiB | 48.1 MiB | 0.22x |
+| O0 | 0.08s | not measured | not measured | 0.02s | not measured | not measured | 3.0 MiB | not measured | not measured |
+| O1 | 0.19s | not measured | not measured | 0.02s | not measured | not measured | 43.9 MiB | not measured | not measured |
+| O2 | 0.39s | not measured | not measured | 0.02s | not measured | not measured | 53.3 MiB | not measured | not measured |
+| Os | 0.25s | not measured | not measured | 0.02s | not measured | not measured | 41.7 MiB | not measured | not measured |
 
 ## Size
 
 | level | text and data | gcc 16 | vs gcc | on disk | gcc 16 | vs gcc |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| O0 | 18.8 KiB | 19.2 KiB | 0.98x | 31.6 KiB | 30.4 KiB | 1.04x |
-| O1 | 18.0 KiB | 16.5 KiB | 1.09x | 31.6 KiB | 26.3 KiB | 1.20x |
-| O2 | 18.0 KiB | 20.4 KiB | 0.88x | 31.6 KiB | 30.3 KiB | 1.04x |
-| Os | 18.0 KiB | 13.6 KiB | 1.32x | 31.6 KiB | 22.2 KiB | 1.42x |
+| O0 | 20.9 KiB | not measured | not measured | 30.4 KiB | not measured | not measured |
+| O1 | 18.3 KiB | not measured | not measured | 26.4 KiB | not measured | not measured |
+| O2 | 22.1 KiB | not measured | not measured | 30.4 KiB | not measured | not measured |
+| Os | 15.2 KiB | not measured | not measured | 26.4 KiB | not measured | not measured |

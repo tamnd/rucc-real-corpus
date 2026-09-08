@@ -4,14 +4,16 @@
 
 Rung R2, pinned at `04705c110cb2`, run on linux-x86_64.
 
+The pinned archive is 84 files, 51,338 lines, 1.7 MiB, counted before anything is built. Every number below is against that.
+
 ## What happened
 
 | level | outcome | reached | graded by |
 | --- | --- | --- | --- |
-| O0 | did not build | configured | self checking |
-| O1 | did not build | configured | self checking |
-| O2 | did not build | configured | self checking |
-| Os | did not build | configured | self checking |
+| O0 | passed | tested | self checking |
+| O1 | passed | tested | self checking |
+| O2 | passed | tested | self checking |
+| Os | passed | tested | self checking |
 
 ## The project's own tests
 
@@ -26,10 +28,10 @@ Rung R2, pinned at `04705c110cb2`, run on linux-x86_64.
 
 | level | compile | gcc 16 | vs gcc | suite | gcc 16 | vs gcc | build memory | gcc 16 | vs gcc |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| O0 | 37.74s | 50.92s | 0.74x | 0.00s | 0.64s | 0.00x | 49.6 MiB | 53.5 MiB | 0.93x |
-| O1 | 38.53s | 63s | 0.61x | 0.00s | 0.45s | 0.00x | 25.9 MiB | 58.0 MiB | 0.45x |
-| O2 | 31.82s | 75s | 0.42x | 0.00s | 0.86s | 0.00x | 28.8 MiB | 68.4 MiB | 0.42x |
-| Os | 29.24s | 68s | 0.43x | 0.00s | 1.41s | 0.00x | 24.2 MiB | 63.8 MiB | 0.38x |
+| O0 | 7.79s | not measured | not measured | 0.10s | not measured | not measured | 65.1 MiB | not measured | not measured |
+| O1 | 11.82s | not measured | not measured | 0.10s | not measured | not measured | 135.0 MiB | not measured | not measured |
+| O2 | 18.42s | not measured | not measured | 0.10s | not measured | not measured | 92.7 MiB | not measured | not measured |
+| Os | 14.39s | not measured | not measured | 0.10s | not measured | not measured | 103.4 MiB | not measured | not measured |
 
 ## Size
 

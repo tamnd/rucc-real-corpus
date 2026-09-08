@@ -4,41 +4,34 @@
 
 Rung R2, pinned at `7fa616e3046e`, run on linux-x86_64.
 
+The pinned archive is 99 files, 22,367 lines, 707.7 KiB, counted before anything is built. Every number below is against that.
+
 ## What happened
 
 | level | outcome | reached | graded by |
 | --- | --- | --- | --- |
-| O0 | did not build | configured | suite count |
-| O1 | did not build | configured | suite count |
-| O2 | did not build | configured | suite count |
-| Os | did not build | configured | suite count |
-
-## What the compiler said
-
-The first diagnostic only, normalized, which is the one the failure clustering groups on.
-
-- `O0`: `rucc: error: unknown option `-fPIC``
-- `O1`: `rucc: error: unknown option `-fPIC``
-- `O2`: `rucc: error: unknown option `-fPIC``
-- `Os`: `rucc: error: unknown option `-fPIC``
+| O0 | passed | tested | suite count |
+| O1 | passed | tested | suite count |
+| O2 | passed | tested | suite count |
+| Os | passed | tested | suite count |
 
 ## The project's own tests
 
 | level | passed | of | gcc 16 passed | behind gcc |
 | --- | ---: | ---: | ---: | ---: |
-| O0 | not counted | not counted | 19 | not comparable |
-| O1 | not counted | not counted | 19 | not comparable |
-| O2 | not counted | not counted | 19 | not comparable |
-| Os | not counted | not counted | 19 | not comparable |
+| O0 | 19 | 19 | not counted | not comparable |
+| O1 | 19 | 19 | not counted | not comparable |
+| O2 | 19 | 19 | not counted | not comparable |
+| Os | 19 | 19 | not counted | not comparable |
 
 ## Time and memory
 
 | level | compile | gcc 16 | vs gcc | suite | gcc 16 | vs gcc | build memory | gcc 16 | vs gcc |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| O0 | 13.42s | 49.41s | 0.27x | 0.00s | 0.51s | 0.00x | 21.7 MiB | 48.0 MiB | 0.45x |
-| O1 | 14.92s | 75s | 0.20x | 0.00s | 0.31s | 0.00x | 22.0 MiB | 52.5 MiB | 0.42x |
-| O2 | 14.85s | 107s | 0.14x | 0.00s | 0.41s | 0.00x | 22.0 MiB | 63.0 MiB | 0.35x |
-| Os | 15.14s | 86s | 0.18x | 0.00s | 0.28s | 0.00x | 22.2 MiB | 56.4 MiB | 0.39x |
+| O0 | 4.99s | not measured | not measured | 0.04s | not measured | not measured | 43.4 MiB | not measured | not measured |
+| O1 | 7.41s | not measured | not measured | 0.04s | not measured | not measured | 47.0 MiB | not measured | not measured |
+| O2 | 11.22s | not measured | not measured | 0.04s | not measured | not measured | 131.6 MiB | not measured | not measured |
+| Os | 10.08s | not measured | not measured | 0.04s | not measured | not measured | 64.2 MiB | not measured | not measured |
 
 ## Size
 

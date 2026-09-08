@@ -4,47 +4,40 @@
 
 Rung R2, pinned at `ebb65ef6ca43`, run on linux-x86_64.
 
+The pinned archive is 354 files, 60,896 lines, 4.8 MiB, counted before anything is built. Every number below is against that.
+
 ## What happened
 
 | level | outcome | reached | graded by |
 | --- | --- | --- | --- |
-| O1 | not compared | tested | self checking, downgraded from suite count |
-| O0 | not compared | tested | self checking, downgraded from suite count |
-| O2 | not compared | tested | self checking, downgraded from suite count |
-| Os | not compared | tested | self checking, downgraded from suite count |
-
-## What the compiler said
-
-The first diagnostic only, normalized, which is the one the failure clustering groups on.
-
-- `O0`: `(.text+<addr>): undefined reference to `crypto_aead_aegis128l_keybytes'`
-- `O1`: `(.text+<addr>): undefined reference to `crypto_aead_aegis128l_keybytes'`
-- `O2`: `(.text+<addr>): undefined reference to `crypto_aead_aegis128l_keybytes'`
-- `Os`: `(.text+<addr>): undefined reference to `crypto_aead_aegis128l_keybytes'`
+| O0 | passed | tested | suite count |
+| O1 | passed | tested | suite count |
+| O2 | passed | tested | suite count |
+| Os | passed | tested | suite count |
 
 ## The project's own tests
 
 | level | passed | of | gcc 16 passed | behind gcc |
 | --- | ---: | ---: | ---: | ---: |
-| O1 | not counted | not counted | 80 | not comparable |
-| O0 | not counted | not counted | 80 | not comparable |
-| O2 | not counted | not counted | 80 | not comparable |
-| Os | not counted | not counted | 80 | not comparable |
+| O0 | 80 | 80 | not counted | not comparable |
+| O1 | 80 | 80 | not counted | not comparable |
+| O2 | 80 | 80 | not counted | not comparable |
+| Os | 80 | 80 | not counted | not comparable |
 
 ## Time and memory
 
 | level | compile | gcc 16 | vs gcc | suite | gcc 16 | vs gcc | build memory | gcc 16 | vs gcc |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| O1 | 121s | 338s | 0.36x | 1.98s | 152s | 0.01x | 55.0 MiB | 122.6 MiB | 0.45x |
-| O0 | 123s | 286s | 0.43x | 1.12s | 207s | 0.01x | 54.4 MiB | 130.7 MiB | 0.42x |
-| O2 | 138s | 396s | 0.35x | 1.12s | 149s | 0.01x | 53.9 MiB | 127.9 MiB | 0.42x |
-| Os | 135s | 359s | 0.38x | 1.99s | 171s | 0.01x | 54.9 MiB | 126.2 MiB | 0.44x |
+| O0 | 26.03s | not measured | not measured | 27.94s | not measured | not measured | 135.7 MiB | not measured | not measured |
+| O1 | 30.21s | not measured | not measured | 15.42s | not measured | not measured | 135.7 MiB | not measured | not measured |
+| O2 | 34.14s | not measured | not measured | 16.04s | not measured | not measured | 135.7 MiB | not measured | not measured |
+| Os | 32.31s | not measured | not measured | 15.75s | not measured | not measured | 135.7 MiB | not measured | not measured |
 
 ## Size
 
 | level | text and data | gcc 16 | vs gcc | on disk | gcc 16 | vs gcc |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| O1 | not measured | not measured | not measured | not measured | not measured | not measured |
 | O0 | not measured | not measured | not measured | not measured | not measured | not measured |
+| O1 | not measured | not measured | not measured | not measured | not measured | not measured |
 | O2 | not measured | not measured | not measured | not measured | not measured | not measured |
 | Os | not measured | not measured | not measured | not measured | not measured | not measured |

@@ -4,23 +4,16 @@
 
 Rung R1, pinned at `38d07179738c`, run on linux-x86_64.
 
+The pinned archive is 11 files, 23,116 lines, 1.7 MiB, counted before anything is built. Every number below is against that.
+
 ## What happened
 
 | level | outcome | reached | graded by |
 | --- | --- | --- | --- |
-| O0 | did not build | fetched | self checking |
-| O1 | did not build | fetched | self checking |
-| O2 | did not build | fetched | self checking |
-| Os | did not build | fetched | self checking |
-
-## What the compiler said
-
-The first diagnostic only, normalized, which is the one the failure clustering groups on.
-
-- `O0`: `rucc: error: unknown option `-fPIC``
-- `O1`: `rucc: error: unknown option `-fPIC``
-- `O2`: `rucc: error: unknown option `-fPIC``
-- `Os`: `rucc: error: unknown option `-fPIC``
+| O0 | passed | tested | self checking |
+| O1 | passed | tested | self checking |
+| O2 | passed | tested | self checking |
+| Os | passed | tested | self checking |
 
 ## The project's own tests
 
@@ -35,10 +28,10 @@ The first diagnostic only, normalized, which is the one the failure clustering g
 
 | level | compile | gcc 16 | vs gcc | suite | gcc 16 | vs gcc | build memory | gcc 16 | vs gcc |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| O0 | 0.07s | 2.58s | 0.03x | 0.00s | 21.38s | 0.00x | not measured | 53.8 MiB | not measured |
-| O1 | 0.04s | 5.19s | 0.01x | 0.00s | 10.39s | 0.00x | 2.2 MiB | 59.8 MiB | 0.04x |
-| O2 | 0.06s | 9.84s | 0.01x | 0.00s | 9.96s | 0.00x | 296.0 KiB | 72.7 MiB | 0.00x |
-| Os | 0.06s | 10.21s | 0.01x | 0.00s | 9.54s | 0.00x | not measured | 63.5 MiB | not measured |
+| O0 | 0.25s | not measured | not measured | 2.97s | not measured | not measured | 48.7 MiB | not measured | not measured |
+| O1 | 0.54s | not measured | not measured | 1.21s | not measured | not measured | 98.2 MiB | not measured | not measured |
+| O2 | 1.01s | not measured | not measured | 1.27s | not measured | not measured | 68.6 MiB | not measured | not measured |
+| Os | 0.76s | not measured | not measured | 1.38s | not measured | not measured | 57.6 MiB | not measured | not measured |
 
 ## Size
 

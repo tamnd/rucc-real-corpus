@@ -106,16 +106,16 @@ The harness runs and rung zero is full. Manifests, pinned fetching, the sandbox,
 Everything between the two markers below is written by `rrc report --pages` from the records of the last nightly, and CI checks on every pull request that it still matches. Do not edit it by hand, and do edit everything around it.
 
 <!-- rrc:begin -->
-**56 of 184 cells passed.** Run on linux-x86_64, with rucc 0.7.8 against gcc-16 (GCC) 16.2.0.
+**172 of 184 cells passed.** Run on linux-x86_64, with gcc-16 (Ubuntu 16-20260315-1ubuntu1~24~ppa1) 16.0.1 20260315 (experimental) [trunk r16-8100-g3aca3bae8ee] against gcc-16 (Ubuntu 16-20260315-1ubuntu1~24~ppa1) 16.0.1 20260315 (experimental) [trunk r16-8100-g3aca3bae8ee].
 
 | outcome | cells | what it means |
 | --- | ---: | --- |
-| passed | 56 | built, linked, ran its own suite, and the oracle agreed |
-| did not build | 119 | the compiler under test would not compile or link it |
-| not compared | 4 | it built, and nothing here could say whether it is right |
-| excluded | 5 | on the exclusion register, with an issue behind it |
+| passed | 172 | built, linked, ran its own suite, and the oracle agreed |
+| wrong answer | 4 | it built and ran and produced the wrong answer |
+| did not build | 4 | the compiler under test would not compile or link it |
+| excluded | 4 | on the exclusion register, with an issue behind it |
 
-Of the 24 cells whose suite prints a count on both compilers, 23 pass exactly as many of the project's own tests as the GCC 16 build does.
+That is 1,623,505 lines of C across 4,217 files in the pinned archives, counted before anything is built.
 
 The full report is under [`reports/`](reports/README.md): [what it cost against GCC 16](reports/cost.md), [what failed and why](reports/failures.md), and [one page per project](reports/projects/README.md).
 <!-- rrc:end -->

@@ -4,41 +4,34 @@
 
 Rung R2, pinned at `b67ba0383ef7`, run on linux-x86_64.
 
+The pinned archive is 507 files, 147,331 lines, 4.7 MiB, counted before anything is built. Every number below is against that.
+
 ## What happened
 
 | level | outcome | reached | graded by |
 | --- | --- | --- | --- |
-| O0 | did not build | fetched | suite count |
-| O1 | did not build | fetched | suite count |
-| O2 | did not build | fetched | suite count |
-| Os | did not build | fetched | suite count |
-
-## What the compiler said
-
-The first diagnostic only, normalized, which is the one the failure clustering groups on.
-
-- `O0`: `configure: error: could not find a working compiler, see config.log for details`
-- `O1`: `configure: error: could not find a working compiler, see config.log for details`
-- `O2`: `configure: error: could not find a working compiler, see config.log for details`
-- `Os`: `configure: error: could not find a working compiler, see config.log for details`
+| O0 | passed | tested | suite count |
+| O1 | passed | tested | suite count |
+| O2 | passed | tested | suite count |
+| Os | passed | tested | suite count |
 
 ## The project's own tests
 
 | level | passed | of | gcc 16 passed | behind gcc |
 | --- | ---: | ---: | ---: | ---: |
-| O0 | not counted | not counted | 198 | not comparable |
-| O1 | not counted | not counted | 198 | not comparable |
-| O2 | not counted | not counted | 198 | not comparable |
-| Os | not counted | not counted | 198 | not comparable |
+| O0 | 198 | 198 | not counted | not comparable |
+| O1 | 198 | 198 | not counted | not comparable |
+| O2 | 198 | 198 | not counted | not comparable |
+| Os | 198 | 198 | not counted | not comparable |
 
 ## Time and memory
 
 | level | compile | gcc 16 | vs gcc | suite | gcc 16 | vs gcc | build memory | gcc 16 | vs gcc |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| O0 | 4.52s | 520s | 0.01x | 0.00s | 487s | 0.00x | 26.0 MiB | 58.8 MiB | 0.44x |
-| O1 | 5.71s | 581s | 0.01x | 0.00s | 501s | 0.00x | 8.6 MiB | 58.4 MiB | 0.15x |
-| O2 | 4.18s | 679s | 0.01x | 0.00s | 636s | 0.00x | 34.2 MiB | 64.4 MiB | 0.53x |
-| Os | 4.94s | 688s | 0.01x | 0.00s | 688s | 0.00x | 19.4 MiB | 58.4 MiB | 0.33x |
+| O0 | 88s | not measured | not measured | 68s | not measured | not measured | 139.2 MiB | not measured | not measured |
+| O1 | 102s | not measured | not measured | 65s | not measured | not measured | 139.3 MiB | not measured | not measured |
+| O2 | 115s | not measured | not measured | 72s | not measured | not measured | 139.1 MiB | not measured | not measured |
+| Os | 110s | not measured | not measured | 72s | not measured | not measured | 139.2 MiB | not measured | not measured |
 
 ## Size
 

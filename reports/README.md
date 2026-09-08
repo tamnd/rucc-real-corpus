@@ -1,6 +1,6 @@
 # The run report
 
-**56 of 184 cells passed.** Run on linux-x86_64, with rucc 0.7.8 against gcc-16 (GCC) 16.2.0.
+**172 of 184 cells passed.** Run on linux-x86_64, with gcc-16 (Ubuntu 16-20260315-1ubuntu1~24~ppa1) 16.0.1 20260315 (experimental) [trunk r16-8100-g3aca3bae8ee] against gcc-16 (Ubuntu 16-20260315-1ubuntu1~24~ppa1) 16.0.1 20260315 (experimental) [trunk r16-8100-g3aca3bae8ee].
 
 Every number on these pages comes from one run of `rrc run`, and every one of them is paired with the same number from a GCC 16 build of the same pinned source on the same machine. Nothing here is averaged across projects, for the reason `spec/11-reporting.md` section 11.3 gives.
 
@@ -17,10 +17,10 @@ Every number on these pages comes from one run of `rrc run`, and every one of th
 
 | outcome | cells | what it means |
 | --- | ---: | --- |
-| passed | 56 | built, linked, ran its own suite, and the oracle agreed |
-| did not build | 119 | the compiler under test would not compile or link it |
-| not compared | 4 | it built, and nothing here could say whether it is right |
-| excluded | 5 | on the exclusion register, with an issue behind it |
+| passed | 172 | built, linked, ran its own suite, and the oracle agreed |
+| wrong answer | 4 | it built and ran and produced the wrong answer |
+| did not build | 4 | the compiler under test would not compile or link it |
+| excluded | 4 | on the exclusion register, with an issue behind it |
 
 ## By rung
 
@@ -28,9 +28,9 @@ The rungs are the ladder of `spec/05-project-list.md`. A failure low on it is a 
 
 | rung | cells | passed | still to do |
 | --- | ---: | ---: | ---: |
-| R0 | 48 | 32 | 16 |
-| R1 | 56 | 24 | 32 |
-| R2 | 80 | 0 | 80 |
+| R0 | 48 | 44 | 4 |
+| R1 | 56 | 52 | 4 |
+| R2 | 80 | 76 | 4 |
 
 ## By optimization level
 
@@ -38,20 +38,38 @@ Four levels, and they are four different compilers as far as this corpus is conc
 
 | level | cells | passed | still to do |
 | --- | ---: | ---: | ---: |
-| O0 | 46 | 14 | 32 |
-| O1 | 46 | 14 | 32 |
-| O2 | 46 | 14 | 32 |
-| Os | 46 | 14 | 32 |
+| O0 | 46 | 43 | 3 |
+| O1 | 46 | 43 | 3 |
+| O2 | 46 | 43 | 3 |
+| Os | 46 | 43 | 3 |
 
-## The project's own tests
+## How much code this is
 
-Of the 24 cells whose suite prints a count on both compilers, 23 pass exactly as many of the project's own tests as the GCC 16 build does.
+Counted from the pinned archives before anything is built, so it is the same on every host and it moves only when a pin moves. Every `.c`, `.h`, `.cc`, `.cpp`, `.hpp` and `.s` file in the extracted tree, whether or not the build happens to compile all of them, because that is the tree the pin is a hash of and it is the only version of the count that two machines can agree on.
 
-This is the number that a build outcome cannot show you. A cell that compiles, links, runs the suite and quietly passes forty fewer of the project's own tests than GCC does is a worse result than a cell that failed to build, and it counts as a pass everywhere except here.
+It is a denominator and not a score. Four seconds is a slow build of a header only parser and a fast build of an interpreter, and none of the numbers above this can be read without it. A project being large does not make it a better test than a small one either, which is why `spec/04-the-ladder.md` orders the rungs by what a project demands of the compiler rather than by how much of it there is.
 
-| project | level | passed | gcc 16 passed |
-| --- | --- | ---: | ---: |
-| [linenoise](projects/linenoise.md) | O0 | 102 | 101 |
+| rung | projects | files | lines | bytes |
+| --- | ---: | ---: | ---: | ---: |
+| R0 | 12 | 78 | 28,171 | 936.7 KiB |
+| R1 | 14 | 411 | 287,800 | 14.0 MiB |
+| R2 | 20 | 3,728 | 1,307,534 | 43.8 MiB |
+| **all** | **46** | **4,217** | **1,623,505** | **58.7 MiB** |
+
+The largest few, since a corpus total is usually a few projects and a long tail.
+
+| project | files | lines | bytes |
+| --- | ---: | ---: | ---: |
+| [libgmp](projects/libgmp.md) | 1,054 | 212,797 | 6.7 MiB |
+| [pcre2](projects/pcre2.md) | 85 | 149,512 | 4.8 MiB |
+| [libmpfr](projects/libmpfr.md) | 507 | 147,331 | 4.7 MiB |
+| [zstd](projects/zstd.md) | 277 | 137,191 | 5.1 MiB |
+| [libuv](projects/libuv.md) | 360 | 109,292 | 3.0 MiB |
+| [oniguruma](projects/oniguruma.md) | 89 | 102,240 | 2.5 MiB |
+| [libpng](projects/libpng.md) | 100 | 91,353 | 2.8 MiB |
+| [blake2](projects/blake2.md) | 62 | 65,842 | 2.6 MiB |
+| [xxhash](projects/xxhash.md) | 44 | 63,655 | 5.0 MiB |
+| [libsodium](projects/libsodium.md) | 354 | 60,896 | 4.8 MiB |
 
 ## What the run cost
 
@@ -59,8 +77,7 @@ Added up rather than averaged, and it is a bill rather than a score. A corpus fi
 
 | | compile seconds |
 | --- | ---: |
-| under test | 3181 |
-| gcc 16 | 14033 |
+| under test | 1826 |
 
 ## Every project
 
