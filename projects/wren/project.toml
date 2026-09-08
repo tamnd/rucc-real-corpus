@@ -104,9 +104,11 @@ regex = "\\[32m(\\d+)\\x1b\\[0m tests passed"
 baseline-tests = 866
 requires = ["python3"]
 
-# Twenty nine translation units and a suite that forks the interpreter once per test, which is
-# about ten seconds of process starts on the reference machine and most of the test time. The build
-# limit is slack for a slow compiler rather than a real bound.
+# Twenty nine translation units, and a suite that forks the interpreter once for each of its eight
+# hundred and sixty six tests, which is where most of its time goes. On the reference machine gcc
+# takes between seven and fifty seconds to build it depending on the level and the suite takes
+# between thirteen and twenty three, so both limits are slack for a slow compiler rather than a
+# real bound.
 [limits]
 build-seconds = 900
 test-seconds = 600
