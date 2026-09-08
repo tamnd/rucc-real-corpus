@@ -28,12 +28,16 @@ impl Exclusions {
         toml::from_str(&text).map_err(|e| format!("{}: {e}", path.display()))
     }
 
-    /// The entry covering this project, case and level, if there is one.
+    /// The entry covering this project, case and level on this host, if there is one.
+    ///
+    /// The host is passed rather than read here, because the caller has it on the record and a
+    /// register that asked the machine it is running on would answer differently when a report is
+    /// rendered somewhere else from where it was measured.
     #[must_use]
-    pub fn find(&self, project: &str, case: &str, level: Level) -> Option<&Exclusion> {
+    pub fn find(&self, project: &str, case: &str, level: Level, host: &str) -> Option<&Exclusion> {
         self.entries
             .iter()
-            .find(|entry| entry.covers(project, case, level))
+            .find(|entry| entry.covers(project, case, level, host))
     }
 
     /// Every entry naming a project, at any case and any level.
@@ -60,6 +64,15 @@ pub struct Exclusion {
     /// The level, or `*` for every level. A narrow exclusion keeps the information a coarse
     /// one destroys.
     pub level: String,
+    /// The host the failure was seen on, in the short form the records use, for example
+    /// `macos-aarch64`. Absent means every host.
+    ///
+    /// Same argument as the level field. A gcc back end crash on Apple silicon is not a fact about
+    /// Linux, and an entry with no host on it stops a cell everywhere for a reason that only holds
+    /// in one place. Absent is still the common case, because most of what gets excluded is a bug
+    /// in the project's own source and travels with it.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub host: Option<String>,
     /// The issue this waits on. Either an issue under `tamnd/rucc`, or one prefixed
     /// `upstream:` when the bug is theirs rather than ours.
     pub issue: String,
@@ -71,10 +84,21 @@ pub struct Exclusion {
 }
 
 impl Exclusion {
-    /// Whether this entry covers a given project, case and level.
+    /// Whether this entry covers a given project, case and level on a given host.
     #[must_use]
-    pub fn covers(&self, project: &str, case: &str, level: Level) -> bool {
-        self.project == project && self.case == case && self.covers_level(level)
+    pub fn covers(&self, project: &str, case: &str, level: Level, host: &str) -> bool {
+        self.project == project
+            && self.case == case
+            && self.covers_level(level)
+            && self.covers_host(host)
+    }
+
+    /// Whether the entry's host field covers a given host. No host field is every host.
+    #[must_use]
+    pub fn covers_host(&self, host: &str) -> bool {
+        self.host
+            .as_ref()
+            .is_none_or(|named| named.eq_ignore_ascii_case(host))
     }
 
     /// Whether the entry's level field covers a given level.
@@ -116,19 +140,63 @@ level = "O2,Os"
 issue = "upstream:https://github.com/madler/zlib/issues/1"
 why = "configure hard codes cc into LDSHARED"
 since = "2026-09-06"
+
+[[exclude]]
+project = "xxhash"
+case = "xxhash"
+level = "O1"
+host = "macos-aarch64"
+issue = "upstream:https://github.com/tamnd/rucc-real-corpus/issues/41"
+why = "gcc ices in aarch64_function_arg_alignment"
+since = "2026-09-07"
 "#;
+
+    const LINUX: &str = "linux-x86_64";
 
     #[test]
     fn a_star_covers_every_level_and_a_list_covers_only_its_own() {
         let register: Exclusions = toml::from_str(SAMPLE).unwrap();
-        assert!(register.find("sqlite", "amalgamation", Level::O0).is_some());
         assert!(
             register
-                .find("sqlite", "amalgamation", Level::Lto)
+                .find("sqlite", "amalgamation", Level::O0, LINUX)
                 .is_some()
         );
-        assert!(register.find("zlib", "zlib", Level::O2).is_some());
-        assert!(register.find("zlib", "zlib", Level::O0).is_none());
+        assert!(
+            register
+                .find("sqlite", "amalgamation", Level::Lto, LINUX)
+                .is_some()
+        );
+        assert!(register.find("zlib", "zlib", Level::O2, LINUX).is_some());
+        assert!(register.find("zlib", "zlib", Level::O0, LINUX).is_none());
+    }
+
+    #[test]
+    fn an_entry_naming_a_host_covers_that_host_and_no_other() {
+        let register: Exclusions = toml::from_str(SAMPLE).unwrap();
+        assert!(
+            register
+                .find("xxhash", "xxhash", Level::O1, "macos-aarch64")
+                .is_some()
+        );
+        assert!(
+            register
+                .find("xxhash", "xxhash", Level::O1, LINUX)
+                .is_none(),
+            "a gcc crash on apple silicon is not a reason to skip a linux cell"
+        );
+    }
+
+    #[test]
+    fn an_entry_with_no_host_still_covers_every_host() {
+        let register: Exclusions = toml::from_str(SAMPLE).unwrap();
+        for host in [LINUX, "macos-aarch64", "linux-aarch64"] {
+            assert!(
+                register
+                    .find("sqlite", "amalgamation", Level::O0, host)
+                    .is_some(),
+                "{host} lost an exclusion that names no host"
+            );
+        }
     }
 
     #[test]

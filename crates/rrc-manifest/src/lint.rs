@@ -549,6 +549,10 @@ fn check_names_are_unique(corpus: &Corpus, findings: &mut Vec<Finding>) {
     }
 }
 
+/// The hosts the corpus claims to run on, from `spec/12-ci-and-cost.md` section 12.2, in the short
+/// form the records write. An exclusion may name one of these and nothing else.
+const HOSTS: [&str; 3] = ["linux-x86_64", "linux-aarch64", "macos-aarch64"];
+
 fn check_exclusions(corpus: &Corpus, findings: &mut Vec<Finding>) {
     let known: Vec<&str> = corpus
         .manifests
@@ -575,6 +579,21 @@ fn check_exclusions(corpus: &Corpus, findings: &mut Vec<Finding>) {
                 what: format!(
                     "names the case `{}`, and a cell is asked for by project name, so this entry matches nothing and the failure it describes still counts",
                     entry.case
+                ),
+            });
+        }
+        // A host nobody runs on matches nothing, so the cell it was meant to skip goes on failing
+        // and the entry looks like it is doing its job. Same failure mode as a case field naming a
+        // test inside a project, and it is caught the same way. The list is the three hosts of
+        // spec/12-ci-and-cost.md section 12.2.
+        if let Some(host) = &entry.host
+            && !HOSTS.contains(&host.as_str())
+        {
+            findings.push(Finding {
+                where_: where_.clone(),
+                what: format!(
+                    "names the host `{host}`, which is not one of {}, so this entry matches nothing and the failure it describes still counts",
+                    HOSTS.join(", ")
                 ),
             });
         }
@@ -884,6 +903,7 @@ kind = "standard"
                 project: "not-here".into(),
                 case: "not-here".into(),
                 level: "*".into(),
+                host: None,
                 issue: "https://github.com/tamnd/rucc/issues/1".into(),
                 why: "reasons".into(),
                 since: "2026-09-06".into(),
@@ -1243,11 +1263,35 @@ kind = "standard"
                 project: name,
                 case: "some_failing_test".into(),
                 level: "O0".into(),
+                host: None,
                 issue: "https://github.com/tamnd/rucc/issues/1".into(),
                 why: "reasons".into(),
                 since: "2026-09-06".into(),
             });
         let findings = check(&corpus);
         assert!(findings.iter().any(|f| f.what.contains("matches nothing")));
+    }
+
+    #[test]
+    fn an_exclusion_naming_a_host_nobody_runs_on_is_caught() {
+        // Same failure mode as the case field above. A host that is spelled the way the target
+        // triple spells it rather than the way the records do matches no machine, so the entry
+        // looks like it is doing its job and the cell stays red everywhere.
+        let mut corpus = corpus_of(SAMPLE);
+        let name = corpus.manifests[0].project.name.clone();
+        corpus
+            .exclusions
+            .entries
+            .push(crate::exclusions::Exclusion {
+                project: name,
+                case: corpus.manifests[0].project.name.clone(),
+                level: "O0".into(),
+                host: Some("aarch64-apple-darwin".into()),
+                issue: "https://github.com/tamnd/rucc/issues/1".into(),
+                why: "reasons".into(),
+                since: "2026-09-07".into(),
+            });
+        let findings = check(&corpus);
+        assert!(findings.iter().any(|f| f.what.contains("names the host")));
     }
 }

@@ -1,10 +1,14 @@
 # The register from `spec/09-patches-and-exclusions.md` section 9.4.
 # Every entry names an issue, because an exclusion with no issue is a project quietly removed from
-# the denominator. Both entries here are upstream failures found while recording the gcc 16
-# baselines, which is to say neither of them is about rucc and both of them would be a false red
+# the denominator. All three entries here are upstream failures found while recording the gcc 16
+# baselines, which is to say none of them is about rucc and all of them would be a false red
 # against it. The upstream prefix says whose bug it is and the url behind it is our own tracking
-# issue, because neither has been reported to its project yet and a register that points at an issue
+# issue, because none has been reported to its project yet and a register that points at an issue
 # nobody filed is worse than one that points at a note somebody wrote.
+#
+# An entry is as narrow as the failure it describes. The level field says which levels, the host
+# field says which machines, and leaving either off means all of them. All three were rechecked
+# against the first full differential run on linux x86-64 on 2026-09-07 and all three stand.
 
 [[exclude]]
 project = "heatshrink"
@@ -26,6 +30,7 @@ since = "2026-09-07"
 project = "xxhash"
 case = "xxhash"
 level = "O1"
+host = "macos-aarch64"
 issue = "upstream:https://github.com/tamnd/rucc-real-corpus/issues/41"
-why = "gcc 16.2.0 on aarch64 apple darwin gives an internal compiler error, in aarch64_function_arg_alignment at config/aarch64/aarch64.cc:7524, compiling XXH3_len_0to16_64b inlined into XXH3_64bits at -O1. The crash is in the back end and the other three levels build and pass, so this is a gcc bug on this host and criterion 3 of section 3.2 says a cell gcc cannot produce is not evidence about us. The entry is written against the level and not against the host because this register has no host field, which makes it wider than the failure it is for."
+why = "gcc 16.2.0 on aarch64 apple darwin gives an internal compiler error, in aarch64_function_arg_alignment at config/aarch64/aarch64.cc:7524, compiling XXH3_len_0to16_64b inlined into XXH3_64bits at -O1. The crash is in the back end and the other three levels build and pass, so this is a gcc bug on this host and criterion 3 of section 3.2 says a cell gcc cannot produce is not evidence about us. It is scoped to the host it happens on, because the same cell on linux x86-64 has nothing wrong with it."
 since = "2026-09-07"

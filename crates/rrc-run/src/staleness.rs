@@ -34,7 +34,12 @@ pub fn check(records: &[RunRecord], register: &Exclusions) -> Vec<Stale> {
     for record in records {
         let (Some(observed), Some(entry)) = (
             record.observed_outcome,
-            register.find(&record.project, &record.project, record.level),
+            register.find(
+                &record.project,
+                &record.project,
+                record.level,
+                &record.provenance.host,
+            ),
         ) else {
             continue;
         };
@@ -125,6 +130,7 @@ mod tests {
                 project: "jsmn".into(),
                 case: "jsmn".into(),
                 level: "O2".into(),
+                host: None,
                 issue: "https://github.com/tamnd/rucc/issues/311".into(),
                 why: why.into(),
                 since: "2026-09-06".into(),
