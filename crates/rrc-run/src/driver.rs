@@ -19,6 +19,7 @@ use std::time::Duration;
 use crate::diagnostic::Normalizer;
 use crate::env::{EnvPlan, environment};
 use crate::exec::{self, Completed, Ending, Invocation};
+use crate::input::{self, Input};
 use crate::parse::{self, Counts};
 use crate::record::{BuiltAgainst, Outcome, Phase, Provenance, RunRecord};
 use crate::sandbox::{Sandbox, Slot};
@@ -137,6 +138,8 @@ pub struct Trial {
     pub test_seconds: f64,
     /// The binary, where the manifest names one.
     pub sizes: Sizes,
+    /// How much source went in, taken from the pristine extract before anything was built.
+    pub input: Input,
     /// What the suite parser made of the output.
     pub counts: Option<Counts>,
     /// The first error, normalized.
@@ -349,6 +352,12 @@ fn attempt_upto(
         peak_rss: None,
         test_seconds: 0.0,
         sizes: Sizes::default(),
+        // From the shared extract rather than from this sandbox's copy of it, and before any
+        // build step has run. A configure writes C files and a make generates more of them, and
+        // this column is about what the project shipped, which is the tree the pin is a hash of.
+        // It is therefore the same on every level and on both compilers, which is what makes it
+        // safe for the report to take it off whichever cell it finds first.
+        input: input::measure(job.extracted),
         counts: None,
         first_diagnostic: None,
     };
@@ -1000,6 +1009,12 @@ fn record(job: &Job<'_>, trial: &Trial, graded: Graded) -> RunRecord {
         binary_bytes: trial.sizes.binary,
         text_bytes: trial.sizes.text,
         data_bytes: trial.sizes.data,
+        // Nothing rather than three zeroes when the walk found no source at all, since a project
+        // of zero lines is not a small project, it is a tree that could not be read, and the
+        // report has a column for saying so.
+        source_files: trial.input.found().then_some(trial.input.files),
+        source_lines: trial.input.found().then_some(trial.input.lines),
+        source_bytes: trial.input.found().then_some(trial.input.bytes),
         first_diagnostic: trial.first_diagnostic.clone(),
         log_path: Some(trial.sandbox.logs().to_string_lossy().into_owned()),
         oracle_declared: job.manifest.test.oracle,
@@ -1295,6 +1310,31 @@ oracle = "self-checking"
         assert_eq!(record.rung, Rung::R0);
         assert!(record.binary_bytes.is_some_and(|bytes| bytes > 0));
         assert!(record.build_seconds > 0.0);
+        // The fixture is one file of one line, and every one of these being present is what makes
+        // the seconds above it interpretable.
+        assert_eq!(record.source_files, Some(1));
+        assert_eq!(record.source_lines, Some(1));
+        assert!(record.source_bytes.is_some_and(|bytes| bytes > 0));
+    }
+
+    #[test]
+    fn the_source_count_is_the_same_at_every_level_because_the_source_is() {
+        // The report takes it off whichever cell it meets first, so a count that moved with the
+        // level would make the project index depend on which levels a run happened to cover.
+        let Some(f) = fixture("same-source", "int main(void){return 0;}\n") else {
+            return;
+        };
+        let manifest = manifest("");
+        let at = |level| {
+            let mut job = job(&f, &manifest);
+            job.level = level;
+            graded(&job, Slot::A).unwrap()
+        };
+        let low = at(Level::O0);
+        let high = at(Level::O2);
+        assert_eq!(low.source_files, high.source_files);
+        assert_eq!(low.source_lines, high.source_lines);
+        assert_eq!(low.source_bytes, high.source_bytes);
     }
 
     #[test]

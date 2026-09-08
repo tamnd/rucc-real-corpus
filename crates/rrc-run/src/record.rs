@@ -217,6 +217,20 @@ pub struct RunRecord {
     /// The size of the data segment.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub data_bytes: Option<u64>,
+    /// How many source files the pinned archive arrived with.
+    ///
+    /// The three source fields are a property of the pin rather than of the run, so every cell of
+    /// a project carries the same three numbers and a reader gets them without a second file to
+    /// join against. They are here because a build time or a memory figure with no idea of how
+    /// much code went in is a reading nobody can interpret, and `crate::input` says what counts.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub source_files: Option<u32>,
+    /// How many lines are in those files.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub source_lines: Option<u64>,
+    /// How many bytes are in those files.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub source_bytes: Option<u64>,
     /// The first error the compiler printed, normalized.
     ///
     /// This is the grouping key for the failure clustering in `spec/11-reporting.md`, and it is
@@ -390,6 +404,9 @@ mod tests {
             binary_bytes: Some(17_000),
             text_bytes: None,
             data_bytes: None,
+            source_files: Some(2),
+            source_lines: Some(500),
+            source_bytes: Some(15_000),
             first_diagnostic: None,
             log_path: Some("logs/jsmn-O2.log".into()),
             oracle_declared: Oracle::SelfChecking,

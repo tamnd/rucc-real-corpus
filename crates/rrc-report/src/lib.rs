@@ -11,6 +11,8 @@
 //! - [`cluster`] groups failures by diagnostic, which turns forty red cells into five pieces of
 //!   work.
 //! - [`cost`] is code size and build time as ratios, per project, never averaged.
+//! - [`source`] is how much C went in, which is the denominator the cost pages need before any
+//!   of their numbers can be read.
 //! - [`features`] inverts the manifests into a feature to projects map, sorted by what to do
 //!   next, which is the only artefact here that answers a question about the future.
 //! - [`diff`] compares two runs, which is what turns a corpus into a regression suite.
@@ -24,6 +26,7 @@ pub mod features;
 pub mod jsonl;
 pub mod markdown;
 pub mod pages;
+pub mod source;
 pub mod summary;
 
 pub use cluster::{Cluster, clusters};
@@ -31,6 +34,7 @@ pub use cost::{Cost, costs};
 pub use diff::Diff;
 pub use features::{Demand, Map, Reacher};
 pub use markdown::Report;
+pub use source::Source;
 pub use summary::Summary;
 
 #[cfg(test)]
@@ -67,6 +71,9 @@ mod tests {
             binary_bytes: None,
             text_bytes: None,
             data_bytes: None,
+            source_files: None,
+            source_lines: None,
+            source_bytes: None,
             first_diagnostic: None,
             log_path: None,
             oracle_declared: Oracle::SelfChecking,

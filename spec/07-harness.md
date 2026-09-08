@@ -54,15 +54,18 @@ project, pin-sha256, rung, level, host, gcc-version, rucc-version, rucc-commit,
 outcome, phase-reached, build-seconds, test-seconds, peak-rss,
 tests-run, tests-passed, tests-baseline,
 binary-bytes, text-bytes, data-bytes,
+source-files, source-lines, source-bytes,
 first-diagnostic, log-path, oracle-used, oracle-declared, parallel, concurrency,
 observed-outcome, excluded-by
 ```
 
-Five fields deserve a note.
+Six fields deserve a note.
 
 **`phase-reached`** is one of `fetched`, `configured`, `built`, `linked`, `tested`, and it is what makes "did not build" an informative outcome. A project that fails at `configured` and one that fails at `linked` are different bugs and a boolean loses that.
 
 **`first-diagnostic`** is the first `rucc: error:` line, normalized: paths made relative, addresses and temporary filenames stripped. It is the grouping key for document 11's failure clustering, and it is why forty projects failing on `E0686` show up as one row rather than forty.
+
+**`source-files`, `source-lines` and `source-bytes`** are how much C came out of the pinned archive, and they are the only three fields on the record that are not about the run. They are counted from the extracted tree before any build step has run, over every `.c`, `.h`, `.cc`, `.cpp`, `.hpp` and `.s` file in it, which means they are the same on every host, at every level and on both compilers. That redundancy is deliberate: a record that has been filtered out of a run and mailed to somebody carries its own denominator, and every other number on it is uninterpretable without one. Four seconds is a slow build of a header only parser and a fast build of an interpreter. What is counted is the tree as it arrived rather than the files the build chose to compile, because the second question means parsing somebody else's Makefile and the first one is the tree the pin is a hash of. A tree with a vendored copy of zlib in it counts the vendored copy. The three fields are absent rather than zero when the walk found nothing, since a project of zero lines is a tree that could not be read and not a small project.
 
 **`oracle-used` against `oracle-declared`** is document 06.5's guarantee made visible. When they differ, the project was graded weaker than its manifest claims and the report says so in a distinct column rather than a footnote.
 

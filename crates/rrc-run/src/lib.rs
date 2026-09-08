@@ -18,6 +18,8 @@
 //! - [`diagnostic`] takes the first error off a failed build and normalizes it until two projects
 //!   failing on the same missing feature produce the same string.
 //! - [`sizes`] measures the binary, because code size is the one quality number that is free.
+//! - [`input`] measures the source that went in, which is the denominator every one of those
+//!   numbers needs and none of them carried until it existed.
 //! - [`record`] is the record itself, the outcome taxonomy and the JSON Lines log.
 //!
 //! What ties those together:
@@ -46,6 +48,7 @@ pub mod diagnostic;
 pub mod driver;
 pub mod env;
 pub mod exec;
+pub mod input;
 pub mod interrogate;
 pub mod memory;
 pub mod parse;
@@ -63,6 +66,7 @@ pub use diagnostic::Normalizer;
 pub use driver::{Compiler, Dispatch, Extent, Graded, Job, Trial, grade};
 pub use env::{EnvPlan, SOURCE_DATE_EPOCH, environment};
 pub use exec::{Completed, Ending, Invocation};
+pub use input::Input;
 pub use interrogate::{Divergence, Names, Where};
 pub use parse::{Counts, counts};
 pub use record::{Outcome, Phase, Provenance, RecordLog, RunRecord, read_log};
