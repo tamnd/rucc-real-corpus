@@ -91,7 +91,10 @@ mod platform {
             // `VmRSS` and not the `rss` field of `stat`, because that one counts pages and the
             // page size is not four kilobytes everywhere this runs. The kernel does the
             // arithmetic here and says kilobytes.
-            if let Some(kilobytes) = kilobytes_of(&status, "VmRSS:") {
+            // Zero is dropped for the same reason it is on macOS. A zombie here has no `VmRSS`
+            // line at all so it never gets this far, but a process that reports the field as zero
+            // would otherwise become a measurement saying no memory was used.
+            if let Some(kilobytes) = kilobytes_of(&status, "VmRSS:").filter(|&k| k > 0) {
                 largest = largest.max(Some(kilobytes * 1024));
             }
         }
@@ -108,6 +111,12 @@ mod platform {
     /// There is no `/proc` here and no way to ask the kernel directly without the unsafe calls
     /// the workspace forbids, so this is the reading a person would take by hand. `rss` comes
     /// back in kilobytes.
+    ///
+    /// A process that has exited and not yet been reaped is still listed, still carries the
+    /// group, and reports a resident set of zero. That zero is not a measurement of anything and
+    /// it is the one value this column must never hold, so it is dropped rather than maximised
+    /// over. Without that, a command short enough to be a zombie by the first sample comes back
+    /// as a compiler that used no memory.
     pub fn largest_in_group(leader: u32) -> Option<u64> {
         let said = Command::new("/bin/ps")
             .args(["-A", "-o", "pgid=,rss="])
@@ -121,7 +130,7 @@ mod platform {
                 let mut columns = line.split_whitespace();
                 let group: u32 = columns.next()?.parse().ok()?;
                 let kilobytes: u64 = columns.next()?.parse().ok()?;
-                (group == leader).then_some(kilobytes * 1024)
+                (group == leader && kilobytes > 0).then_some(kilobytes * 1024)
             })
             .max()
     }
