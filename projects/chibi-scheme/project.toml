@@ -50,9 +50,10 @@ regex = "(?m)^(\\d+) out of (\\d+) \\([0-9.]+%\\) tests passed"
 baseline-tests = 1227
 requires = ["sh"]
 
-# Around forty translation units plus a self hosted step that runs the interpreter over its own
-# library to build the images the suite loads, so a compiler that is slow pays for it twice. The
-# suite itself is four seconds under gcc.
+# The interpreter, the shared library and a self hosted step that runs the interpreter over its own
+# library to build the images the suite loads, so a compiler that is slow pays for it twice. On the
+# reference machine gcc takes between twenty six and fifty nine seconds depending on the level and
+# the suite takes about four, so the build limit is the one that matters and it is slack.
 [limits]
 build-seconds = 1800
 test-seconds = 600
