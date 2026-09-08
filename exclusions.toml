@@ -34,3 +34,12 @@ host = "macos-aarch64"
 issue = "upstream:https://github.com/tamnd/rucc-real-corpus/issues/41"
 why = "gcc 16.2.0 on aarch64 apple darwin gives an internal compiler error, in aarch64_function_arg_alignment at config/aarch64/aarch64.cc:7524, compiling XXH3_len_0to16_64b inlined into XXH3_64bits at -O1. The crash is in the back end and the other three levels build and pass, so this is a gcc bug on this host and criterion 3 of section 3.2 says a cell gcc cannot produce is not evidence about us. It is scoped to the host it happens on, because the same cell on linux x86-64 has nothing wrong with it."
 since = "2026-09-07"
+
+[[exclude]]
+project = "femtolisp"
+case = "femtolisp"
+level = "*"
+host = "macos-aarch64"
+issue = "upstream:https://github.com/tamnd/rucc-real-corpus/issues/100"
+why = "llt/utils.h picks the word size and the byte order from a list of architecture macros that runs __i386__, __x86_64__, __ppc__, __ppc64__ and then #error \"unknown architecture\", and aarch64 falls off the end of it. gcc 16.2.0 cannot produce the cell either, so section 3.2 criterion 3 says it is not evidence about us, and the pin is from 2019 with nothing after it to pin past. Every level on linux x86-64 builds and passes, which is why this is scoped to the one host."
+since = "2026-09-08"

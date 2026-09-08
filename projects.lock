@@ -58,6 +58,14 @@ licence-sha256 = "9577b9c846f61fd69a0d8ac965998c6450c7d8969f71f0bb4a931b91aebad2
 verified = "2026-09-08"
 
 [[project]]
+name = "femtolisp"
+url = "https://codeload.github.com/JeffBezanson/femtolisp/tar.gz/ec7601076a976f845bc05ad6bd3ed5b8cde58a97"
+sha256 = "a3a50cd092eb0b9bc65fae43b802e8a1cfbd3dd3b318ffc81c221adfe5f2a30e"
+bytes = 394899
+licence-sha256 = "081b0afd337461294dace894aac211c09f97f29d7ffb7b962650f595f434f5b5"
+verified = "2026-09-08"
+
+[[project]]
 name = "gdbm"
 url = "https://ftp.gnu.org/gnu/gdbm/gdbm-1.26.tar.gz"
 sha256 = "6a24504a14de4a744103dcb936be976df6fbe88ccff26065e54c1c47946f4a5e"

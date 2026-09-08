@@ -1,0 +1,73 @@
+[project]
+name = "femtolisp"
+rung = 3
+upstream = "https://github.com/JeffBezanson/femtolisp"
+licence = "BSD-3-Clause"
+licence-file = "LICENSE"
+description = "a lisp in about thirteen thousand lines, whose interpreter is the thing that runs its own unit tests"
+# The dispatch loop is a computed goto and the Makefile turns it on outright rather than behind a
+# probe, so there is no configuration of this project that does not demand it. Errors unwind with
+# setjmp and longjmp through the interpreter's own stack. A value is a machine word with the type
+# in its low bits, so reading one is a mask and a shift and writing one is an or, which is the
+# oldest trick in the interpreter book and the one that puts the most pressure on what a compiler
+# is allowed to assume about a pointer.
+demands = ["computed-goto", "setjmp-longjmp", "bit-manipulation"]
+
+# A commit rather than a tag, because there has never been a release. The last change upstream is
+# from 2019 and the hash below is the tarball, so the pin is the bytes.
+[source]
+url = "https://codeload.github.com/JeffBezanson/femtolisp/tar.gz/ec7601076a976f845bc05ad6bd3ed5b8cde58a97"
+sha256 = "a3a50cd092eb0b9bc65fae43b802e8a1cfbd3dd3b318ffc81c221adfe5f2a30e"
+strip-components = 1
+
+# The release target rather than the default, because the default is `release test` and the harness
+# runs the suite itself. Running it twice would put the interpreter's own verdict in the build log
+# where nothing grades it.
+[build]
+system = "make"
+targets = ["release"]
+
+# Both Makefiles put $(CFLAGS) at the end of their own flag line, after the -O2 in the top one and
+# the -O3 in llt's, so the level lands last and wins in both. A command line assignment reaches the
+# sub make too, which matters here because llt is half the object files.
+[build.level-flags]
+variable = "CFLAGS"
+why = "the Makefile writes -O2 into its own SHIPFLAGS and appends CFLAGS after it, so CFLAGS is the last -O on the line"
+
+# The two flags below are what this project needs to reach a compiler released fifteen years after
+# it was written, and neither of them changes a byte of it.
+#
+# string.c calls wcwidth and includes <wchar.h>, which under glibc only declares wcwidth when the
+# program has asked for X/Open. Nothing asked, so gcc 16 sees no declaration, and an implicit
+# declaration has been an error rather than a warning since gcc 14. The function that gets linked
+# is femtolisp's own either way, since llt/wcwidth.c defines it and libllt.a is ahead of libc on
+# the link line, so this makes the declaration visible and changes nothing about which code runs.
+[[build.flags]]
+flag = "-D_XOPEN_SOURCE=700"
+why = "string.c calls wcwidth, which glibc's wchar.h only declares for a program that asked for X/Open, and an implicit declaration is an error in gcc 14 and later"
+
+[[build.flags]]
+flag = "-D_DEFAULT_SOURCE"
+why = "asking for X/Open switches off the defaults, and read.c calls strcasecmp, which goes away with them"
+
+# unittest.lsp is the suite the project's own `make test` runs, and it prints one line. That line
+# is the whole of its output, there is no timing and no path in it, so the expectation is the whole
+# stream rather than a marker inside it. A failed assertion prints what failed and exits one, so a
+# suite that stops halfway cannot reach the sentence and cannot pass.
+#
+# It is a recorded oracle and not a suite one because there is no count to parse. The interpreter
+# under test is the one running the tests, which is the E4 shape this rung is on the list for, but
+# the number of assertions it got through is not something it says out loud.
+[test]
+command = ["sh", "-c", "cd tests && exec ../flisp unittest.lsp"]
+oracle = "recorded"
+expect-output = "all tests pass"
+requires = ["sh"]
+
+# Twenty one translation units, six of the interpreter plus its main and fourteen of llt, and a
+# suite that finishes in under a second at every level, so both limits are here for a compiler that
+# is slow rather than for a project that is big. On the reference machine gcc takes between eight
+# and thirty seconds to build it.
+[limits]
+build-seconds = 900
+test-seconds = 300
