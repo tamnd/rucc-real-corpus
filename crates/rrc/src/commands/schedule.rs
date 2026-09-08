@@ -1469,13 +1469,13 @@ command = ["./sample"]
     fn asking_for_a_level_a_rung_does_not_run_does_not_invent_a_result_for_it() {
         let manifest = manifest_at(Rung::R0);
         let plan = RunPlan {
-            levels: Some(vec![Level::O2, Level::O3]),
+            levels: Some(vec![Level::O2, Level::Lto]),
             ..RunPlan::default()
         };
         assert_eq!(
             levels_for(&manifest, &plan),
             vec![Level::O2],
-            "rung zero's table has no O3, and a run that reports one is reporting a cell that \
+            "rung zero's table has no lto, and a run that reports one is reporting a cell that \
              does not exist"
         );
     }
@@ -1483,10 +1483,11 @@ command = ["./sample"]
     #[test]
     fn with_no_levels_asked_for_a_project_runs_at_its_own() {
         let manifest = manifest_at(Rung::R4);
-        assert_eq!(
-            levels_for(&manifest, &RunPlan::default()),
-            manifest.levels()
-        );
+        let plan = RunPlan {
+            levels: None,
+            ..RunPlan::default()
+        };
+        assert_eq!(levels_for(&manifest, &plan), manifest.levels());
     }
 
     #[test]

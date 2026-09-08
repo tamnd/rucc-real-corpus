@@ -10,7 +10,7 @@ Four parts, and all four hold or the rung is not climbed. This is parent documen
 
 1. **It builds** with `CC=rucc` and the project's own unmodified build system, with **no source patches**, per document 09.
 2. **Its own test suite passes at the GCC baseline**, meaning the same count of passing tests as a GCC 16 build of the same pin on the same machine produces, not "the tests that passed last week".
-3. **It passes at every optimization level the rung requires**, which is not the same set at every rung. R0 through R2 require `-O0`, `-O1`, `-O2`, `-Os`. R3 adds `-O3`. R4 adds `-flto`. The staging is document 4.7.
+3. **It passes at every optimization level the rung requires**, which is not the same set at every rung. R0 through R3 require `-O0`, `-O1`, `-O2`, `-Os` and `-O3`. R4 adds `-flto`. The staging is document 4.7.
 4. **The build is byte-identical across two runs**, per parent document 03's determinism requirement.
 
 The changed clause is 2: the parent says "at the same level as a GCC build passes it", and this document makes that a recorded number rather than a judgement, because eighty projects cannot be judged.
@@ -27,7 +27,7 @@ The smallest real code that exists. A single translation unit or a handful, invo
 
 **Why it exists when `rucc-compat` already runs single files:** these are programs somebody uses, not test cases. CoreMark validates itself by computing a CRC over its own intermediate state and refusing to print `Correct operation validated` if the number is wrong, which is a self-check written by people who expected compilers to be wrong about the specific things compilers are wrong about. `c4` is a C compiler in 500 lines that compiles itself and then compiles a hello world with the result, which is a two-stage oracle in a file small enough to read.
 
-**Exit:** every R0 project passes at `-O0`, `-O1`, `-O2`, `-Os`, in under a minute total.
+**Exit:** every R0 project passes at `-O0`, `-O1`, `-O2`, `-Os` and `-O3`, in under a minute total.
 
 ## 4.2 R1: a library with a hand-written Makefile
 
@@ -39,7 +39,7 @@ One library, one `make`, one test binary. No `configure`, no CMake, nothing gene
 
 **Why it is a rung and not folded into R0:** the first time the compiler emits two objects and links them, the symbol table, the relocations and the ABI at the call boundary all become load-bearing at once, and separating that step from the build-system step is what makes both diagnosable.
 
-**Exit:** every R1 project passes at the four levels; every project's static archive links against a GCC-built test driver and vice versa, which is the cheapest available ABI cross-check and is document 08.5.
+**Exit:** every R1 project passes at the five levels; every project's static archive links against a GCC-built test driver and vice versa, which is the cheapest available ABI cross-check and is document 08.5.
 
 ## 4.3 R2: autoconf, CMake, and the interrogation
 
@@ -51,7 +51,7 @@ The rung where the build system asks us questions and builds a different program
 
 This is the rung where the failure mode changes character. Below it, a failure is `rucc: error:`. Here a failure is a build that succeeded and produced the wrong program, because `configure` concluded we do not have `__builtin_clz` and took the portable path, or concluded we do and took a path we then miscompile. Document 08.8 specifies the configure-log differential that catches this: the `config.h` a rucc configure produces is diffed against the one a GCC configure produces, and a difference is reported even when the build then succeeds.
 
-**Exit:** every R2 project passes at the four levels; the `config.h` differential is clean or every difference is in the register with an issue.
+**Exit:** every R2 project passes at the five levels; the `config.h` differential is clean or every difference is in the register with an issue.
 
 ## 4.4 R3: a language runtime
 
@@ -89,14 +89,20 @@ Parent document 14.2, unchanged, restated as the top of this ladder so that the 
 
 | rung | `-O0` | `-O1` | `-O2` | `-Os` | `-O3` | `-flto` |
 |---|---|---|---|---|---|---|
-| R0 | yes | yes | yes | yes | | |
-| R1 | yes | yes | yes | yes | | |
-| R2 | yes | yes | yes | yes | | |
+| R0 | yes | yes | yes | yes | yes | |
+| R1 | yes | yes | yes | yes | yes | |
+| R2 | yes | yes | yes | yes | yes | |
 | R3 | yes | yes | yes | yes | yes | |
 | R4 | yes | yes | yes | yes | yes | yes |
 | R5 | yes | yes | yes | yes | yes | yes |
 
-The staging is a cost decision and it is honest about being one. Six levels times eighty projects is 480 builds and that does not fit in any budget document 12 can defend. The levels are added at the rung where the thing they stress first exists: `-O3`'s aggressive inlining and unrolling need a program with a hot loop worth unrolling, and `-flto` needs a program whose whole is more than its parts.
+`-O3` used to start at R3 and now starts at R0. The staging was a cost decision and this section was honest about being one, so the change has to be argued on cost and on what the level buys, in that order.
+
+**What it costs.** Rungs 0 through 2 are a hundred and six minutes of cell time in the differential of section 12.5, so a fifth level is about twenty six minutes more, and the nightly has that inside its four hours. The per commit job does not, because fifteen minutes is a hard number in section 12.1 and 104 cells would become 130. So the per commit job names its four levels rather than taking the rung's, which is the one place in the harness where a level set is written down instead of derived, and section 12.1 says why. The record cache of section 12.9 does not enter into either figure. The nightly runs with `--refresh` and builds everything by design. What the cache changes is the run somebody starts by hand while they are working, which is where a fifth level would otherwise be felt most.
+
+**What it buys.** `-O3` is where inlining and unrolling get aggressive, and both of those rewrite code the smaller levels also run, so a bug in either is a bug that was always there and only becomes visible here. Finding it against `jsmn` at R0 is finding it in a program somebody can read in an afternoon. Finding it first against a language runtime at R3 is finding it in a hundred thousand lines with a garbage collector in them. The difference between those two mornings is the whole argument for the ladder, and staging the level to R3 was spending that argument to save twenty six minutes.
+
+`-flto` is still staged and that staging is not a cost decision, which is why nothing here retires it. It is a whole program property, so it needs a program whose whole is more than its parts, and an R0 project is one translation unit with nothing to inline across. The level would run and it would mean nothing.
 
 **What this costs:** an `-O3` bug in an R1 library is not caught by this corpus until somebody moves the project up or runs the full matrix by hand. That is a real hole. It is mitigated by `rucc-corpus`, which runs every generated program at every level and is cheap enough to, and it is the reason document 13.5 asks for `-Os` and `-flto` there.
 
