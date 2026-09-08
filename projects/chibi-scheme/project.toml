@@ -1,0 +1,59 @@
+[project]
+name = "chibi-scheme"
+rung = 3
+upstream = "https://github.com/ashinn/chibi-scheme"
+licence = "BSD-3-Clause"
+licence-file = "COPYING"
+description = "an R7RS Scheme in about nineteen thousand lines, whose garbage collector walks the C stack looking for pointers"
+# The collector is the reason this project is on the list. It takes the address of one of its own
+# locals, adds one to it, and walks upward comparing against a base it saved on the way in, which
+# is a pointer comparison between objects that have nothing to do with each other and is exactly
+# where a compiler's model of what a pointer is stops being a formality. A value is a machine word
+# with the fixnum tag in its low bit, so making one is a shift and an add and reading one is a
+# shift back. The evaluator is a switch over ninety nine opcodes with no computed goto anywhere,
+# which makes it the plain counterpart to Lua and femtolisp on that axis.
+demands = ["pointer-arithmetic", "switch-dispatch", "bit-manipulation"]
+
+# A commit rather than a tag. The last release is 0.11 from 2023 and the tree has moved since, and
+# the hash below is the tarball, so the pin is the bytes rather than a name that can be repointed.
+[source]
+url = "https://codeload.github.com/ashinn/chibi-scheme/tar.gz/6991e209307ec4768a51394f9850975b5360e32a"
+sha256 = "945aff4a5dfcc8a7a31309283bf99c57d2612b770bea2128c32a976bf1f89f61"
+strip-components = 1
+
+# The default target, which builds the interpreter, the shared library and the compiled images the
+# suite loads. There is a configure script in the tarball and it is not used, because Makefile.detect
+# is what actually decides the platform and it runs whether or not configure did.
+[build]
+system = "make"
+
+[build.level-flags]
+variable = "CFLAGS"
+why = "Makefile.detect writes -O3 into XCFLAGS and appends CFLAGS after it, so CFLAGS is the last -O on the line and the only variable that can carry the level"
+
+# The suite is r7rs-tests.scm, which is the R7RS standard's own examples turned into assertions and
+# run by the interpreter we just built. It prints a running count per section and one grand total at
+# the left margin, which is the line this pattern matches: every other total is indented under the
+# section it belongs to, so anchoring at the start of a line is what separates the total from the
+# parts. Both numbers are captured, so a suite that runs fewer cases than it did at admission fails
+# even when every case it ran passed.
+#
+# One thing to know when reading a size from this project. Makefile.detect puts -g -g3 in front of
+# the level and nothing can take them out again, so every binary here carries full debug information
+# and the bytes on disk are not comparable with any other row in the table. That is upstream's
+# choice and changing it would be a patch.
+[test]
+command = ["make", "test"]
+oracle = "suite"
+parser = "custom-regex"
+regex = "(?m)^(\\d+) out of (\\d+) \\([0-9.]+%\\) tests passed"
+baseline-tests = 1227
+requires = ["sh"]
+
+# The interpreter, the shared library and a self hosted step that runs the interpreter over its own
+# library to build the images the suite loads, so a compiler that is slow pays for it twice. On the
+# reference machine gcc takes between twenty six and fifty nine seconds depending on the level and
+# the suite takes about four, so the build limit is the one that matters and it is slack.
+[limits]
+build-seconds = 1800
+test-seconds = 600

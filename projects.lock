@@ -34,6 +34,14 @@ licence-sha256 = "a45d0bb572ed792ed34627a72621834b3ba92aab6e2cc4e04301dee7a728d7
 verified = "2026-09-08"
 
 [[project]]
+name = "chibi-scheme"
+url = "https://codeload.github.com/ashinn/chibi-scheme/tar.gz/6991e209307ec4768a51394f9850975b5360e32a"
+sha256 = "945aff4a5dfcc8a7a31309283bf99c57d2612b770bea2128c32a976bf1f89f61"
+bytes = 1258996
+licence-sha256 = "86805fe7af1bd20d5f5050d86c61d6fe038452cb08c6106a08761e010d37da43"
+verified = "2026-09-08"
+
+[[project]]
 name = "cjson"
 url = "https://github.com/DaveGamble/cJSON/archive/refs/tags/v1.7.19.tar.gz"
 sha256 = "7fa616e3046edfa7a28a32d5f9eacfd23f92900fe1f8ccd988c1662f30454562"
