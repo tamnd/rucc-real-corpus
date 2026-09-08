@@ -158,10 +158,19 @@ impl Reuse {
 
 impl Default for RunPlan {
     /// Rungs 0 and 1 at the four base levels, which is what the per commit budget admits.
+    ///
+    /// The four are written out rather than taken from the rungs, and this is the only place in
+    /// the harness where a level set is spelled instead of derived. Every rung requires `-O3` as
+    /// of `spec/04-the-ladder.md` section 4.7, and taking the rung's levels here would turn 104
+    /// cells into 130 and the fifteen minutes of section 12.1 into about nineteen. That budget is
+    /// a hard number rather than a target, so the per commit job is the one that does not get the
+    /// fifth level, and the nightly, which has four hours, is the one that does.
+    ///
+    /// Anybody who wants it here says `--levels O0,O1,O2,Os,O3` and waits the extra four minutes.
     fn default() -> Self {
         Self {
             rungs: vec![Rung::R0, Rung::R1],
-            levels: None,
+            levels: Some(vec![Level::O0, Level::O1, Level::O2, Level::Os]),
             projects: Vec::new(),
             twice: false,
             jobs: 1,
@@ -937,8 +946,10 @@ mod tests {
              somebody has to type"
         );
         assert_eq!(
-            plan.levels, None,
-            "each rung brings its own required levels"
+            plan.levels,
+            Some(vec![Level::O0, Level::O1, Level::O2, Level::Os]),
+            "the four base levels are named rather than taken from the rungs, because every rung \
+             requires O3 now and the fifteen minutes of spec 12.1 does not"
         );
         assert!(!plan.twice);
         assert_eq!(

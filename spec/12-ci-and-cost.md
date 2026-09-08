@@ -8,6 +8,8 @@ Three tiers, three budgets, and a rule about what happens when a budget is excee
 
 **What runs.** Rungs 0 and 1 at `-O0`, `-O1`, `-O2`, `-Os`. Twenty six projects, four levels, 104 cells, plus the R1 ABI cross-check of document 08.5.
 
+**The four levels are named here rather than taken from the rung**, and this is the only place in the harness where a level set is written down instead of derived. Document 04.7 requires `-O3` at every rung, so taking the rung's levels would make this job 130 cells and about nineteen minutes. The budget below is a hard number, so the fifth level goes to the nightly and this job keeps its four. Anybody who wants it here passes `--levels O0,O1,O2,Os,O3` and waits for it.
+
 **Why those.** They are the rungs whose failures are unambiguous. A red cell here is a compiler bug, not a build-system interaction, so a developer who broke something learns it before their next commit and learns it in a form they can act on without a bisection.
 
 **The budget is fifteen minutes wall clock** on the reference machine with the fetch cache warm, and it is a hard number: a change that pushes it past fifteen minutes has to remove something or move it to nightly. This is the budget document 03.6 sized the list against.

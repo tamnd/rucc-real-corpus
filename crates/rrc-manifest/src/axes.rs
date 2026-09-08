@@ -36,9 +36,24 @@ impl Rung {
     }
 
     /// The optimization levels this rung requires, from the table in `spec/04-the-ladder.md` section 4.7.
+    ///
+    /// `-O3` used to start at R3 and now starts at R0. The staging was a cost decision and section
+    /// 4.7 said so: six levels times eighty projects is 480 builds and nothing was going to pay for
+    /// them. The result cache pays for them, because the only cells a run builds now are the ones
+    /// whose inputs moved, and a level that is never the level anything changed at is a level that
+    /// costs one cold run and then nothing.
+    ///
+    /// It is worth spending the cache on this one rather than on something else. `-O3` is where
+    /// inlining and unrolling get aggressive, and a bug in either is a bug in code the smaller
+    /// levels also run, so finding it against `jsmn` at R0 is finding it in a program somebody can
+    /// read in an afternoon. Finding the same bug first against a language runtime at R3 means
+    /// finding it in a hundred thousand lines with a garbage collector in them.
+    ///
+    /// `-flto` is still staged, and for a reason that is not cost. It is a whole program property,
+    /// so it needs a program whose whole is more than its parts, and an R0 project is one
+    /// translation unit with nothing to inline across.
     #[must_use]
     pub fn required_levels(self) -> &'static [Level] {
-        const BASE: &[Level] = &[Level::O0, Level::O1, Level::O2, Level::Os];
         const WITH_O3: &[Level] = &[Level::O0, Level::O1, Level::O2, Level::Os, Level::O3];
         const WITH_LTO: &[Level] = &[
             Level::O0,
@@ -49,8 +64,7 @@ impl Rung {
             Level::Lto,
         ];
         match self {
-            Self::R0 | Self::R1 | Self::R2 => BASE,
-            Self::R3 => WITH_O3,
+            Self::R0 | Self::R1 | Self::R2 | Self::R3 => WITH_O3,
             Self::R4 | Self::R5 => WITH_LTO,
         }
     }
@@ -342,11 +356,28 @@ mod tests {
     }
 
     #[test]
-    fn levels_are_staged_by_rung() {
-        assert_eq!(Rung::R0.required_levels().len(), 4);
+    fn every_rung_is_built_at_o3() {
+        // The one that used to be staged and is not any more. A bug in inlining or unrolling is
+        // easier to read against a one file project than against a language runtime, so the
+        // smallest rung is the one that most wants this level rather than the one that least
+        // needs it.
+        for rung in Rung::ALL {
+            assert!(
+                rung.required_levels().contains(&Level::O3),
+                "{rung} is not built at -O3"
+            );
+        }
+    }
+
+    #[test]
+    fn link_time_optimization_is_still_staged_because_it_is_not_a_cost_decision() {
+        // A whole program property needs a program whose whole is more than its parts, and an R0
+        // project is one translation unit with nothing to inline across. No cache makes that
+        // level mean anything down there.
+        assert_eq!(Rung::R0.required_levels().len(), 5);
         assert_eq!(Rung::R3.required_levels().len(), 5);
         assert_eq!(Rung::R5.required_levels().len(), 6);
-        assert!(!Rung::R2.required_levels().contains(&Level::O3));
+        assert!(!Rung::R2.required_levels().contains(&Level::Lto));
         assert!(Rung::R4.required_levels().contains(&Level::Lto));
     }
 
