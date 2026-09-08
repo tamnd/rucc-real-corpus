@@ -396,7 +396,11 @@ mod tests {
         // empty instead.
         let out = run(&shell("true", 10)).unwrap();
         assert_eq!(out.ending, Ending::Exited(0));
-        assert!(out.peak_rss.is_none_or(|bytes| bytes > 0));
+        assert!(
+            out.peak_rss.is_none_or(|bytes| bytes > 0),
+            "a command too short to sample reported {:?} bytes, and a zero here reads as a compiler that used no memory",
+            out.peak_rss
+        );
     }
 
     #[test]
