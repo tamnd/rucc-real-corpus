@@ -255,6 +255,10 @@ impl Build {
             value.push(' ');
             value.push_str(&note.flag);
         }
+        if let Some(suffix) = &carrier.suffix {
+            value.push(' ');
+            value.push_str(suffix);
+        }
         Some(format!("{}={value}", carrier.variable))
     }
 
@@ -390,6 +394,21 @@ pub struct LevelFlags {
     pub variable: String,
     /// Which line of the Makefile makes this necessary, in a sentence somebody can check.
     pub why: String,
+    /// What goes on the end of the assignment, after the level and after the manifest's flags.
+    ///
+    /// Only for the case where the variable being replaced was built out of another one that
+    /// still has to be there. `quickjs` writes `CFLAGS_OPT=$(CFLAGS) -O2`, so a level arriving
+    /// through `CFLAGS` lands before a literal `-O2` and loses, and the only way the level goes
+    /// last is to replace `CFLAGS_OPT` outright. Doing that drops `-fwrapv`, which an engine
+    /// relying on signed overflow wrapping cannot do without, so `$(CFLAGS)` has to come back on
+    /// the end.
+    ///
+    /// This is separate from `build.flags` and not a special case of it, because a flag there
+    /// also goes into the environment, and `CFLAGS=-O2 $(CFLAGS)` in the environment is a
+    /// variable that references itself and make refuses to run at all. What goes here reaches
+    /// the make command line and nothing else.
+    #[serde(default)]
+    pub suffix: Option<String>,
 }
 
 const fn default_build_system() -> BuildSystem {
@@ -669,6 +688,22 @@ oracle = "self-checking"
         let manifest = parse(&text).unwrap();
         let assignment = manifest.build.level_assignment(Level::O2).unwrap();
         assert!(assignment.ends_with(" -I../testvectors"), "{assignment}");
+    }
+
+    #[test]
+    fn the_suffix_goes_last_and_stays_off_the_environment() {
+        // quickjs in miniature. The level has to be in front of what the Makefile was carrying
+        // and what it was carrying has to come back, which is two orderings at once, and the
+        // suffix is what says the second one.
+        let text = format!(
+            "{SAMPLE}\n[build.level-flags]\nvariable = \"CFLAGS_OPT\"\nwhy = \"the Makefile writes CFLAGS_OPT=$(CFLAGS) -O2\"\nsuffix = \"$(CFLAGS)\"\n\n[[build.flags]]\nflag = \"-fwrapv\"\nwhy = \"the engine relies on signed overflow wrapping\"\n"
+        );
+        let manifest = parse(&text).unwrap();
+        let assignment = manifest.build.level_assignment(Level::O0).unwrap();
+        assert_eq!(assignment, "CFLAGS_OPT=-O0 -fwrapv $(CFLAGS)");
+        // And the environment does not learn about it, which is the whole reason it is not
+        // spelled as a flag: CFLAGS=-O0 $(CFLAGS) is a variable that references itself.
+        assert_eq!(manifest.build.flag_list(), vec!["-fwrapv".to_string()]);
     }
 
     const TWO_PROGRAMS: &str = r#"

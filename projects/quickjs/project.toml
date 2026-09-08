@@ -1,0 +1,63 @@
+[project]
+name = "quickjs"
+rung = 3
+upstream = "https://github.com/bellard/quickjs"
+licence = "MIT"
+licence-file = "LICENSE"
+description = "Bellard's JavaScript engine, ninety thousand lines with a two hundred and thirty seven opcode interpreter at the middle of it"
+# The largest project on this rung and the one that demands the most. The dispatch loop is a
+# computed goto under any compiler defining __GNUC__, over two hundred and thirty seven opcodes,
+# which is the biggest single switch in this corpus by a wide margin. cutils.h reaches for
+# __builtin_clz, __builtin_ctz and their ll forms rather than writing the loop, which is the same
+# demand SQLite makes and is why this project is worth having before RC5 rather than after it.
+#
+# Not nan-boxing, which is worth saying because the reputation would suggest otherwise. JSValue is
+# a struct with a separate tag on a sixty four bit host and only becomes a boxed double under
+# JS_NAN_BOXING, which quickjs.h turns on for thirty two bit builds. Nothing on the machines this
+# corpus runs on takes that path.
+demands = ["computed-goto", "large-switch", "bit-builtins"]
+
+# A commit rather than a tag. Upstream tags releases by date on bellard.org and the github mirror
+# carries none at all, so the hash below is the tarball and the pin is the bytes.
+[source]
+url = "https://codeload.github.com/bellard/quickjs/tar.gz/04be246001599f5995fa2f2d8c91a0f198d3f34c"
+sha256 = "2a87ffcca6c870f764ce70a7736351bd7cff3dc1fb95a8fb059c260979f1e01a"
+strip-components = 1
+
+# The default target and nothing beside it, which leaves one loose end worth writing down. On a
+# host where the Makefile decides shared libraries are supported, `make test` compiles
+# tests/bjson.c itself, in the test step, at the level the Makefile picked rather than the one the
+# cell is for. It is the compiler under test that compiles it, because the shim is what `gcc`
+# resolves to, so the thing being measured is right and only the level on that one file is not.
+# Naming it as a target here would fix that and break the build on macOS, where the same Makefile
+# does not build shared libraries and there is no library for it to link against. It is a test
+# helper of two hundred lines and no part of the engine, so the loose end is the better trade.
+[build]
+system = "make"
+
+# The level goes in front of the Makefile's own flags rather than behind them, which is why this
+# looks unusual. quickjs writes `CFLAGS_OPT=$(CFLAGS) -O2`, so anything arriving in CFLAGS lands
+# before a literal -O2 and loses, exactly as wren's premake output does. The difference is that
+# CFLAGS_OPT is a variable and can be replaced from the command line, and putting $(CFLAGS) back
+# on the end keeps -fwrapv, -D_GNU_SOURCE and the version define that the build cannot do without.
+# CFLAGS carries no -O of its own at any point in the file, so the level stays the only one.
+[build.level-flags]
+variable = "CFLAGS_OPT"
+why = "the Makefile writes CFLAGS_OPT=$(CFLAGS) -O2, so a level arriving through CFLAGS lands before a literal -O2 and loses, and replacing CFLAGS_OPT is the only way the level goes last"
+suffix = "$(CFLAGS)"
+
+# Eleven javascript files run by the engine we just built, which is the E4 shape, but the oracle is
+# a single bit and the manifest says so rather than claiming more. The files assert and throw, a
+# throw exits non zero, and make stops on the first one, so nothing prints a count and there is no
+# count to parse. test262 is the suite that would give one and it is a separate repository of tens
+# of thousands of files, which is a different project from this one.
+[test]
+command = ["make", "test"]
+oracle = "self-checking"
+
+# Ninety thousand lines with quickjs.c alone at sixty thousand, built serially, so this is the
+# slowest build on the rung by some way and the limit is set for a compiler that is slower than gcc
+# rather than for gcc. The suite itself is under a second.
+[limits]
+build-seconds = 3600
+test-seconds = 300

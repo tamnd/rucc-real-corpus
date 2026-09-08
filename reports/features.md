@@ -20,16 +20,17 @@ Weight is what to do next. It is the sum over the held up projects of six minus 
 | `switch-dispatch` | standard | 9 | 0 | 0 | none open |
 | `struct-layout` | abi | 7 | 0 | 0 | none open |
 | `deep-macros` | preprocessor | 6 | 0 | 0 | none open |
+| `large-switch` | standard | 5 | 0 | 0 | none open |
 | `setjmp-longjmp` | standard | 5 | 0 | 0 | none open |
-| `large-switch` | standard | 4 | 0 | 0 | none open |
+| `computed-goto` | gnu-extension | 4 | 0 | 0 | none open |
 | `cmake-probes` | driver | 3 | 0 | 0 | none open |
-| `computed-goto` | gnu-extension | 3 | 0 | 0 | none open |
 | `double-formatting` | standard | 3 | 0 | 0 | none open |
 | `float-arithmetic` | standard | 3 | 0 | 0 | none open |
 | `memcpy-idioms` | gnu-builtin | 3 | 0 | 0 | none open |
 | `thread-local` | standard | 3 | 0 | 0 | none open |
 | `varargs-depth` | standard | 3 | 0 | 0 | none open |
 | `atomic-builtins` | gnu-builtin | 2 | 0 | 0 | [open](https://github.com/tamnd/rucc/issues/311) |
+| `bit-builtins` | gnu-builtin | 2 | 0 | 0 | [open](https://github.com/tamnd/rucc/issues/310) |
 | `constant-time` | standard | 2 | 0 | 0 | none open |
 | `inline-asm` | gnu-extension | 2 | 0 | 0 | none open |
 | `k-and-r-idioms` | standard | 2 | 0 | 0 | none open |
@@ -38,7 +39,6 @@ Weight is what to do next. It is the sum over the held up projects of six minus 
 | `recursion-depth` | standard | 2 | 0 | 0 | none open |
 | `rotate-idioms` | standard | 2 | 0 | 0 | none open |
 | `unaligned-access` | standard | 2 | 0 | 0 | none open |
-| `bit-builtins` | gnu-builtin | 1 | 0 | 0 | [open](https://github.com/tamnd/rucc/issues/310) |
 | `flexible-array-member` | standard | 1 | 0 | 0 | none open |
 | `long-double` | standard | 1 | 0 | 0 | none open |
 | `nan-boxing` | standard | 1 | 0 | 0 | none open |
@@ -162,6 +162,16 @@ macros expanding through several layers, including __VA_ARGS__ forwarding
 - `libconfig`, R2, not measured
 - `libgmp`, R2, not measured
 
+### `large-switch`
+
+a switch with hundreds of cases, where the jump table decision is the compiler's
+
+- `libconfig`, R2, not measured
+- `pcre2`, R2, not measured
+- `lua`, R3, not measured
+- `lua-nojumptable`, R3, not measured
+- `quickjs`, R3, not measured
+
 ### `setjmp-longjmp`
 
 setjmp and longjmp as an error mechanism, which constrains what the optimizer may keep in a register
@@ -172,14 +182,14 @@ setjmp and longjmp as an error mechanism, which constrains what the optimizer ma
 - `lua`, R3, not measured
 - `lua-nojumptable`, R3, not measured
 
-### `large-switch`
+### `computed-goto`
 
-a switch with hundreds of cases, where the jump table decision is the compiler's
+labels as values, goto *
 
-- `libconfig`, R2, not measured
-- `pcre2`, R2, not measured
+- `femtolisp`, R3, not measured
 - `lua`, R3, not measured
-- `lua-nojumptable`, R3, not measured
+- `quickjs`, R3, not measured
+- `wren`, R3, not measured
 
 ### `cmake-probes`
 
@@ -188,14 +198,6 @@ the compiler answers cmake's compiler identification and abi detection the way c
 - `brotli`, R2, not measured
 - `cjson`, R2, not measured
 - `cmocka`, R2, not measured
-
-### `computed-goto`
-
-labels as values, goto *
-
-- `femtolisp`, R3, not measured
-- `lua`, R3, not measured
-- `wren`, R3, not measured
 
 ### `double-formatting`
 
@@ -243,6 +245,13 @@ __atomic_load_n and __atomic_store_n at relaxed ordering
 
 - `rpmalloc`, R1, not measured
 - `libjansson`, R2, not measured
+
+### `bit-builtins`
+
+__builtin_clz, __builtin_ctz, __builtin_popcount and their l and ll forms
+
+- `rpmalloc`, R1, not measured
+- `quickjs`, R3, not measured
 
 ### `constant-time`
 
@@ -299,12 +308,6 @@ loads and stores through pointers the compiler cannot prove are aligned
 
 - `lz4`, R1, not measured
 - `zstd`, R2, not measured
-
-### `bit-builtins`
-
-__builtin_clz, __builtin_ctz, __builtin_popcount and their l and ll forms
-
-- `rpmalloc`, R1, not measured
 
 ### `flexible-array-member`
 

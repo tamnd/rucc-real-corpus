@@ -348,6 +348,14 @@ sha256 = "b7dae81c4dc20019c9e465d055c55e3a2963ada9433fc6e90fe15d1b70d2fa62"
 bytes = 1495
 
 [[project]]
+name = "quickjs"
+url = "https://codeload.github.com/bellard/quickjs/tar.gz/04be246001599f5995fa2f2d8c91a0f198d3f34c"
+sha256 = "2a87ffcca6c870f764ce70a7736351bd7cff3dc1fb95a8fb059c260979f1e01a"
+bytes = 636419
+licence-sha256 = "598fd7fc928e4350abce36e337ba5a1346923c5c692f5be92c3d8e29ddd7c18d"
+verified = "2026-09-08"
+
+[[project]]
 name = "rpmalloc"
 url = "https://codeload.github.com/mjansson/rpmalloc/tar.gz/5dacae8ba4ec31100dd2ed4bffd552abbd3cb29f"
 sha256 = "0c05238dc530accc386b7c25c17cd0d4a8a02177e5398b1212df27a370826f0d"
