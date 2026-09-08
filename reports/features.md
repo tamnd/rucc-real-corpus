@@ -20,6 +20,8 @@ Weight is what to do next. It is the sum over the held up projects of six minus 
 | `switch-dispatch` | standard | 8 | 0 | 0 | none open |
 | `struct-layout` | abi | 7 | 0 | 0 | none open |
 | `deep-macros` | preprocessor | 6 | 0 | 0 | none open |
+| `large-switch` | standard | 4 | 0 | 0 | none open |
+| `setjmp-longjmp` | standard | 4 | 0 | 0 | none open |
 | `cmake-probes` | driver | 3 | 0 | 0 | none open |
 | `double-formatting` | standard | 3 | 0 | 0 | none open |
 | `float-arithmetic` | standard | 3 | 0 | 0 | none open |
@@ -30,16 +32,15 @@ Weight is what to do next. It is the sum over the held up projects of six minus 
 | `constant-time` | standard | 2 | 0 | 0 | none open |
 | `inline-asm` | gnu-extension | 2 | 0 | 0 | none open |
 | `k-and-r-idioms` | standard | 2 | 0 | 0 | none open |
-| `large-switch` | standard | 2 | 0 | 0 | none open |
 | `libm-builtins` | gnu-builtin | 2 | 0 | 0 | [open](https://github.com/tamnd/rucc/issues/226) |
 | `overflow-builtins` | gnu-builtin | 2 | 0 | 0 | none open |
+| `recursion-depth` | standard | 2 | 0 | 0 | none open |
 | `rotate-idioms` | standard | 2 | 0 | 0 | none open |
-| `setjmp-longjmp` | standard | 2 | 0 | 0 | none open |
 | `unaligned-access` | standard | 2 | 0 | 0 | none open |
 | `bit-builtins` | gnu-builtin | 1 | 0 | 0 | [open](https://github.com/tamnd/rucc/issues/310) |
+| `computed-goto` | gnu-extension | 1 | 0 | 0 | none open |
 | `flexible-array-member` | standard | 1 | 0 | 0 | none open |
 | `long-double` | standard | 1 | 0 | 0 | none open |
-| `recursion-depth` | standard | 1 | 0 | 0 | none open |
 | `stdckdint` | standard | 1 | 0 | 0 | none open |
 
 ## The projects behind each row
@@ -155,6 +156,24 @@ macros expanding through several layers, including __VA_ARGS__ forwarding
 - `libconfig`, R2, not measured
 - `libgmp`, R2, not measured
 
+### `large-switch`
+
+a switch with hundreds of cases, where the jump table decision is the compiler's
+
+- `libconfig`, R2, not measured
+- `pcre2`, R2, not measured
+- `lua`, R3, not measured
+- `lua-nojumptable`, R3, not measured
+
+### `setjmp-longjmp`
+
+setjmp and longjmp as an error mechanism, which constrains what the optimizer may keep in a register
+
+- `cmocka`, R2, not measured
+- `libpng`, R2, not measured
+- `lua`, R3, not measured
+- `lua-nojumptable`, R3, not measured
+
 ### `cmake-probes`
 
 the compiler answers cmake's compiler identification and abi detection the way cmake expects
@@ -231,13 +250,6 @@ declarations and calls in the shape C had before it was standardised, which a co
 - `ncompress`, R1, not measured
 - `libjpeg`, R2, not measured
 
-### `large-switch`
-
-a switch with hundreds of cases, where the jump table decision is the compiler's
-
-- `libconfig`, R2, not measured
-- `pcre2`, R2, not measured
-
 ### `libm-builtins`
 
 __builtin_ceil, __builtin_floor and the rest of the libm shaped builtins
@@ -252,19 +264,19 @@ __builtin_add_overflow, __builtin_sub_overflow and __builtin_mul_overflow
 - `jtckdint`, R0, not measured
 - `libtommath`, R2, not measured
 
+### `recursion-depth`
+
+recursion deep enough that the frame layout and the tail call decision both matter
+
+- `parson`, R0, not measured
+- `lua-nojumptable`, R3, not measured
+
 ### `rotate-idioms`
 
 a shift left or-ed with a shift right recognised as one rotate instruction
 
 - `blake2`, R1, not measured
 - `xxhash`, R1, not measured
-
-### `setjmp-longjmp`
-
-setjmp and longjmp as an error mechanism, which constrains what the optimizer may keep in a register
-
-- `cmocka`, R2, not measured
-- `libpng`, R2, not measured
 
 ### `unaligned-access`
 
@@ -279,6 +291,12 @@ __builtin_clz, __builtin_ctz, __builtin_popcount and their l and ll forms
 
 - `rpmalloc`, R1, not measured
 
+### `computed-goto`
+
+labels as values, goto *
+
+- `lua`, R3, not measured
+
 ### `flexible-array-member`
 
 a struct ending in an incomplete array, allocated with the header in front of it
@@ -290,12 +308,6 @@ a struct ending in an incomplete array, allocated with the header in front of it
 long double at the 80 bit x86-64 format
 
 - `libmpfr`, R2, not measured
-
-### `recursion-depth`
-
-recursion deep enough that the frame layout and the tail call decision both matter
-
-- `parson`, R0, not measured
 
 ### `stdckdint`
 
@@ -360,7 +372,6 @@ These rows are why the residue above can be believed. A list that only records w
 A tag nothing reaches is either a gap in the list, which is a project worth admitting, or a tag that should not be in the vocabulary. Both are only visible if the empty rows are.
 
 - `always-inline`
-- `computed-goto`
 - `driver-print-dirs`
 - `lto`
 - `visibility-attributes`

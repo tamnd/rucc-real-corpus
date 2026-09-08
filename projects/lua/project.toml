@@ -1,0 +1,61 @@
+[project]
+name = "lua"
+rung = 3
+upstream = "https://www.lua.org/"
+licence = "MIT"
+# Upstream ships no separate licence file. The full MIT text is the comment block at the end of
+# src/lua.h, which is the same arrangement picohttpparser has and is checked the same way.
+licence-file = "src/lua.h"
+description = "the reference Lua interpreter, whose own suite is the most thorough oracle on this list"
+# The dispatch loop is a switch over about eighty opcodes that becomes a table of label addresses
+# when LUA_USE_JUMPTABLE is on, which it is by default under any compiler claiming __GNUC__. Errors
+# unwind with setjmp and longjmp, which constrains what the optimizer may leave in a register
+# across a call.
+demands = ["computed-goto", "large-switch", "setjmp-longjmp"]
+
+[source]
+url = "https://www.lua.org/ftp/lua-5.4.8.tar.gz"
+sha256 = "4f18ddae154e793e46eeab727c59ef1c0c0c2b744e7b94219710d76f530629ae"
+strip-components = 1
+
+# Lua releases its test suite as a separate tarball rather than shipping it in the source archive,
+# so the source pin on its own gives an interpreter and no way to grade it. This is the same
+# second-archive mechanism picohttpparser uses for its submodule, pinned and hashed the same way,
+# and the tests directory it lands in is absent from the source tarball.
+[[source.submodule]]
+path = "tests"
+url = "https://www.lua.org/tests/lua-5.4.8-tests.tar.gz"
+sha256 = "9581d5a7c39ffbf29b8ccde2709083c380f7bbddbd968dcb15712d2f2e33f4e5"
+strip-components = 1
+
+# The posix target rather than linux or macosx, because both of those link readline and neither the
+# interpreter nor the suite touches it, so taking them would buy an install requirement on every
+# host for nothing. posix is one of the platform targets Lua's own Makefile offers, which makes it
+# spec 9.3 case one and not a patch.
+[build]
+system = "make"
+targets = ["posix"]
+
+[build.level-flags]
+variable = "MYCFLAGS"
+why = "src/Makefile writes -O2 into CFLAGS itself and then appends MYCFLAGS after it, so MYCFLAGS is the last -O on the line and the only variable that can carry the level"
+
+# all.lua reads its files by bare name, so it only runs from inside the tests directory, and the
+# harness runs a test command in the build directory. _U=true is what Lua's own README for the
+# suite asks for and it is what turns on the internal consistency checks.
+[test]
+command = ["sh", "-c", "cd tests && exec ../src/lua -e_U=true all.lua"]
+oracle = "suite"
+parser = "lua"
+# The 26 files the suite announces, all of them run under gcc 16.2.0 on linux x86-64 at every
+# level, ending in final OK. It is a coarser number than a per assertion count and the parser says
+# so: it answers whether every file ran, and the final OK line is what answers whether every
+# assertion held.
+baseline-tests = 26
+requires = ["sh"]
+
+# The suite is a second and a half under gcc and two under a rucc built interpreter, so the test
+# limit is slack. The build is 34 translation units.
+[limits]
+build-seconds = 900
+test-seconds = 600

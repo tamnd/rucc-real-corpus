@@ -234,6 +234,34 @@ licence-sha256 = "310fe25c858a9515fc8c8d7d1f24a67c9496f84a91e0a0e41ea9975b1371e5
 verified = "2026-09-06"
 
 [[project]]
+name = "lua"
+url = "https://www.lua.org/ftp/lua-5.4.8.tar.gz"
+sha256 = "4f18ddae154e793e46eeab727c59ef1c0c0c2b744e7b94219710d76f530629ae"
+bytes = 374332
+licence-sha256 = "3b77329f9deed929a5cbe7a7d5fc81ebbb63fd869a49e0a9302fe9240caf1930"
+verified = "2026-09-08"
+
+[[project.submodule]]
+path = "tests"
+url = "https://www.lua.org/tests/lua-5.4.8-tests.tar.gz"
+sha256 = "9581d5a7c39ffbf29b8ccde2709083c380f7bbddbd968dcb15712d2f2e33f4e5"
+bytes = 137066
+
+[[project]]
+name = "lua-nojumptable"
+url = "https://www.lua.org/ftp/lua-5.4.8.tar.gz"
+sha256 = "4f18ddae154e793e46eeab727c59ef1c0c0c2b744e7b94219710d76f530629ae"
+bytes = 374332
+licence-sha256 = "3b77329f9deed929a5cbe7a7d5fc81ebbb63fd869a49e0a9302fe9240caf1930"
+verified = "2026-09-08"
+
+[[project.submodule]]
+path = "tests"
+url = "https://www.lua.org/tests/lua-5.4.8-tests.tar.gz"
+sha256 = "9581d5a7c39ffbf29b8ccde2709083c380f7bbddbd968dcb15712d2f2e33f4e5"
+bytes = 137066
+
+[[project]]
 name = "lz4"
 url = "https://codeload.github.com/lz4/lz4/tar.gz/ebb370ca83af193212df4dcbadcc5d87bc0de2f0"
 sha256 = "eb1a93e934d4fd29df6e2061ba0bf447568561764d758f4a5662c0e29370ffa9"

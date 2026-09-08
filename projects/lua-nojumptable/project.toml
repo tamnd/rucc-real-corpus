@@ -1,0 +1,51 @@
+[project]
+name = "lua-nojumptable"
+rung = 3
+upstream = "https://www.lua.org/"
+licence = "MIT"
+licence-file = "src/lua.h"
+description = "the same Lua tarball with the jump table off, so a computed goto bug is attributable without bisecting"
+# The same program as lua minus the one thing, which is what makes the pair worth two cells. What
+# is left is the switch, the setjmp unwinding and a recursive interpreter deep enough that the
+# frame layout matters.
+demands = ["large-switch", "setjmp-longjmp", "recursion-depth"]
+
+[source]
+url = "https://www.lua.org/ftp/lua-5.4.8.tar.gz"
+sha256 = "4f18ddae154e793e46eeab727c59ef1c0c0c2b744e7b94219710d76f530629ae"
+strip-components = 1
+
+[[source.submodule]]
+path = "tests"
+url = "https://www.lua.org/tests/lua-5.4.8-tests.tar.gz"
+sha256 = "9581d5a7c39ffbf29b8ccde2709083c380f7bbddbd968dcb15712d2f2e33f4e5"
+strip-components = 1
+
+[build]
+system = "make"
+targets = ["posix"]
+
+[build.level-flags]
+variable = "MYCFLAGS"
+why = "src/Makefile writes -O2 into CFLAGS itself and then appends MYCFLAGS after it, so MYCFLAGS is the last -O on the line and the only variable that can carry the level"
+
+# lvm.c turns the jump table on whenever __GNUC__ is defined and nothing has already decided, so a
+# compiler that claims the extension gets it by default. Defining it to zero is the switch lvm.c
+# offers rather than an edit to lvm.c, which makes it spec 9.3 case one.
+[[build.flags]]
+flag = "-DLUA_USE_JUMPTABLE=0"
+why = "lvm.c defaults the jump table on under any compiler defining __GNUC__, and this is the macro it reads to be told otherwise, which is what makes this project the other half of the pair"
+
+[test]
+command = ["sh", "-c", "cd tests && exec ../src/lua -e_U=true all.lua"]
+oracle = "suite"
+parser = "lua"
+# The same 26 files, counted on the same machine with the same compiler, because turning the jump
+# table off changes how the interpreter dispatches and not what it computes. A number here that
+# ever differs from the one in lua is itself the finding.
+baseline-tests = 26
+requires = ["sh"]
+
+[limits]
+build-seconds = 900
+test-seconds = 600
