@@ -15,8 +15,8 @@ Weight is what to do next. It is the sum over the held up projects of six minus 
 | `pointer-arithmetic` | standard | 13 | 0 | 0 | none open |
 | `autoconf-probes` | driver | 11 | 0 | 0 | none open |
 | `bit-manipulation` | standard | 9 | 0 | 0 | none open |
+| `function-pointers` | standard | 9 | 0 | 0 | none open |
 | `integer-conversion` | standard | 9 | 0 | 0 | none open |
-| `function-pointers` | standard | 8 | 0 | 0 | none open |
 | `switch-dispatch` | standard | 8 | 0 | 0 | none open |
 | `struct-layout` | abi | 7 | 0 | 0 | none open |
 | `deep-macros` | preprocessor | 6 | 0 | 0 | none open |
@@ -29,6 +29,7 @@ Weight is what to do next. It is the sum over the held up projects of six minus 
 | `thread-local` | standard | 3 | 0 | 0 | none open |
 | `varargs-depth` | standard | 3 | 0 | 0 | none open |
 | `atomic-builtins` | gnu-builtin | 2 | 0 | 0 | [open](https://github.com/tamnd/rucc/issues/311) |
+| `computed-goto` | gnu-extension | 2 | 0 | 0 | none open |
 | `constant-time` | standard | 2 | 0 | 0 | none open |
 | `inline-asm` | gnu-extension | 2 | 0 | 0 | none open |
 | `k-and-r-idioms` | standard | 2 | 0 | 0 | none open |
@@ -38,9 +39,9 @@ Weight is what to do next. It is the sum over the held up projects of six minus 
 | `rotate-idioms` | standard | 2 | 0 | 0 | none open |
 | `unaligned-access` | standard | 2 | 0 | 0 | none open |
 | `bit-builtins` | gnu-builtin | 1 | 0 | 0 | [open](https://github.com/tamnd/rucc/issues/310) |
-| `computed-goto` | gnu-extension | 1 | 0 | 0 | none open |
 | `flexible-array-member` | standard | 1 | 0 | 0 | none open |
 | `long-double` | standard | 1 | 0 | 0 | none open |
+| `nan-boxing` | standard | 1 | 0 | 0 | none open |
 | `stdckdint` | standard | 1 | 0 | 0 | none open |
 
 ## The projects behind each row
@@ -93,6 +94,20 @@ shifts, masks and bit level packing across byte boundaries
 - `libtommath`, R2, not measured
 - `zstd`, R2, not measured
 
+### `function-pointers`
+
+calls through a pointer, including pointers to library functions
+
+- `c4`, R0, not measured
+- `tinyexpr`, R0, not measured
+- `linenoise`, R1, not measured
+- `tinycthread`, R1, not measured
+- `zlib`, R1, not measured
+- `libexpat`, R2, not measured
+- `libuv`, R2, not measured
+- `oniguruma`, R2, not measured
+- `wren`, R3, not measured
+
 ### `integer-conversion`
 
 the integer types are the widths the standard says they are, and conversions between them keep their values
@@ -106,19 +121,6 @@ the integer types are the widths the standard says they are, and conversions bet
 - `libjpeg`, R2, not measured
 - `libmpfr`, R2, not measured
 - `libtommath`, R2, not measured
-
-### `function-pointers`
-
-calls through a pointer, including pointers to library functions
-
-- `c4`, R0, not measured
-- `tinyexpr`, R0, not measured
-- `linenoise`, R1, not measured
-- `tinycthread`, R1, not measured
-- `zlib`, R1, not measured
-- `libexpat`, R2, not measured
-- `libuv`, R2, not measured
-- `oniguruma`, R2, not measured
 
 ### `switch-dispatch`
 
@@ -229,6 +231,13 @@ __atomic_load_n and __atomic_store_n at relaxed ordering
 - `rpmalloc`, R1, not measured
 - `libjansson`, R2, not measured
 
+### `computed-goto`
+
+labels as values, goto *
+
+- `lua`, R3, not measured
+- `wren`, R3, not measured
+
 ### `constant-time`
 
 arithmetic written to take the same time whatever the secret is, which the optimizer must not turn back into a branch
@@ -291,12 +300,6 @@ __builtin_clz, __builtin_ctz, __builtin_popcount and their l and ll forms
 
 - `rpmalloc`, R1, not measured
 
-### `computed-goto`
-
-labels as values, goto *
-
-- `lua`, R3, not measured
-
 ### `flexible-array-member`
 
 a struct ending in an incomplete array, allocated with the header in front of it
@@ -308,6 +311,12 @@ a struct ending in an incomplete array, allocated with the header in front of it
 long double at the 80 bit x86-64 format
 
 - `libmpfr`, R2, not measured
+
+### `nan-boxing`
+
+a double written to a union and read back as a uint64_t, with a pointer and a tag living in the payload of a quiet NaN
+
+- `wren`, R3, not measured
 
 ### `stdckdint`
 
@@ -356,11 +365,14 @@ These rows are why the residue above can be believed. A list that only records w
 - `cmake-probes`: same reason as autoconf, there is no configure step of any kind in front of the amalgamation
 - `computed-goto`: no labels as values anywhere, which is worth knowing because the bytecode interpreter is exactly the shape that usually has them and SQLite uses a plain switch instead
 - `constant-time`: the phrase appears twice in comments about algorithmic complexity and there is no cryptographic constant time requirement in the file
+- `driver-print-dirs`: the amalgamation is compiled directly and has no build system in front of it, so nothing asks the driver where it keeps anything
 - `flexible-array-member`: the trailing empty brackets in the source are extern array declarations of unknown size rather than flexible members inside a structure
 - `inline-asm`: there is a __asm__ block for reading the cycle counter, but it is guarded on i386 and 32 bit x86 is not a target here, so on the machines this corpus runs on the count is nought
 - `k-and-r-idioms`: every definition is prototyped, and the lines that look like an identifier list are __declspec(dllexport) on the Windows exports
 - `libm-builtins`: none in the amalgamation, which is the split document 05.5 describes: the shell fails on __builtin_ceil and __builtin_floor while the library fails on atomics
 - `long-double`: no long double and no LDBL_ macros, since the whole value system is double
+- `lto`: nothing in the amalgamation asks for it, because whether the program is built across a translation unit boundary is the builder's decision and the amalgamation is one translation unit, which is exactly why the level is staged rather than run on everything
+- `nan-boxing`: sqlite3.c reinterprets a double as a 64 bit integer and back in sixteen places, all of them through memcpy rather than through a union, and a value's type is carried in the flags field of the Mem struct beside the number rather than in the payload of a quiet NaN, so the demand this tag names is one it does not make
 - `rotate-idioms`: no rotate written as a shift pair and no rotate helper
 - `setjmp-longjmp`: no setjmp and no longjmp, since errors are returned as codes all the way up
 - `stdckdint`: the checked arithmetic goes through the GNU overflow builtins rather than the C23 header

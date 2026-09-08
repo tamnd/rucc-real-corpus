@@ -7,7 +7,7 @@ url = "https://codeload.github.com/BLAKE2/BLAKE2/tar.gz/ed1974ea83433eba7b2d95c5
 sha256 = "e1d1194cde9fec0f150961cca8f3d9bdf7c5a5cbe020d1cdfb962b4887793124"
 bytes = 908956
 licence-sha256 = "a2010f343487d3f7618affe54f789f5487602331c0a8d03f49e9a7c547cf0499"
-verified = "2026-09-06"
+verified = "2026-09-08"
 
 [[project]]
 name = "brotli"
@@ -15,7 +15,7 @@ url = "https://github.com/google/brotli/archive/refs/tags/v1.2.0.tar.gz"
 sha256 = "816c96e8e8f193b40151dad7e8ff37b1221d019dbcb9c35cd3fadbfe6477dfec"
 bytes = 646315
 licence-sha256 = "3d180008e36922a4e8daec11c34c7af264fed5962d07924aea928c38e8663c94"
-verified = "2026-09-07"
+verified = "2026-09-08"
 
 [[project]]
 name = "bzip2"
@@ -23,7 +23,7 @@ url = "https://sourceware.org/pub/bzip2/bzip2-1.0.8.tar.gz"
 sha256 = "ab5a03176ee106d3f0fa90e381da478ddae405918153cca248e682cd0c4a2269"
 bytes = 810029
 licence-sha256 = "c6dbbf828498be844a89eaa3b84adbab3199e342eb5cb2ed2f0d4ba7ec0f38a3"
-verified = "2026-09-06"
+verified = "2026-09-08"
 
 [[project]]
 name = "c4"
@@ -31,7 +31,7 @@ url = "https://codeload.github.com/rswier/c4/tar.gz/2feb8c0a142b2e513be69442c24a
 sha256 = "f9c601a370c4932969aa8ded5cec403258e708ed8a4ff6037069083e45c2238e"
 bytes = 12097
 licence-sha256 = "a45d0bb572ed792ed34627a72621834b3ba92aab6e2cc4e04301dee7a728d753"
-verified = "2026-09-06"
+verified = "2026-09-08"
 
 [[project]]
 name = "cjson"
@@ -39,7 +39,7 @@ url = "https://github.com/DaveGamble/cJSON/archive/refs/tags/v1.7.19.tar.gz"
 sha256 = "7fa616e3046edfa7a28a32d5f9eacfd23f92900fe1f8ccd988c1662f30454562"
 bytes = 356247
 licence-sha256 = "a36dda207c36db5818729c54e7ad4e8b0c6fba847491ba64f372c1a2037b6d5c"
-verified = "2026-09-07"
+verified = "2026-09-08"
 
 [[project]]
 name = "cmocka"
@@ -47,7 +47,7 @@ url = "https://cmocka.org/files/1.1/cmocka-1.1.7.tar.xz"
 sha256 = "810570eb0b8d64804331f82b29ff47c790ce9cd6b163e98d47a4807047ecad82"
 bytes = 84064
 licence-sha256 = "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
-verified = "2026-09-07"
+verified = "2026-09-08"
 
 [[project]]
 name = "coremark"
@@ -55,7 +55,7 @@ url = "https://codeload.github.com/eembc/coremark/tar.gz/1f483d5b8316753a742cbf5
 sha256 = "4067e7f260218df13f2875d8f821a8ff32a84153c6e0759d7c89f96c0a8bf987"
 bytes = 405671
 licence-sha256 = "9577b9c846f61fd69a0d8ac965998c6450c7d8969f71f0bb4a931b91aebad28a"
-verified = "2026-09-06"
+verified = "2026-09-08"
 
 [[project]]
 name = "gdbm"
@@ -63,7 +63,7 @@ url = "https://ftp.gnu.org/gnu/gdbm/gdbm-1.26.tar.gz"
 sha256 = "6a24504a14de4a744103dcb936be976df6fbe88ccff26065e54c1c47946f4a5e"
 bytes = 1226591
 licence-sha256 = "690d762f2e8e149ab1e2d6a409a3853b6151a2533b2382fae549a176d6bedecf"
-verified = "2026-09-07"
+verified = "2026-09-08"
 
 [[project]]
 name = "heatshrink"
@@ -71,7 +71,7 @@ url = "https://codeload.github.com/atomicobject/heatshrink/tar.gz/7d419e1fa4830d
 sha256 = "b18a1b7ad6f51eac7ac1a81ca072703bd21d6d8727c05cd505843643705af65d"
 bytes = 37008
 licence-sha256 = "719955e6b3498b00d36046f19f4b785b238c65501bd009373b5af573912a7037"
-verified = "2026-09-06"
+verified = "2026-09-08"
 
 [[project]]
 name = "incbin"
@@ -79,7 +79,7 @@ url = "https://codeload.github.com/graphitemaster/incbin/tar.gz/22061f51fe9f2f35
 sha256 = "5e98934364bbb09fa1c0cc46b612f22c87cc9d1df80dd8ea15078a69cf82cfff"
 bytes = 10766
 licence-sha256 = "7e12e5df4bae12cb21581ba157ced20e1986a0508dd10d0e8a4ab9a4cf94e85c"
-verified = "2026-09-06"
+verified = "2026-09-08"
 
 [[project]]
 name = "jsmn"
@@ -87,7 +87,7 @@ url = "https://codeload.github.com/zserge/jsmn/tar.gz/25647e692c7906b96ffd2b05ca
 sha256 = "02ac62537ea34ee33b55efa41a832b78086548715298a454b6f304e29a7c9d43"
 bytes = 12631
 licence-sha256 = "4675b94a50d2afe811c52785463c854f1156056632cce17cc7133939eac8ed55"
-verified = "2026-09-06"
+verified = "2026-09-08"
 
 [[project]]
 name = "jtckdint"
@@ -95,7 +95,7 @@ url = "https://codeload.github.com/jart/jtckdint/tar.gz/d4c68b9559acdcc18b73c9fa
 sha256 = "2510b9b932ed2b14055d738576d97d62b76185122b6f014fb36bd641b967b525"
 bytes = 8886
 licence-sha256 = "c2b829605ee9c0b05c5c3708f308fc9b0954fb6ad1e0ab1add85f740a8827497"
-verified = "2026-09-06"
+verified = "2026-09-08"
 
 [[project]]
 name = "libcheck"
@@ -103,7 +103,7 @@ url = "https://github.com/libcheck/check/releases/download/0.15.2/check-0.15.2.t
 sha256 = "a8de4e0bacfb4d76dd1c618ded263523b53b85d92a146d8835eb1a52932fa20a"
 bytes = 774985
 licence-sha256 = "a9bdde5616ecdd1e980b44f360600ee8783b1f99b8cc83a2beb163a0a390e861"
-verified = "2026-09-07"
+verified = "2026-09-08"
 
 [[project]]
 name = "libconfig"
@@ -111,7 +111,7 @@ url = "https://hyperrealm.github.io/libconfig/dist/libconfig-1.8.1.tar.gz"
 sha256 = "c73ee3d914ec68c99b61e864832931e9a7112eeabfb449dad217fd83e385cbdf"
 bytes = 805588
 licence-sha256 = "cbbad55f94feadb16061c4f782910bac254460a44f1c8abd2b91452eff085f55"
-verified = "2026-09-07"
+verified = "2026-09-08"
 
 [[project]]
 name = "libexpat"
@@ -119,7 +119,7 @@ url = "https://github.com/libexpat/libexpat/releases/download/R_2_7_0/expat-2.7.
 sha256 = "25df13dd2819e85fb27a1ce0431772b7047d72af81ae78dc26b4c6e0805f48d1"
 bytes = 493060
 licence-sha256 = "122f2c27000472a201d337b9b31f7eb2b52d091b02857061a8880371612d9534"
-verified = "2026-09-07"
+verified = "2026-09-08"
 
 [[project]]
 name = "libgmp"
@@ -127,7 +127,7 @@ url = "https://ftp.gnu.org/gnu/gmp/gmp-6.3.0.tar.xz"
 sha256 = "a3c2b80201b89e68616f4ad30bc66aee4927c3ce50e33929ca819d5c43538898"
 bytes = 2094196
 licence-sha256 = "a853c2ffec17057872340eee242ae4d96cbf2b520ae27d903e1b2fef1a5f9d1c"
-verified = "2026-09-07"
+verified = "2026-09-08"
 
 [[project]]
 name = "libjansson"
@@ -135,7 +135,7 @@ url = "https://github.com/akheron/jansson/releases/download/v2.15.1/jansson-2.15
 sha256 = "f9aa4b3ec8496fee69db94f06f3d76fd4a26b012ee9bf1e917078c2cd2841881"
 bytes = 488779
 licence-sha256 = "150d90904cd8de73609bb177b42edd3867b07b4b7b786dbba319f30de39fcda2"
-verified = "2026-09-06"
+verified = "2026-09-08"
 
 [[project]]
 name = "libjpeg"
@@ -143,7 +143,7 @@ url = "https://www.ijg.org/files/jpegsrc.v9f.tar.gz"
 sha256 = "04705c110cb2469caa79fb71fba3d7bf834914706e9641a4589485c1f832565b"
 bytes = 1081470
 licence-sha256 = "7c25493a9f64fed34d01445467341bda77bc1cdbeccbe33558659ef173fb9ff2"
-verified = "2026-09-07"
+verified = "2026-09-08"
 
 [[project]]
 name = "libmpfr"
@@ -151,7 +151,7 @@ url = "https://ftp.gnu.org/gnu/mpfr/mpfr-4.2.2.tar.xz"
 sha256 = "b67ba0383ef7e8a8563734e2e889ef5ec3c3b898a01d00fa0a6869ad81c6ce01"
 bytes = 1505596
 licence-sha256 = "e3a994d82e644b03a792a930f574002658412f62407f5fee083f2555c5f23118"
-verified = "2026-09-07"
+verified = "2026-09-08"
 
 [[project]]
 name = "libpng"
@@ -159,7 +159,7 @@ url = "https://download.sourceforge.net/libpng/libpng-1.6.58.tar.xz"
 sha256 = "28eb403f51f0f7405249132cecfe82ea5c0ef97f1b32c5a65828814ae0d34775"
 bytes = 1070096
 licence-sha256 = "bdb0a645ea18c60507d0368379b1ac5474b92255fcc2d115e07486a7672ba526"
-verified = "2026-09-07"
+verified = "2026-09-08"
 
 [[project]]
 name = "libpsl"
@@ -167,7 +167,7 @@ url = "https://github.com/rockdaboot/libpsl/releases/download/0.21.5/libpsl-0.21
 sha256 = "1dcc9ceae8b128f3c0b3f654decd0e1e891afc6ff81098f227ef260449dae208"
 bytes = 7624251
 licence-sha256 = "322392e6001b2b3b0fca705dc9f11f26e12441188ecde50eb1d22909980b2925"
-verified = "2026-09-07"
+verified = "2026-09-08"
 
 [[project]]
 name = "libsir"
@@ -175,7 +175,7 @@ url = "https://codeload.github.com/aremmell/libsir/tar.gz/0ae01738c93ee6784c431a
 sha256 = "34a510bc44c20cfe5177c477487ae48e4a5e7e5f153ba4560ebd20e90b3c18a9"
 bytes = 2858121
 licence-sha256 = "62288e34a3c175dd5497ccd2e5f3eac20b4477a3f2066d5892d0f320ddb60c1c"
-verified = "2026-09-06"
+verified = "2026-09-08"
 
 [[project]]
 name = "libsodium"
@@ -183,7 +183,7 @@ url = "https://download.libsodium.org/libsodium/releases/libsodium-1.0.20.tar.gz
 sha256 = "ebb65ef6ca439333c2bb41a0c1990587288da07f6c7fd07cb3a18cc18d30ce19"
 bytes = 1925167
 licence-sha256 = "43964d976a6db3fb986af689d05f8ca0e9971878bccae709750dac8fdc4a99cf"
-verified = "2026-09-07"
+verified = "2026-09-08"
 
 [[project]]
 name = "libtommath"
@@ -191,7 +191,7 @@ url = "https://github.com/libtom/libtommath/releases/download/v1.3.0/ltm-1.3.0.t
 sha256 = "296272d93435991308eb73607600c034b558807a07e829e751142e65ccfa9d08"
 bytes = 642776
 licence-sha256 = "2fa64b163659f41965c9815882a8296d3d03ff546b76153e11445f9bdecf955a"
-verified = "2026-09-07"
+verified = "2026-09-08"
 
 [[project]]
 name = "libuv"
@@ -199,7 +199,7 @@ url = "https://dist.libuv.org/dist/v1.51.0/libuv-v1.51.0.tar.gz"
 sha256 = "5f0557b90b1106de71951a3c3931de5e0430d78da1d9a10287ebc7a3f78ef8eb"
 bytes = 1343638
 licence-sha256 = "16de0c32b265cb7d46a6d3bd614f259dd4d693a5e26b3407b04aae8d73041f0c"
-verified = "2026-09-07"
+verified = "2026-09-08"
 
 [[project]]
 name = "libyaml"
@@ -207,7 +207,7 @@ url = "https://github.com/yaml/libyaml/releases/download/0.2.5/yaml-0.2.5.tar.gz
 sha256 = "c642ae9b75fee120b2d96c712538bd2cf283228d2337df2cf2988e3c02678ef4"
 bytes = 609454
 licence-sha256 = "c40112449f254b9753045925248313e9270efa36d226b22d82d4cc6c43c57f29"
-verified = "2026-09-07"
+verified = "2026-09-08"
 
 [[project]]
 name = "linenoise"
@@ -215,7 +215,7 @@ url = "https://codeload.github.com/antirez/linenoise/tar.gz/a473823d74b93eab2ba8
 sha256 = "3db03aba739bc96f3da3133b9615ccc43246ba2c3628b403b00a470abd3b6a8d"
 bytes = 44714
 licence-sha256 = "efe1692aa5b869edaa0ac88f95eb0276c1125304ffc636a299db3ebbab47f62b"
-verified = "2026-09-06"
+verified = "2026-09-08"
 
 [[project]]
 name = "llama2.c"
@@ -223,7 +223,7 @@ url = "https://codeload.github.com/karpathy/llama2.c/tar.gz/350e04fe35433e6d2941
 sha256 = "9210e104192375f2c156fd24a84d2692c6b199f8ebbc2337551842c03cc1ddce"
 bytes = 700335
 licence-sha256 = "e87b912002f04cdfa837eaf7f70548ab79b9cb62a285495edf575f3da875aec4"
-verified = "2026-09-06"
+verified = "2026-09-08"
 
 [[project]]
 name = "lmdb"
@@ -231,7 +231,7 @@ url = "https://codeload.github.com/LMDB/lmdb/tar.gz/6f0a32496a5aadee15a5e5103c47
 sha256 = "a828943d5ea975e4c6322f3e6f59fd1df3cc372ae731349f5152bc37210fa5a3"
 bytes = 178727
 licence-sha256 = "310fe25c858a9515fc8c8d7d1f24a67c9496f84a91e0a0e41ea9975b1371e569"
-verified = "2026-09-06"
+verified = "2026-09-08"
 
 [[project]]
 name = "lua"
@@ -267,7 +267,7 @@ url = "https://codeload.github.com/lz4/lz4/tar.gz/ebb370ca83af193212df4dcbadcc5d
 sha256 = "eb1a93e934d4fd29df6e2061ba0bf447568561764d758f4a5662c0e29370ffa9"
 bytes = 387536
 licence-sha256 = "4bc9c403f6b679cc076dee210e0e21c27b4e8f6d3fb43d85364c76657bfaaac5"
-verified = "2026-09-06"
+verified = "2026-09-08"
 
 [[project]]
 name = "minunit"
@@ -275,7 +275,7 @@ url = "https://codeload.github.com/siu/minunit/tar.gz/a0586569bd8abfb7a37390d670
 sha256 = "3e3ecbcdc4e166c782dcd1d9c1f80ce14297d948695089521a2a7769224507b9"
 bytes = 6008
 licence-sha256 = "5b65d2fb2bd2f2d28729e4193b32d6b977d7239ce43b1b8298e1ec8362c08dfc"
-verified = "2026-09-06"
+verified = "2026-09-08"
 
 [[project]]
 name = "monocypher"
@@ -283,7 +283,7 @@ url = "https://monocypher.org/download/monocypher-4.0.2.tar.gz"
 sha256 = "38d07179738c0c90677dba3ceb7a7b8496bcfea758ba1a53e803fed30ae0879c"
 bytes = 939996
 licence-sha256 = "5f8360e4c06ddcc584bdb4b210c6af824c4bb301e6a9a521869b6d90795ca4b3"
-verified = "2026-09-06"
+verified = "2026-09-08"
 
 [[project]]
 name = "ncompress"
@@ -291,7 +291,7 @@ url = "https://codeload.github.com/vapier/ncompress/tar.gz/e77a84ca5a69f01ccfe14
 sha256 = "0905f89daa94853c4c75bfe7fc9b7636a70afd7d84abdd10ee944349de3117b1"
 bytes = 34218
 licence-sha256 = "d402c89370da74ffa591e911f7fd6de640a5c1ceecaf230eaa8c9a7c132f1403"
-verified = "2026-09-06"
+verified = "2026-09-08"
 
 [[project]]
 name = "oniguruma"
@@ -299,7 +299,7 @@ url = "https://github.com/kkos/oniguruma/releases/download/v6.9.10/onig-6.9.10.t
 sha256 = "2a5cfc5ae259e4e97f86b68dfffc152cdaffe94e2060b770cb827238d769fc05"
 bytes = 979159
 licence-sha256 = "70ba5469ea0bab6e18a32d7009068f996503168d27be57747e08da34337ff26f"
-verified = "2026-09-07"
+verified = "2026-09-08"
 
 [[project]]
 name = "parson"
@@ -307,7 +307,7 @@ url = "https://codeload.github.com/kgabis/parson/tar.gz/ba29f4eda9ea7703a9f6a9cf
 sha256 = "d311cd3d051965485bff1c89a3980df7ad0ee3f9c0f33c18964d8c1cc32ef2cf"
 bytes = 28803
 licence-sha256 = "1654be3a1c88c6ae90f1c25ec880ef80076d05910199688dd9853f27d1e894cf"
-verified = "2026-09-06"
+verified = "2026-09-08"
 
 [[project]]
 name = "pcre2"
@@ -315,7 +315,7 @@ url = "https://github.com/PCRE2Project/pcre2/releases/download/pcre2-10.48/pcre2
 sha256 = "b6c68fdf6f3ac31388b50aa89ff0fc49c00c987c16e7b5146491d12003f2c8ed"
 bytes = 2213024
 licence-sha256 = "197d8a73ffee0d6b09adba2f9c677b5f5aede24edf89258a68e48248d010d811"
-verified = "2026-09-07"
+verified = "2026-09-08"
 
 [[project]]
 name = "picohttpparser"
@@ -323,7 +323,7 @@ url = "https://codeload.github.com/h2o/picohttpparser/tar.gz/539bb9f510f5aefc8ef
 sha256 = "f6da62f0b983cb2359a580a9b6408b31cea562ce307daf838ca7291c0046b96c"
 bytes = 18686
 licence-sha256 = "108520e1661d2526e92efce34f3935c998d8a3d2e2a19d9a5c12e2532f05af55"
-verified = "2026-09-06"
+verified = "2026-09-08"
 
 [[project.submodule]]
 path = "picotest"
@@ -337,7 +337,7 @@ url = "https://codeload.github.com/mjansson/rpmalloc/tar.gz/5dacae8ba4ec31100dd2
 sha256 = "0c05238dc530accc386b7c25c17cd0d4a8a02177e5398b1212df27a370826f0d"
 bytes = 2075883
 licence-sha256 = "0100518799526908a06f4ba93b97a438362b589124c0081ba57dd4bfd7998a84"
-verified = "2026-09-06"
+verified = "2026-09-08"
 
 [[project]]
 name = "sds"
@@ -345,7 +345,7 @@ url = "https://codeload.github.com/antirez/sds/tar.gz/5347739b1581fcba74fd5cab1f
 sha256 = "37a4afd7d2b766609dfb0c2e3da84eaec74d00302165c0d04a0f42b204dfb295"
 bytes = 26024
 licence-sha256 = "bb0d0d505009fdf584b0f44dbb62562eebada497d53d726cd2e940ada512dc16"
-verified = "2026-09-06"
+verified = "2026-09-08"
 
 [[project]]
 name = "tinf"
@@ -353,7 +353,7 @@ url = "https://codeload.github.com/jibsen/tinf/tar.gz/9929246b87f0946b124cfa2a89
 sha256 = "7bd54db053e9cd9290cd28a6a4250ea8d4cc3f2e2598da29387e4ea2b956f2e3"
 bytes = 30374
 licence-sha256 = "f39b507b81b9ba1edce7fe742bbd68fda4b852063ce7299274ae97991d48814b"
-verified = "2026-09-06"
+verified = "2026-09-08"
 
 [[project]]
 name = "tinycthread"
@@ -361,7 +361,7 @@ url = "https://codeload.github.com/tinycthread/tinycthread/tar.gz/8d1608be0e9b47
 sha256 = "11b6a6c747a1d1b3a6f788ab6d9814923a7e2eb46cbaa3abfb4c63fa77fed0fa"
 bytes = 29413
 licence-sha256 = "9f31950578209cf172952215a12371102f09dc554d71bc643ff232b8414b814b"
-verified = "2026-09-06"
+verified = "2026-09-08"
 
 [[project]]
 name = "tinyexpr"
@@ -369,7 +369,7 @@ url = "https://codeload.github.com/codeplea/tinyexpr/tar.gz/6d2233ce14dca0639947
 sha256 = "cdeaf4bbd89d00e70a2423fd96d069918c1d2eeca13c0924c6b3cb91c527603f"
 bytes = 43757
 licence-sha256 = "d5c1816fe55f43fe3f3224755d3d2808817d44e80c4538ef48c1d43b34ceb7db"
-verified = "2026-09-06"
+verified = "2026-09-08"
 
 [[project]]
 name = "uzlib"
@@ -377,7 +377,15 @@ url = "https://codeload.github.com/pfalcon/uzlib/tar.gz/ae6dbe4582247076efe1b940
 sha256 = "7630a4c58bb2e5bf85bc3ada6a07ffcc387a729b89911e4fd1ab189214790a42"
 bytes = 65440
 licence-sha256 = "71e4932b2b9a6f6d43a2dd4bf962bbc71bc9f39d7a446ca855054fb639adbb6f"
-verified = "2026-09-06"
+verified = "2026-09-08"
+
+[[project]]
+name = "wren"
+url = "https://codeload.github.com/wren-lang/wren/tar.gz/99d2f0b8fc2686134b32b18166e037639f7e9f2c"
+sha256 = "530336e051cda4a4042c41d1e0b401c9dffa16e01513240166f15e4e333cee8f"
+bytes = 1819218
+licence-sha256 = "ee3c38d9dc66cfda45018fc828a895efed1dc61cbec4baff4b9a40ad617d03b1"
+verified = "2026-09-08"
 
 [[project]]
 name = "xxhash"
@@ -385,7 +393,7 @@ url = "https://codeload.github.com/Cyan4973/xxHash/tar.gz/c0b5ea995d66691734b1a7
 sha256 = "6b49e0f12bad8b6fdb1037e0f251c39a0f9bd39c3d756a12ccb1dcf31e5419fa"
 bytes = 1155739
 licence-sha256 = "6ffedbc0f7878612d2b23589f1ff2ab15633e1df7963a5d9fc750ec5500c7e7a"
-verified = "2026-09-06"
+verified = "2026-09-08"
 
 [[project]]
 name = "zlib"
@@ -393,7 +401,7 @@ url = "https://codeload.github.com/madler/zlib/tar.gz/51b7f2abdade71cd9bb0e7a373
 sha256 = "d9e270d46252734aa49770fbc544125391617956266f220bd63216c834f3a522"
 bytes = 1572004
 licence-sha256 = "845efc77857d485d91fb3e0b884aaa929368c717ae8186b66fe1ed2495753243"
-verified = "2026-09-06"
+verified = "2026-09-08"
 
 [[project]]
 name = "zstd"
@@ -401,4 +409,4 @@ url = "https://github.com/facebook/zstd/releases/download/v1.5.7/zstd-1.5.7.tar.
 sha256 = "eb33e51f49a15e023950cd7825ca74a4a2b43db8354825ac24fc1b7ee09e6fa3"
 bytes = 2434947
 licence-sha256 = "7055266497633c9025b777c78eb7235af13922117480ed5c674677adc381c9d8"
-verified = "2026-09-07"
+verified = "2026-09-08"

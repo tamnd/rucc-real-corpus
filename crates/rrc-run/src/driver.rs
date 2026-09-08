@@ -381,6 +381,7 @@ fn attempt_upto(
     }
 
     let workdir = build_dir(&trial.sandbox, job.manifest);
+    make_output_dirs(job.manifest, &workdir)?;
     let normalizer = Normalizer::rooted_at(trial.sandbox.root());
     for step in steps_upto(build_steps(job, &env, &workdir), extent) {
         let completed = exec::run(&step.invocation)?;
@@ -605,6 +606,32 @@ pub fn build_dir(sandbox: &Sandbox, manifest: &Manifest) -> PathBuf {
         .subdir
         .as_ref()
         .map_or_else(|| sandbox.source(), |subdir| sandbox.source().join(subdir))
+}
+
+/// Make the directories a direct build is going to write its programs into.
+///
+/// A direct build is the harness standing in for a build system the project does not have, and a
+/// build system makes its own output directory. The archive is not obliged to contain one: `wren`
+/// puts its test binary in `bin`, which upstream's generated makefile creates and the tarball does
+/// not carry, and a compiler asked to write into a directory that is not there says no such file
+/// or directory, which would read on the report as the compiler refusing the program.
+///
+/// Only the parents of the outputs, and only for a direct build. A manifest that names a path
+/// outside the build directory still fails the way it should, since the join is against the build
+/// directory and the lint is what keeps the path relative.
+fn make_output_dirs(manifest: &Manifest, workdir: &Path) -> std::io::Result<()> {
+    if manifest.build.system != BuildSystem::Direct {
+        return Ok(());
+    }
+    for program in manifest.build.direct_programs() {
+        let Some(parent) = Path::new(&program.output).parent() else {
+            continue;
+        };
+        if !parent.as_os_str().is_empty() {
+            std::fs::create_dir_all(workdir.join(parent))?;
+        }
+    }
+    Ok(())
 }
 
 /// The commands that build this project, in order.
@@ -1239,6 +1266,24 @@ oracle = "self-checking"
         let manifest = two_program_manifest();
         let record = graded(&job(&f, &manifest), Slot::A).unwrap();
         assert_eq!(record.outcome, Outcome::DidNotBuild);
+    }
+
+    #[test]
+    fn a_direct_build_makes_the_directory_it_was_told_to_write_its_program_into() {
+        // `wren` in miniature. Its own test runner looks for the binary in `bin`, and `bin` is
+        // not in the archive because upstream's generated makefile is what creates it. Without
+        // this the compiler says no such file or directory and the report reads as the compiler
+        // having refused the program, which is the wrong finding entirely.
+        let Some(f) = fixture("output-in-a-subdirectory", "int main(void){ return 0; }\n") else {
+            return;
+        };
+        let text = MANIFEST.replace(
+            "output = \"sample\"\n\n[test]\ncommand = [\"./sample\"]",
+            "output = \"bin/sample\"\n\n[test]\ncommand = [\"./bin/sample\"]",
+        );
+        let manifest = Manifest::from_str_named(&text, Path::new("test/project.toml")).unwrap();
+        let record = graded(&job(&f, &manifest), Slot::A).unwrap();
+        assert_eq!(record.outcome, Outcome::Passed);
     }
 
     /// A Makefile that assigns `CFLAGS` outright, and a program that answers which level it was
