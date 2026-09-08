@@ -64,9 +64,10 @@ oracle = "recorded"
 expect-output = "all tests pass"
 requires = ["sh"]
 
-# Nineteen translation units and a suite that finishes in under a second at every level, so both
-# limits are here for a compiler that is slow rather than for a project that is big. On the
-# reference machine gcc takes between five and twenty three seconds to build it.
+# Twenty one translation units, six of the interpreter plus its main and fourteen of llt, and a
+# suite that finishes in under a second at every level, so both limits are here for a compiler that
+# is slow rather than for a project that is big. On the reference machine gcc takes between eight
+# and thirty seconds to build it.
 [limits]
 build-seconds = 900
 test-seconds = 300
