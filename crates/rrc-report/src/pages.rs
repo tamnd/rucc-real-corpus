@@ -27,6 +27,7 @@
 
 use crate::cluster;
 use crate::cost::{self, Cost};
+use crate::source;
 use crate::summary::Summary;
 use rrc_manifest::axes::{Level, Oracle, Rung};
 use rrc_run::record::{Outcome, RunRecord};
@@ -124,6 +125,9 @@ pub fn headline(records: &[RunRecord], reference: &[RunRecord]) -> String {
     let _ = writeln!(out, "**{}.**{}\n", summary.status_line(), against(&summary));
     out.push_str(&scoreboard(&summary));
     out.push('\n');
+    if let Some(line) = size_line(records) {
+        let _ = writeln!(out, "{line}\n");
+    }
     if let Some(line) = tests_line(&costs) {
         let _ = writeln!(out, "{line}\n");
     }
@@ -168,6 +172,21 @@ fn hub(summary: &Summary, records: &[RunRecord], costs: &[Cost], projects: &[Str
         let _ = writeln!(out, "{line}\n");
         out.push_str("This is the number that a build outcome cannot show you. A cell that compiles, links, runs the suite and quietly passes forty fewer of the project's own tests than GCC does is a worse result than a cell that failed to build, and it counts as a pass everywhere except here.\n\n");
         out.push_str(&behind_table(costs));
+        out.push('\n');
+    }
+
+    // Absent rather than empty on a log written before the source count existed, because a table
+    // whose every row says zero reads as a corpus that has lost its projects.
+    if source::corpus(records).is_some() {
+        out.push_str("## How much code this is\n\n");
+        out.push_str("Counted from the pinned archives before anything is built, so it is the same on every host and it moves only when a pin moves. Every `.c`, `.h`, `.cc`, `.cpp`, `.hpp` and `.s` file in the extracted tree, whether or not the build happens to compile all of them, because that is the tree the pin is a hash of and it is the only version of the count that two machines can agree on.\n\n");
+        out.push_str("It is a denominator and not a score. Four seconds is a slow build of a header only parser and a fast build of an interpreter, and none of the numbers above this can be read without it. A project being large does not make it a better test than a small one either, which is why `spec/04-the-ladder.md` orders the rungs by what a project demands of the compiler rather than by how much of it there is.\n\n");
+        out.push_str(&source::by_rung(records));
+        out.push('\n');
+        out.push_str(
+            "The largest few, since a corpus total is usually a few projects and a long tail.\n\n",
+        );
+        out.push_str(&source::largest(records, 10));
         out.push('\n');
     }
 
@@ -259,6 +278,20 @@ fn by_level(records: &[RunRecord]) -> String {
         let _ = writeln!(out, "| {level} | {cells} | {passed} | {} |", cells - passed);
     }
     out
+}
+
+/// The one line about how much real code the run covered, or nothing when no cell measured any.
+///
+/// It goes above the test line on the front page because it is the sentence that makes every
+/// other sentence on that page mean something. "Sixty of seventy three cells passed" is a
+/// different claim about a corpus of four hundred thousand lines than about one of four thousand.
+fn size_line(records: &[RunRecord]) -> Option<String> {
+    let all = source::corpus(records)?;
+    Some(format!(
+        "That is {} lines of C across {} files in the pinned archives, counted before anything is built.",
+        source::thousands(all.lines),
+        source::thousands(u64::from(all.files)),
+    ))
 }
 
 /// The one line about the project's own tests, or nothing when no cell counted any.
@@ -420,8 +453,9 @@ fn project_index(records: &[RunRecord], costs: &[Cost], projects: &[String]) -> 
     out.push_str("# Every project\n\n");
     out.push_str("[Back to the report](README.md).\n\n");
     out.push_str("One row per project and one page behind each row. `cells` counts every level this run covered, so a project that ran at four levels and passed three of them reads three of four.\n\n");
+    out.push_str("The `files` and `lines` columns are the size of the pinned source, counted before anything is built, and they are here so that the rest of the row can be read. A project that fails at one level out of six is a different piece of news at three hundred lines than at thirty thousand.\n\n");
     out.push_str(
-        "| project | rung | cells passed | behind gcc on tests |\n| --- | --- | ---: | ---: |\n",
+        "| project | rung | files | lines | cells passed | behind gcc on tests |\n| --- | --- | ---: | ---: | ---: | ---: |\n",
     );
     for project in projects {
         let mine: Vec<&RunRecord> = records.iter().filter(|r| &r.project == project).collect();
@@ -433,9 +467,18 @@ fn project_index(records: &[RunRecord], costs: &[Cost], projects: &[String]) -> 
             .filter_map(Cost::tests_behind)
             .filter(|by| *by > 0)
             .sum();
+        let size = source::of_project(records, project);
         let _ = writeln!(
             out,
-            "| [{project}]({project}.md) | R{rung} | {passed} of {} | {} |",
+            "| [{project}]({project}.md) | R{rung} | {} | {} | {passed} of {} | {} |",
+            size.map_or_else(
+                || "not measured".to_string(),
+                |s| source::thousands(u64::from(s.files))
+            ),
+            size.map_or_else(
+                || "not measured".to_string(),
+                |s| source::thousands(s.lines)
+            ),
             mine.len(),
             if behind == 0 {
                 "none".to_string()
@@ -466,6 +509,13 @@ fn project_page(project: &str, records: &[RunRecord], costs: &[Cost]) -> String 
             first.rung.as_u8(),
             short(&first.pin_sha256),
             first.provenance.host
+        );
+    }
+    if let Some(size) = source::of_project(records, project) {
+        let _ = writeln!(
+            out,
+            "The pinned archive is {}, counted before anything is built. Every number below is against that.\n",
+            source::line(size)
         );
     }
 
@@ -565,6 +615,9 @@ mod tests {
         r.peak_rss = Some(80 * 1024 * 1024);
         r.tests_passed = Some(20);
         r.tests_run = Some(20);
+        r.source_files = Some(2);
+        r.source_lines = Some(1_450);
+        r.source_bytes = Some(48_000);
         r
     }
 
@@ -635,6 +688,66 @@ mod tests {
         assert!(page.contains("19.5 KiB"), "on disk");
         assert!(page.contains("4.0 KiB"), "text and data");
         assert!(page.contains("| same |"), "tests");
+    }
+
+    #[test]
+    fn every_page_that_quotes_a_cost_says_how_much_source_it_was_against() {
+        // The point of the column. A build time or a memory figure with no idea how much code went
+        // in is a reading nobody can interpret, and the three places a reader meets one of those
+        // are the front page, the project index and the project page.
+        let (mine, theirs) = a_run();
+        let block = headline(&mine, &theirs);
+        assert!(block.contains("2,900 lines"), "{block}");
+
+        let pages = generate(&mine, &theirs);
+        let index = &pages
+            .iter()
+            .find(|p| p.path == "reports/projects/README.md")
+            .unwrap()
+            .text;
+        assert!(index.contains("| files | lines |"), "{index}");
+        assert!(index.contains("| 1,450 |"), "{index}");
+
+        let page = &pages
+            .iter()
+            .find(|p| p.path == "reports/projects/jsmn.md")
+            .unwrap()
+            .text;
+        assert!(page.contains("2 files, 1,450 lines"), "{page}");
+    }
+
+    #[test]
+    fn the_corpus_total_counts_a_project_once_however_many_levels_it_ran_at() {
+        // jsmn ran at two levels and tinf at one, so a total that counted records rather than
+        // projects would report half again as much code as the corpus has.
+        let (mine, theirs) = a_run();
+        let pages = generate(&mine, &theirs);
+        let hub = &pages
+            .iter()
+            .find(|p| p.path == "reports/README.md")
+            .unwrap()
+            .text;
+        assert!(hub.contains("How much code this is"), "{hub}");
+        assert!(hub.contains("**2,900**"), "{hub}");
+    }
+
+    #[test]
+    fn a_log_from_before_the_source_count_existed_leaves_the_section_out_rather_than_showing_zero()
+    {
+        let mine = vec![record("jsmn", Outcome::Passed)];
+        let pages = generate(&mine, &[]);
+        let hub = &pages
+            .iter()
+            .find(|p| p.path == "reports/README.md")
+            .unwrap()
+            .text;
+        assert!(!hub.contains("How much code this is"), "{hub}");
+        let index = &pages
+            .iter()
+            .find(|p| p.path == "reports/projects/README.md")
+            .unwrap()
+            .text;
+        assert!(index.contains("not measured"), "{index}");
     }
 
     #[test]
