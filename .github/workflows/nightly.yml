@@ -81,6 +81,21 @@ jobs:
         with:
           key: nightly
 
+      # The archives, so a night does not download the corpus again. Keyed on the manifests, since
+      # that is where a pin lives, and with a prefix to fall back on so that changing one pin
+      # restores the other forty five archives rather than starting from nothing.
+      #
+      # Only the archives. The record cache under the same root is deliberately left out, because
+      # the run below passes --refresh and would never read it, and a cache nothing reads is a
+      # gigabyte uploaded every morning for nothing.
+      - name: the archive cache
+        uses: actions/cache@v6.1.0
+        with:
+          path: ~/.cache/rrc/archives
+          key: rrc-archives-${{ matrix.os }}-${{ hashFiles('projects/**/project.toml') }}
+          restore-keys: |
+            rrc-archives-${{ matrix.os }}-
+
       # Best effort, and deliberately not fatal. GCC 16 is not in the runner images, so this asks
       # for it and carries on with whatever is there. The next step says what it ended up with and
       # every record carries the version, so a night that ran against GCC 14 is legible as such
@@ -126,6 +141,12 @@ jobs:
       # determinism check of section 07.5. The other two hosts skip it, because a compiler that is
       # not deterministic is not deterministic anywhere and paying for the answer three times buys
       # nothing.
+      #
+      # `--refresh` builds every cell even when the record cache has an answer for it. The whole
+      # value of a nightly is that it is the one run whose numbers were all measured on the same
+      # machine in the same hour, and a nightly that reused a fortnight old timing could not see a
+      # regression at all. It still keeps what it produces, so somebody who then runs the corpus by
+      # hand on the same machine gets the answers for free.
       - name: the run
         id: run
         run: |
@@ -133,7 +154,7 @@ jobs:
           cargo run --release -p rrc -- \
             --rucc ${{ steps.cc.outputs.name }} --gcc ${{ steps.cc.outputs.name }} \
             run --rung ${{ inputs.rungs || '0,1,2' }} --jobs ${{ inputs.jobs || '1' }} \
-            ${{ matrix.reference && '--twice' || '' }}
+            --refresh ${{ matrix.reference && '--twice' || '' }}
           echo "status=$?" >> "$GITHUB_OUTPUT"
 
       # Configure twice and compare what the two decided, per section 8.8. With one compiler on

@@ -192,6 +192,7 @@ fn hub(summary: &Summary, records: &[RunRecord], costs: &[Cost], projects: &[Str
 
     out.push_str("## What the run cost\n\n");
     out.push_str(&wall_clock(costs));
+    out.push_str(&reused_note(records));
     out.push('\n');
 
     out.push_str("## Every project\n\n");
@@ -361,6 +362,34 @@ fn wall_clock(costs: &[Cost]) -> String {
     out
 }
 
+/// What to make of the seconds when some of them were not measured today.
+///
+/// A run may answer a cell out of the cache instead of building it, which is what makes a pull
+/// request's run finish inside the time somebody will wait for one. The outcome of such a cell is
+/// as true as it ever was, since the key covers the source, both compilers, the manifest and the
+/// machine, and a change to any of those would have missed. Its seconds are a different matter:
+/// they were measured on some earlier day, on a machine that was doing something else at the
+/// time, so a table of timings that quietly mixes them with today's is a table that can show a
+/// regression that is not there and hide one that is.
+///
+/// So the page says how many, every time there are any. Nothing else changes, because the answer
+/// to a mixed run is not to throw the numbers away, it is to say what they are.
+fn reused_note(records: &[RunRecord]) -> String {
+    let reused = records.iter().filter(|record| record.reused).count();
+    if reused == 0 {
+        return String::new();
+    }
+    let cells = if reused == 1 {
+        "cell was"
+    } else {
+        "cells were"
+    };
+    format!(
+        "\n{reused} of the {} {cells} answered from the cache rather than built, so the seconds above are not all from the same sitting. The outcomes are unaffected: a cached cell is only reused when the source, both compilers, the manifest and the machine all hash to what they hashed before. Run with `--refresh` for a set of timings that were all measured together.\n",
+        records.len()
+    )
+}
+
 /// The list of project pages, in columns so that forty of them do not fill a screen.
 fn project_links(projects: &[String]) -> String {
     let mut out = String::new();
@@ -385,6 +414,7 @@ fn cost_page(summary: &Summary, costs: &[Cost]) -> String {
     out.push_str("## Time and memory\n\n");
     out.push_str("`compile` is the build alone. `suite` is the project's own tests, which is the closest thing here to a measurement of the code the compiler emitted rather than of the compiler. `build memory` is the largest single process of the build, sampled a few times a second, and `spec/11-reporting.md` section 11.3 explains why it is the largest single process and not the sum.\n\n");
     out.push_str(&with_project(costs, cost::render_time));
+    out.push_str(&cost::cached_footnote(costs));
 
     out.push_str("\n## Size\n\n");
     out.push_str("`text and data` is the code and the initialized data, which is what a code size number should be about. `on disk` is the file length, which moves with debug information and section padding and is the number `ls` gives.\n\n");
@@ -619,6 +649,42 @@ mod tests {
         r.source_lines = Some(1_450);
         r.source_bytes = Some(48_000);
         r
+    }
+
+    #[test]
+    fn a_run_that_built_every_cell_says_nothing_about_a_cache() {
+        let (mine, theirs) = a_run();
+        assert_eq!(reused_note(&mine), "");
+        let pages = generate(&mine, &theirs);
+        let hub = &pages
+            .iter()
+            .find(|p| p.path.ends_with("README.md"))
+            .unwrap()
+            .text;
+        assert!(!hub.contains("answered from the cache"), "{hub}");
+    }
+
+    #[test]
+    fn a_run_that_reused_some_cells_says_how_many_and_how_to_get_fresh_ones() {
+        let (mut mine, _) = a_run();
+        mine[0].reused = true;
+        mine[2].reused = true;
+        let note = reused_note(&mine);
+        assert!(
+            note.contains("2 of the 3 cells were answered from the cache"),
+            "{note}"
+        );
+        assert!(note.contains("--refresh"), "{note}");
+        // The point of the sentence is that the outcomes still stand. Without that a reader who
+        // sees the note has no way to tell which half of the report to believe.
+        assert!(note.contains("outcomes are unaffected"), "{note}");
+    }
+
+    #[test]
+    fn one_reused_cell_is_written_as_one_cell_and_not_as_one_cells() {
+        let (mut mine, _) = a_run();
+        mine[1].reused = true;
+        assert!(reused_note(&mine).contains("1 of the 3 cell was"));
     }
 
     fn a_run() -> (Vec<RunRecord>, Vec<RunRecord>) {

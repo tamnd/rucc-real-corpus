@@ -27,6 +27,7 @@
 //! - [`driver`] builds and tests one project in one sandbox and grades the result.
 //! - [`abi`] builds a project's archive and its driver four ways, crossing the two compilers over
 //!   the two halves, which is the one check on the ladder no single compiler run can do.
+//! - [`cache`] keeps the record a cell produced, so an unchanged cell is not built again.
 //! - [`bisect`] builds the tree with the reference except for a subset built with the compiler
 //!   under test, and searches over the subset until the failure has a file name on it.
 //! - [`reduce`] takes the file a bisection named and cuts it down to something small enough to
@@ -44,6 +45,7 @@
 
 pub mod abi;
 pub mod bisect;
+pub mod cache;
 pub mod diagnostic;
 pub mod driver;
 pub mod env;

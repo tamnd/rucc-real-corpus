@@ -281,6 +281,17 @@ pub struct RunRecord {
     /// which version of the dependency this was, and the manifest will have moved on.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub built_against: Vec<BuiltAgainst>,
+    /// Whether this record came out of the cache rather than off the machine just now.
+    ///
+    /// A run of the corpus is evidence, and evidence assembled partly from today and partly from
+    /// a fortnight ago is a different claim from evidence gathered in one sitting. Both claims are
+    /// useful, so the harness makes both available and refuses to blur them: the outcome of a
+    /// reused record is as true as it ever was, but its `build_seconds` were measured on a machine
+    /// that was doing something else at the time, so anything chasing a timing regression has to
+    /// be able to throw those rows away. Defaults to false, which is the right answer for every
+    /// record written before there was a cache.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub reused: bool,
 }
 
 /// What `concurrency` means on a record written before the field existed.
@@ -416,6 +427,7 @@ mod tests {
             observed_outcome: None,
             excluded_by: None,
             built_against: Vec::new(),
+            reused: false,
         }
     }
 

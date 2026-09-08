@@ -73,6 +73,7 @@ impl Report {
         out.push_str("## Cost\n\n");
         out.push_str("Both numbers are cheap proxies against a GCC 16 build of the same pin on the same machine, and only their trend means anything. They are per project and never averaged, because a mean across projects of different shapes is a number with no referent.\n\n");
         out.push_str(&crate::cost::render(&self.costs));
+        out.push_str(&reused_note(&self.costs));
         out.push('\n');
 
         if !self.memory.is_empty() {
@@ -88,11 +89,56 @@ impl Report {
     }
 }
 
+/// What to make of the seconds when some of them were not measured during this run.
+///
+/// A cell whose every input hashed to what it hashed before is answered from the cache rather
+/// than built, which is what lets somebody get a full corpus answer in seconds instead of in an
+/// hour. Its outcome is as true as it ever was, since the key covers the source, both compilers,
+/// the manifest and the machine. Its seconds are not: they were measured on some earlier day on a
+/// machine that was doing something else at the time. A cost table that quietly mixes the two can
+/// show a regression that is not there and hide one that is, so the report says how many.
+fn reused_note(costs: &[Cost]) -> String {
+    let reused = costs.iter().filter(|cost| cost.reused).count();
+    if reused == 0 {
+        return String::new();
+    }
+    let cells = if reused == 1 {
+        "cell was"
+    } else {
+        "cells were"
+    };
+    format!(
+        "\n{reused} of the {} {cells} answered from the cache rather than built, so the seconds above were not all measured during this run. The outcomes and the sizes are unaffected. Run with `--refresh` for a set of timings measured together.\n",
+        costs.len()
+    )
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::tests::record;
     use rrc_run::record::Outcome;
+
+    #[test]
+    fn a_report_whose_seconds_were_not_all_measured_today_says_so() {
+        let mut fresh = record("a", Outcome::Passed);
+        fresh.build_seconds = 1.0;
+        let mut cached = record("b", Outcome::Passed);
+        cached.build_seconds = 1.0;
+        cached.reused = true;
+
+        let rendered = Report::of(&[fresh.clone(), cached], &[]).markdown();
+        assert!(
+            rendered.contains("1 of the 2 cell was answered from the cache"),
+            "{rendered}"
+        );
+        assert!(rendered.contains("--refresh"), "{rendered}");
+
+        // And a run that built everything says nothing, because a note on every report is a note
+        // nobody reads by the second week.
+        let all_fresh = Report::of(&[fresh], &[]).markdown();
+        assert!(!all_fresh.contains("from the cache"), "{all_fresh}");
+    }
 
     #[test]
     fn a_report_with_no_failures_says_so_rather_than_printing_an_empty_table() {

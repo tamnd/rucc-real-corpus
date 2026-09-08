@@ -119,6 +119,41 @@ pub struct RunPlan {
     pub baseline: Baseline,
     /// Where the records and the report go.
     pub out: PathBuf,
+    /// Whether a cell that has been run before under identical conditions is built again.
+    pub reuse: Reuse,
+}
+
+/// What a run does about the record cache.
+///
+/// Three settings rather than a boolean, because the nightly and a pull request want opposite
+/// halves of it. A pull request wants to read, since almost nothing it touches has changed and
+/// the point is to get an answer inside the time somebody will wait for one. The nightly wants to
+/// write and not read, since its whole job is to be the run whose numbers were all measured on the
+/// same machine in the same hour, and a nightly that reuses a fortnight old timing is a nightly
+/// that cannot see a regression.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum Reuse {
+    /// Read what is there and keep what is produced. The default.
+    #[default]
+    Allow,
+    /// Build everything, and keep the results so the next run does not have to.
+    Refresh,
+    /// Neither read nor write.
+    Off,
+}
+
+impl Reuse {
+    /// Whether an entry may be read.
+    #[must_use]
+    pub const fn reads(self) -> bool {
+        matches!(self, Self::Allow)
+    }
+
+    /// Whether a result is kept.
+    #[must_use]
+    pub const fn writes(self) -> bool {
+        matches!(self, Self::Allow | Self::Refresh)
+    }
 }
 
 impl Default for RunPlan {
@@ -132,6 +167,7 @@ impl Default for RunPlan {
             jobs: 1,
             baseline: Baseline::Measure,
             out: PathBuf::from("runs/latest"),
+            reuse: Reuse::Allow,
         }
     }
 }
@@ -387,6 +423,8 @@ fn run(args: &[String]) -> Result<RunPlan, String> {
             "--out" => plan.out = value(args, &mut index, "--out")?.into(),
             "--twice" => plan.twice = true,
             "--no-baseline" => plan.baseline = Baseline::Skip,
+            "--no-cache" => plan.reuse = Reuse::Off,
+            "--refresh" => plan.reuse = Reuse::Refresh,
             "--jobs" => plan.jobs = parse_jobs(&value(args, &mut index, "--jobs")?)?,
             other => return Err(unknown(other, "run")),
         }
@@ -781,6 +819,8 @@ Options for run:
   --jobs N        run N cells at once, or auto for one per core, defaulting to 1
   --no-baseline   skip the gcc half of every cell, which halves the run and empties every
                   column that compares one compiler against the other
+  --refresh       build every cell even if it has been built before, and keep the results
+  --no-cache      neither read nor write the record cache
   --out DIR       where the records and the report go, defaulting to runs/latest
 
 Options for abi:
@@ -1044,6 +1084,28 @@ mod tests {
 
         let after = parse(&args("run --twice --corpus /tmp/c")).unwrap();
         assert_eq!(after.options.corpus, PathBuf::from("/tmp/c"));
+    }
+
+    #[test]
+    fn the_cache_is_on_unless_the_command_line_turns_it_off() {
+        let plan = |line: &str| {
+            let Command::Run(plan) = parse(&args(line)).unwrap().command else {
+                panic!("not a run");
+            };
+            plan.reuse
+        };
+        assert_eq!(plan("run"), Reuse::Allow);
+        assert_eq!(plan("run --no-cache"), Reuse::Off);
+        assert_eq!(plan("run --refresh"), Reuse::Refresh);
+    }
+
+    #[test]
+    fn both_cache_flags_are_in_the_usage_text() {
+        // A flag nobody can find is a flag that does not exist, and these two are the ones
+        // somebody reaches for when a run gave them an answer they did not expect.
+        let usage = usage();
+        assert!(usage.contains("--no-cache"));
+        assert!(usage.contains("--refresh"));
     }
 
     #[test]

@@ -53,7 +53,9 @@ cargo run -p rrc -- fetch --record        the same, and write what it resolved i
 cargo run -p rrc -- build --project c4    build one project and stop at the binary
 cargo run -p rrc -- test --project c4     build one project and run its own suite
 cargo run -p rrc -- run                   rungs 0 and 1 at four optimization levels, which is the per commit budget
-cargo run -p rrc -- run --jobs auto        the same run with a cell per core, for when you want the answer and not the timings
+cargo run -p rrc -- run --jobs auto       the same run with a cell per core, for when you want the answer and not the timings
+cargo run -p rrc -- run --refresh        build every cell even if it has been built before, and keep the results
+cargo run -p rrc -- run --no-cache       neither read nor write the record cache
 cargo run -p rrc -- abi zlib              the four way abi cross check on one project, without the graded run beside it
 cargo run -p rrc -- bisect zlib           the mixed build, until the failure has a file name on it
 cargo run -p rrc -- interrogate libpng    configure twice and compare what the two decided
@@ -65,7 +67,9 @@ cargo run -p rrc -- report --pages       write the committed report tree under r
 cargo run -p rrc -- report --pages --check   say which of those pages are out of date
 ```
 
-A run builds every project from nothing, several times each, and nothing built is ever cached between runs, because a corpus whose result depends on what was left over from yesterday is measuring the leftovers. What can be spent instead is cores. `--jobs N` runs N cells at once and `--jobs auto` uses the machine, which on a ten core laptop takes rung 0 from 58 seconds to 16 with the same report coming out the other end. The default is one, because one is the only setting whose build times can be compared with each other, and each record says how many cells were in flight while it was made so that nobody has to guess later.
+A run builds every project from nothing, several times each, and nothing built is ever partly cached between runs, because a corpus whose result depends on what was left over from yesterday is measuring the leftovers. What can be spent instead is cores. `--jobs N` runs N cells at once and `--jobs auto` uses the machine, which on a ten core laptop takes rung 0 from 58 seconds to 16 with the same report coming out the other end. The default is one, because one is the only setting whose build times can be compared with each other, and each record says how many cells were in flight while it was made so that nobody has to guess later.
+
+What is cached is whole records. A cell whose every input hashes to what it hashed last time is not built again, and its previous record is handed back instead. There is no middle case: a cell either compiles every object of its project from nothing or it does not run, so the rule above still holds. The key covers the source pin, both compilers as bytes and as version strings, the whole manifest, the exclusion register entry, every dependency's manifest, the level, the baseline setting, the host and the harness version, which is more than strictly necessary on purpose, since the cost of an ingredient that turns out not to matter is one wasted rebuild and the cost of a missing one is a stale answer reported confidently. A reused record says so, and every report that quotes seconds says how many of its seconds were not measured that day, because an outcome survives a fortnight in a file and a build time does not. `--refresh` builds everything and still keeps the results, which is what the nightly does, and `--no-cache` switches the whole thing off. The cache lives beside the archives under `RRC_CACHE`, or `~/.cache/rrc` when that is not set.
 
 Point it at the two compilers with `--rucc` and `--gcc`, which default to `rucc` and `gcc` on the path. Every run writes `records.jsonl`, one JSON object per project per level, and the Markdown report is rendered from that file rather than kept alongside it. The report format will change and the records have to outlive it, so `rrc report` re-renders an old run without rebuilding anything.
 

@@ -22,6 +22,7 @@ rrc fetch [<project>...]                populate the cache, verify hashes
 rrc build <project> --level O2          one project, one level
 rrc test <project> --level O2           build then run the suite
 rrc run --rung 0,1,2 --levels O0,O2     the scheduler; the normal entry point
+rrc run --refresh | --no-cache          rebuild every cell, or do not cache at all
 rrc abi [<project>...] [--levels O2]    the four way cross-check of 08.5, on its own
 rrc bisect <project> --level O2         the mixed build of document 08.6
 rrc report --format md|json|junit       render records
@@ -36,6 +37,8 @@ rrc lint                                schema, vocabulary, licences, staleness
 `rrc run --jobs N` runs N cells at once, and `--jobs auto` uses the machine. One is the default, because one is the only setting whose `build_seconds` compare with each other and the cost table of document 12.5 is quoted at it. The record carries `concurrency` so that a number produced on a loaded machine is never mistaken for one produced on a quiet one. What is not affected is the answer: the cells, the report and its order are the same either way, since each cell already builds in its own sandbox and carries the place the run asked for it in. What is affected is the terminal, where cells arrive as they finish rather than in order, because the unit a worker takes is one cell and not one project, for document 12.5's measured reason.
 
 **Every cell builds twice, and the second build is the reference.** A cell is a build and a suite run with the compiler under test, and then the same build and the same suite run with the GCC 16 of document 06.5, written to `reference.jsonl` beside `records.jsonl`. Without it every column of document 11's cost table that compares one compiler against the other has nothing on the other side and reads `not measured`, which is what it read for as long as the second half was built only for the projects graded differentially. A run is twice the work for it. `rrc run --no-baseline` turns it off for somebody who wants to know what fails rather than what it cost, and a run whose `--rucc` and `--gcc` resolve to the same binary turns it off by itself and says so on the way past, because a compiler measured against itself is a table of ones.
+
+**A cell that has been run before under identical conditions is not run again.** Document 12.9 has the rules. In short: the key covers the source pin, both compilers as bytes and as version strings, the whole manifest, the exclusion entry, every dependency's manifest, the level, the baseline setting, the host and the harness version, so an answer only comes out of the cache when nothing that could change it has moved. A build is never partly reused, which is what keeps document 12.7 intact: the choice is between building the whole cell and not running it. `--refresh` builds everything and keeps the results, which is what the nightly does, because a nightly that reused a fortnight old timing could not see a regression. `--no-cache` neither reads nor writes. `rrc test` never reads it, since somebody looking at one cell asked to watch it happen.
 
 `rrc abi` is the cross-check on its own, for working on a single project without paying for the graded run beside it. Document 12.1 puts the cross-check inside the per-commit budget rather than behind a flag, so `rrc run` does it too, for every project whose manifest has an `[abi]` table. It writes its own `abi.jsonl` next to the run records and its own section in the report, because a crossed pairing that disagrees is a different kind of result from a project whose suite failed and putting them in one table loses that.
 
@@ -56,7 +59,7 @@ tests-run, tests-passed, tests-baseline,
 binary-bytes, text-bytes, data-bytes,
 source-files, source-lines, source-bytes,
 first-diagnostic, log-path, oracle-used, oracle-declared, parallel, concurrency,
-observed-outcome, excluded-by
+observed-outcome, excluded-by, built-against, reused
 ```
 
 Six fields deserve a note.
@@ -70,6 +73,8 @@ Six fields deserve a note.
 **`oracle-used` against `oracle-declared`** is document 06.5's guarantee made visible. When they differ, the project was graded weaker than its manifest claims and the report says so in a distinct column rather than a footnote.
 
 **`parallel` and `concurrency`** are two different questions and both of them are asked. `parallel` says whether the project's own build ran under `make -j`, because a bug that only appears there is a real bug and has to be attributable to the thing that caused it. `concurrency` says how many cells the scheduler had in flight while this one ran, and it is one on a run that was not given `--jobs`. Seconds and peak resident size measured at one are not the same measurement as seconds measured at ten, and document 12.5 is where that trade is described.
+
+**`reused`** says whether this record came out of the cache of document 12.9 rather than off the machine just now. Its outcome and its sizes are as true as they ever were, since the key covers everything that could have changed them. Its seconds and its peak resident size are not: they were measured on some earlier day on a machine that was doing something else at the time. Every report that quotes seconds says how many of them are in that position, and a reader chasing a timing regression can throw those rows away.
 
 **`observed-outcome` and `excluded-by`** are present on an excluded cell and absent everywhere else. An excluded cell is built and tested like any other and then has its outcome replaced with `excluded`, and `observed-outcome` is the outcome it produced before the replacement. Without it, document 09.5's conditions two and four have nothing to look at, since an entry that has stopped describing its cell is only visible if somebody ran the cell.
 
