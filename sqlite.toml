@@ -185,3 +185,18 @@ evidence = "the amalgamation is one translation unit compiled directly, so nothi
 tag = "cmake-probes"
 sites = 0
 evidence = "same reason as autoconf, there is no configure step of any kind in front of the amalgamation"
+
+[[measured]]
+tag = "nan-boxing"
+sites = 0
+evidence = "sqlite3.c reinterprets a double as a 64 bit integer and back in sixteen places, all of them through memcpy rather than through a union, and a value's type is carried in the flags field of the Mem struct beside the number rather than in the payload of a quiet NaN, so the demand this tag names is one it does not make"
+
+[[measured]]
+tag = "lto"
+sites = 0
+evidence = "nothing in the amalgamation asks for it, because whether the program is built across a translation unit boundary is the builder's decision and the amalgamation is one translation unit, which is exactly why the level is staged rather than run on everything"
+
+[[measured]]
+tag = "driver-print-dirs"
+sites = 0
+evidence = "the amalgamation is compiled directly and has no build system in front of it, so nothing asks the driver where it keeps anything"

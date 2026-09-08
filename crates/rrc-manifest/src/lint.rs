@@ -661,6 +661,20 @@ fn check_sqlite(corpus: &Corpus, findings: &mut Vec<Finding>) {
             ));
         }
     }
+
+    // The other direction, which is the one that goes wrong quietly. A tag that has no row here
+    // is not a demand SQLite was found not to make, it is a demand nobody looked for, and the two
+    // are indistinguishable in the column: both come out blank. The file already says this about
+    // itself, that a row with nought sites is kept because a list of only the hits cannot be told
+    // apart from a list nobody finished, and this is what holds it to that when the vocabulary
+    // grows. The fix for a finding here is to go and count, not to delete the tag.
+    for tag in corpus.features.tags.keys() {
+        if !seen.contains(&tag.as_str()) {
+            push(format!(
+                "never measures `{tag}`, so the column cannot say whether SQLite demands it or whether nobody has looked"
+            ));
+        }
+    }
 }
 
 fn is_sha256(value: &str) -> bool {
@@ -1217,6 +1231,29 @@ kind = "standard"
         // counted as evidence that the ladder had missed something when it is a misspelling.
         let findings = check(&measuring("pointer-arithemtic", 162));
         assert!(findings.iter().any(|f| f.what.contains("really a typo")));
+    }
+
+    #[test]
+    fn a_tag_in_the_vocabulary_that_nobody_measured_is_caught() {
+        // The quiet one. A vocabulary that grows without the count growing with it leaves a tag
+        // that reads as a demand SQLite does not make, when what really happened is that nobody
+        // went and looked, and the column has no way to show the difference.
+        let mut corpus = measuring("pointer-arithmetic", 162);
+        corpus.features.tags.insert(
+            "nan-boxing".into(),
+            crate::features::Feature {
+                summary: "a double read back through a union".into(),
+                kind: crate::features::FeatureKind::Standard,
+                diagnostic: Vec::new(),
+                rucc_issue: None,
+                standard: None,
+            },
+        );
+        assert!(
+            check(&corpus)
+                .iter()
+                .any(|f| f.what.contains("never measures `nan-boxing`"))
+        );
     }
 
     #[test]

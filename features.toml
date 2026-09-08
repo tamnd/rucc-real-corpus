@@ -103,6 +103,10 @@ summary = "__builtin_memcpy and __builtin_memset expanded inline at a size the c
 kind = "gnu-builtin"
 standard = "GNU builtin; the portable spelling is a call to memcpy that the compiler is expected to recognise"
 
+[nan-boxing]
+summary = "a double written to a union and read back as a uint64_t, with a pointer and a tag living in the payload of a quiet NaN"
+kind = "standard"
+
 [overflow-builtins]
 summary = "__builtin_add_overflow, __builtin_sub_overflow and __builtin_mul_overflow"
 kind = "gnu-builtin"
