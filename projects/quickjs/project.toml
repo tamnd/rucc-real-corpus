@@ -56,8 +56,10 @@ command = ["make", "test"]
 oracle = "self-checking"
 
 # Ninety thousand lines with quickjs.c alone at sixty thousand, built serially, so this is the
-# slowest build on the rung by some way and the limit is set for a compiler that is slower than gcc
-# rather than for gcc. The suite itself is under a second.
+# slowest build on the rung by some way. On the reference machine gcc takes twenty five seconds at
+# -O0 and two hundred at -O3, so the limit is not set for gcc, it is head room for a compiler
+# several times slower than gcc at the level where being slower costs the most. The suite itself is
+# about a second at every level.
 [limits]
 build-seconds = 3600
 test-seconds = 300
