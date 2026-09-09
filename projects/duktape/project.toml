@@ -1,0 +1,138 @@
+[project]
+name = "duktape"
+rung = 3
+upstream = "https://github.com/svaarala/duktape"
+licence = "MIT"
+licence-file = "LICENSE.txt"
+description = "an embeddable javascript engine shipped as one hundred thousand line translation unit"
+# The amalgamation is the point. Everything the engine is arrives in the compiler as a single file
+# with four hundred and seven opcode cases in one switch, so whatever the compiler decides about
+# jump tables, register pressure and inlining it decides once with the whole engine in front of it.
+# The number formatting is duktape's own rather than the platform's, because javascript specifies
+# exactly which digits come out, so printing a double here is arithmetic and not a call to libc.
+demands = ["large-switch", "double-formatting", "deep-macros"]
+
+# The prepared distribution rather than the repository. The tree on github holds the sources the
+# amalgamation is generated from and a python program that generates it, and building from there
+# would be measuring the generator. This tarball is what a project embedding duktape actually
+# compiles.
+[source]
+url = "https://duktape.org/duktape-2.7.0.tar.xz"
+sha256 = "90f8d2fa8b5567c6899830ddef2c03f3c27960b11aca222fa17aa7ac613c2890"
+strip-components = 1
+
+# Direct rather than the Makefile.cmdline upstream ships, and it is wren's reason exactly. That
+# Makefile writes `$(CC) $(CFLAGS) ... $(DEFINES) $(CCOPTS)` and CCOPTS opens with a literal -Os, so
+# the level the environment asks for lands in front of it and the last -O on the line wins. Nothing
+# comes after CCOPTS except the source files, and replacing CCOPTS on the command line would take
+# every include path and every define with it. Five cells would be five copies of one measurement.
+#
+# The file list and the defines below are exactly what that Makefile compiles, with nothing left out
+# and nothing added. What is deliberately not carried across is -Wall, -pedantic, -fstrict-aliasing
+# and -fomit-frame-pointer. The first two are diagnostics and change no code. The other two are
+# upstream choosing an optimization setting, and on this list the level chooses that, so forcing
+# them would mean every cell is really the same cell wearing a different name.
+[build]
+system = "direct"
+sources = [
+  "src/duktape.c",
+  "examples/cmdline/duk_cmdline.c",
+  "extras/print-alert/duk_print_alert.c",
+  "extras/console/duk_console.c",
+  "extras/logging/duk_logging.c",
+  "extras/module-duktape/duk_module_duktape.c",
+]
+output = "duk"
+link = ["-lm"]
+
+[[build.flags]]
+flag = "-std=c99"
+why = "the Makefile asks for c99 and the engine is written to it, so leaving it off would be compiling a different dialect than upstream ships"
+
+[[build.flags]]
+flag = "-I./src"
+why = "duktape.h and duk_config.h sit beside the amalgamation and every file includes them by bare name"
+
+[[build.flags]]
+flag = "-I./examples/cmdline"
+why = "the command line tool's own header"
+
+[[build.flags]]
+flag = "-DDUK_CMDLINE_PRINTALERT_SUPPORT"
+why = "mandel.js calls print, which is not part of the language and arrives through this extra"
+
+[[build.flags]]
+flag = "-I./extras/print-alert"
+why = "the header for the extra above"
+
+[[build.flags]]
+flag = "-DDUK_CMDLINE_CONSOLE_SUPPORT"
+why = "the console object, which the Makefile turns on and the command line tool expects to exist"
+
+[[build.flags]]
+flag = "-I./extras/console"
+why = "the header for the extra above"
+
+[[build.flags]]
+flag = "-DDUK_CMDLINE_LOGGING_SUPPORT"
+why = "Duktape.Logger, which the Makefile turns on"
+
+[[build.flags]]
+flag = "-I./extras/logging"
+why = "the header for the extra above"
+
+[[build.flags]]
+flag = "-DDUK_CMDLINE_MODULE_SUPPORT"
+why = "the 1.x module loader, which the Makefile turns on"
+
+[[build.flags]]
+flag = "-I./extras/module-duktape"
+why = "the header for the extra above"
+
+# A recorded oracle on the whole output rather than a differential, and the reason is that the
+# recording turned out to be worth having. mandel.js is floating point from end to end and the
+# picture it draws is a function of every rounding decision on the way, so it is exactly the shape
+# of program where -ffp-contract or a wider intermediate would show up as a different character in
+# the middle of a line. It does not. gcc 16.2.0 on linux x86-64 at all five levels and clang on
+# macOS arm64 all produce the same twenty eight lines byte for byte, which is a fact worth pinning
+# down rather than leaving to a differential that would agree with itself either way.
+[test]
+command = ["./duk", "mandel.js"]
+oracle = "recorded"
+expect-output = '''
+..........................,,,,,,,,,,,,,,,,,,,,,,,,,.........................
+....................,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,...................
+................,,,,,,,,,,,,,,,,,,,,,,,,,,,---=----,,,,,,,,,,...............
+.............,,,,,,,,,,,,,,,,,,,,,,,,,,,,------====--,,,,,,,,,,,............
+..........,,,,,,,,,,,,,,,,,,,,,,,,,,,,,-------====------,,,,,,,,,,,.........
+........,,,,,,,,,,,,,,,,,,,,,,,,,,,,,-------=#####==-------,,,,,,,,,,.......
+......,,,,,,,,,,,,,,,,,,,,,,,,,,,----------==######=----------,,,,,,,,,.....
+.....,,,,,,,,,,,,,,,,,,,,,,,-------=========#########=#=-====--,,,,,,,,,....
+....,,,,,,,,,,,,,,,,,,--------------=######################==---,,,,,,,,,...
+...,,,,,,,,,,,,,,----------------==########################=-----,,,,,,,,,..
+..,,,,,,,,,,,,----==----==------===##########################==--,,,,,,,,,,.
+.,,,,,,,,,,---------==#==#========###########################=---,,,,,,,,,,,
+.,,,,,,,,---------===##########==############################=---,,,,,,,,,,,
+.,,,,,,--------=====########################################=----,,,,,,,,,,,
+.#########################################################==-----,,,,,,,,,,,
+.,,,,,,--------=====########################################=----,,,,,,,,,,,
+.,,,,,,,,---------===##########==############################=---,,,,,,,,,,,
+.,,,,,,,,,,---------==#==#========###########################=---,,,,,,,,,,,
+..,,,,,,,,,,,,----==----==------===##########################==--,,,,,,,,,,.
+...,,,,,,,,,,,,,,----------------==########################=-----,,,,,,,,,..
+....,,,,,,,,,,,,,,,,,,--------------=######################==---,,,,,,,,,...
+.....,,,,,,,,,,,,,,,,,,,,,,,-------=========#########=#=-====--,,,,,,,,,....
+......,,,,,,,,,,,,,,,,,,,,,,,,,,,----------==######=----------,,,,,,,,,.....
+........,,,,,,,,,,,,,,,,,,,,,,,,,,,,,-------=#####==-------,,,,,,,,,,.......
+..........,,,,,,,,,,,,,,,,,,,,,,,,,,,,,-------====------,,,,,,,,,,,.........
+.............,,,,,,,,,,,,,,,,,,,,,,,,,,,,------====--,,,,,,,,,,,............
+................,,,,,,,,,,,,,,,,,,,,,,,,,,,---=----,,,,,,,,,,...............
+....................,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,...................
+'''
+
+# One translation unit of a hundred thousand lines, so the build is a single compile that a slow
+# compiler pays for all at once with no parallelism to hide behind. The test draws one picture and
+# exits, and it takes well under a second.
+[limits]
+build-seconds = 900
+test-seconds = 120
