@@ -12,25 +12,25 @@ Weight is what to do next. It is the sum over the held up projects of six minus 
 
 | feature | kind | demanded by | held up | weight | issue |
 |---|---|---|---|---|---|
-| `pointer-arithmetic` | standard | 14 | 0 | 0 | none open |
+| `pointer-arithmetic` | standard | 15 | 0 | 0 | none open |
 | `autoconf-probes` | driver | 11 | 0 | 0 | none open |
 | `bit-manipulation` | standard | 11 | 0 | 0 | none open |
 | `switch-dispatch` | standard | 10 | 0 | 0 | none open |
+| `deep-macros` | preprocessor | 9 | 0 | 0 | none open |
 | `function-pointers` | standard | 9 | 0 | 0 | none open |
 | `integer-conversion` | standard | 9 | 0 | 0 | none open |
-| `deep-macros` | preprocessor | 8 | 0 | 0 | none open |
 | `struct-layout` | abi | 8 | 0 | 0 | none open |
 | `computed-goto` | gnu-extension | 6 | 0 | 0 | none open |
 | `large-switch` | standard | 6 | 0 | 0 | none open |
 | `setjmp-longjmp` | standard | 5 | 0 | 0 | none open |
 | `double-formatting` | standard | 4 | 0 | 0 | none open |
+| `varargs-depth` | standard | 4 | 0 | 0 | none open |
 | `bit-builtins` | gnu-builtin | 3 | 0 | 0 | [open](https://github.com/tamnd/rucc/issues/310) |
 | `cmake-probes` | driver | 3 | 0 | 0 | none open |
 | `float-arithmetic` | standard | 3 | 0 | 0 | none open |
 | `memcpy-idioms` | gnu-builtin | 3 | 0 | 0 | none open |
 | `thread-local` | standard | 3 | 0 | 0 | none open |
 | `unaligned-access` | standard | 3 | 0 | 0 | none open |
-| `varargs-depth` | standard | 3 | 0 | 0 | none open |
 | `atomic-builtins` | gnu-builtin | 2 | 0 | 0 | [open](https://github.com/tamnd/rucc/issues/311) |
 | `constant-time` | standard | 2 | 0 | 0 | none open |
 | `inline-asm` | gnu-extension | 2 | 0 | 0 | none open |
@@ -65,6 +65,7 @@ arithmetic on object interiors, one past the end comparisons, and pointer differ
 - `libpsl`, R2, not measured
 - `libyaml`, R2, not measured
 - `chibi-scheme`, R3, not measured
+- `pdpmake`, R4, not measured
 
 ### `autoconf-probes`
 
@@ -113,6 +114,20 @@ a state machine written as a switch, with deliberate fall through between cases
 - `chibi-scheme`, R3, not measured
 - `tcc`, R3, not measured
 
+### `deep-macros`
+
+macros expanding through several layers, including __VA_ARGS__ forwarding
+
+- `picohttpparser`, R0, not measured
+- `libsir`, R1, not measured
+- `minunit`, R1, not measured
+- `libcheck`, R2, not measured
+- `libconfig`, R2, not measured
+- `libgmp`, R2, not measured
+- `duktape`, R3, not measured
+- `micropython`, R3, not measured
+- `pdpmake`, R4, not measured
+
 ### `function-pointers`
 
 calls through a pointer, including pointers to library functions
@@ -140,19 +155,6 @@ the integer types are the widths the standard says they are, and conversions bet
 - `libjpeg`, R2, not measured
 - `libmpfr`, R2, not measured
 - `libtommath`, R2, not measured
-
-### `deep-macros`
-
-macros expanding through several layers, including __VA_ARGS__ forwarding
-
-- `picohttpparser`, R0, not measured
-- `libsir`, R1, not measured
-- `minunit`, R1, not measured
-- `libcheck`, R2, not measured
-- `libconfig`, R2, not measured
-- `libgmp`, R2, not measured
-- `duktape`, R3, not measured
-- `micropython`, R3, not measured
 
 ### `struct-layout`
 
@@ -208,6 +210,15 @@ printf and strtod round tripping a double without losing a digit
 - `libjansson`, R2, not measured
 - `duktape`, R3, not measured
 
+### `varargs-depth`
+
+varargs forwarded through several layers of function
+
+- `libsir`, R1, not measured
+- `cmocka`, R2, not measured
+- `libcheck`, R2, not measured
+- `pdpmake`, R4, not measured
+
 ### `bit-builtins`
 
 __builtin_clz, __builtin_ctz, __builtin_popcount and their l and ll forms
@@ -255,14 +266,6 @@ loads and stores through pointers the compiler cannot prove are aligned
 - `lz4`, R1, not measured
 - `zstd`, R2, not measured
 - `tcc`, R3, not measured
-
-### `varargs-depth`
-
-varargs forwarded through several layers of function
-
-- `libsir`, R1, not measured
-- `cmocka`, R2, not measured
-- `libcheck`, R2, not measured
 
 ### `atomic-builtins`
 
