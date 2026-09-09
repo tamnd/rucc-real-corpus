@@ -358,6 +358,14 @@ licence-sha256 = "197d8a73ffee0d6b09adba2f9c677b5f5aede24edf89258a68e48248d010d8
 verified = "2026-09-08"
 
 [[project]]
+name = "pdpmake"
+url = "https://codeload.github.com/rmyorston/pdpmake/tar.gz/refs/tags/2.0.4"
+sha256 = "7e19294d54edf360591d76d3b7a0a511864902ac3a75a0b5b11c7b3cae14c13f"
+bytes = 47337
+licence-sha256 = "a93429663f93ed6f965be077984f481bfc1ea4d7382729a17eb2f345620f81de"
+verified = "2026-09-09"
+
+[[project]]
 name = "picohttpparser"
 url = "https://codeload.github.com/h2o/picohttpparser/tar.gz/539bb9f510f5aefc8efda53aaf822a21ecae2832"
 sha256 = "f6da62f0b983cb2359a580a9b6408b31cea562ce307daf838ca7291c0046b96c"

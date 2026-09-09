@@ -157,7 +157,7 @@ The recorded output turned out to be worth recording rather than settling for a 
 | `sqlite-shell` | `3.53.4` | blessing | A3 | D3/E1 | the shell rather than the amalgamation: application code against system headers, one rung below R5 |
 | `busybox` | `1_38_0` | GPL-2.0 | A5 | D3/E1 | hundreds of applets in one binary under `-Os`, `__attribute__((section))`, and a config system |
 | `toybox` | `0.8.14` | 0BSD | A5 | D3/E1 | the same shape with different idioms; slimcc patches it, so expect exclusions |
-| `pdpmake` | `2.0.4` | 0BSD | A1 | D3/E1 | a POSIX make, small enough to read, with a suite that asserts on output |
+| `pdpmake` | `2.0.4` | Unlicense | A1 | D3/E1 | a POSIX make, small enough to read, with a suite that asserts on output |
 | `oksh` | `7.7` | ISC | A2 | D3/E1 | a shell: `fork`, signals, and `longjmp` from a signal handler |
 | `mawk` | `1.3.4` | GPL-2.0 | A3 | D3/E1 | a bytecode interpreter plus generated parser tables |
 | `gzip` | `1.14` | GPL-3.0 | A3 | D3/E2 | gnulib, which is the largest portability-macro surface in open source |
@@ -172,6 +172,14 @@ The recorded output turned out to be worth recording rather than settling for a 
 | `git` | `v2.51.0` | GPL-2.0 | A5 | D3/E1 | a thousand shell cases, `container_of`, `mmap`, and a build with generated headers |
 
 **`sqlite-shell` is deliberately one rung below the amalgamation.** `shell.c` is ordinary application code that includes the library and the system headers, and `rucc-compat`'s manifest already records that it fails on `__builtin_ceil` and `__builtin_floor` while the amalgamation fails on atomics. Two files from the same tarball, two different blockers, which is document 03.4's principle showing up inside a single project.
+
+**`pdpmake` is the row this rung starts on, because it is the one that adds a rung and nothing else.** Nine translation units, four thousand three hundred lines, and a Makefile that opens with `.POSIX:` and assigns `CFLAGS` nowhere, so the level in the environment reaches the built in `.c.o` rule and there is no `build.level-flags` carrier to argue about. Every other row on this list brings a configuration system or a generated file or a thousand shell cases along with the thing being measured. This one brings a program and a suite, which makes it the right place to find out what R4 costs before paying for it sixteen times.
+
+The table said `0BSD` and the licence file is the Unlicense, and the row above now says so. Both are permissive and nothing about the corpus changes, but the pin check compares the licence file by hash at every pin move and a row that names the wrong licence is a row nobody can check against.
+
+**It is also the first row where the `lto` level goes through a link the harness did not write.** R4 and R5 are the rungs whose required levels include `-O2 -flto`, and the link line here is `$(CC) $(LDFLAGS) -o make $(OBJS)` with no `CFLAGS` on it at all. So `-flto` is on every compile and on none of the link, and GCC resolves that anyway through the linker plugin without being asked, which is worth having verified once before it is assumed fifteen more times. That makes the level a question about the driver rather than about the optimizer: the compiler under test has to accept the flag, produce something the linker plugin recognises, and then be absent from the link and still be correct.
+
+**The count has to be assembled, because `runtest` does not print one.** It prints `PASS:`, `FAIL:` or `SKIPPED:` and a name, one line per case, and the only total it ever prints is a failure count on the way out, which is the one run where a total is least useful. The manifest counts the lines with `awk`, the same shape janet, tcc and micropython use, and the run count is passes plus failures with the skip left out. One case is skipped, `Macro skipping in POSIX 2017`, and it is skipped because of the defines `make.h` was compiled with rather than because of anything that happened while it ran. Those defines are the same in both slots of a differential, so a skip that turned into a run would itself be a difference and would show up as a count off the baseline rather than hidden inside it. GCC 16.2.0 on linux x86-64 gives 66 of 66 with 1 skipped and an exit status of zero at all six levels.
 
 ## 5.6 Reserved, not run
 
