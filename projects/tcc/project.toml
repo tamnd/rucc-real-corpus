@@ -35,6 +35,13 @@ strip-components = 1
 # the shim answers, so it needs no --cc either.
 [build]
 system = "configure"
+# The harness invokes configure by absolute path, and tcc derives its source path from how it was
+# invoked, so it decides the build is out of tree and starts linking its own Makefiles into a
+# directory they are already in. On linux that is a cp that fails and takes configure's exit status
+# with it, and on macOS it is a symlink pointing at itself and make gives up on the first line. The
+# option below is tcc's own and says the source path is here, which is what an in tree build is, so
+# it is a build system argument under document 09.3 case one rather than a patch.
+configure = ["--source-path=."]
 
 # make test is a list of sections run one after another, and make stops at the first one that fails,
 # so the exit status is the verdict. What it does not have is a count, and a suite with no count can
