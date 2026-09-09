@@ -66,6 +66,14 @@ licence-sha256 = "9577b9c846f61fd69a0d8ac965998c6450c7d8969f71f0bb4a931b91aebad2
 verified = "2026-09-08"
 
 [[project]]
+name = "duktape"
+url = "https://duktape.org/duktape-2.7.0.tar.xz"
+sha256 = "90f8d2fa8b5567c6899830ddef2c03f3c27960b11aca222fa17aa7ac613c2890"
+bytes = 1026524
+licence-sha256 = "c6b6659630ca6cb837afe982ecc79511bfca878b56296d628b02eb6f18789c29"
+verified = "2026-09-09"
+
+[[project]]
 name = "femtolisp"
 url = "https://codeload.github.com/JeffBezanson/femtolisp/tar.gz/ec7601076a976f845bc05ad6bd3ed5b8cde58a97"
 sha256 = "a3a50cd092eb0b9bc65fae43b802e8a1cfbd3dd3b318ffc81c221adfe5f2a30e"

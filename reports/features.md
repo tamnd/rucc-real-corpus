@@ -19,12 +19,12 @@ Weight is what to do next. It is the sum over the held up projects of six minus 
 | `function-pointers` | standard | 9 | 0 | 0 | none open |
 | `integer-conversion` | standard | 9 | 0 | 0 | none open |
 | `struct-layout` | abi | 8 | 0 | 0 | none open |
-| `deep-macros` | preprocessor | 6 | 0 | 0 | none open |
+| `deep-macros` | preprocessor | 7 | 0 | 0 | none open |
+| `large-switch` | standard | 6 | 0 | 0 | none open |
 | `computed-goto` | gnu-extension | 5 | 0 | 0 | none open |
-| `large-switch` | standard | 5 | 0 | 0 | none open |
 | `setjmp-longjmp` | standard | 5 | 0 | 0 | none open |
+| `double-formatting` | standard | 4 | 0 | 0 | none open |
 | `cmake-probes` | driver | 3 | 0 | 0 | none open |
-| `double-formatting` | standard | 3 | 0 | 0 | none open |
 | `float-arithmetic` | standard | 3 | 0 | 0 | none open |
 | `memcpy-idioms` | gnu-builtin | 3 | 0 | 0 | none open |
 | `thread-local` | standard | 3 | 0 | 0 | none open |
@@ -164,6 +164,18 @@ macros expanding through several layers, including __VA_ARGS__ forwarding
 - `libcheck`, R2, not measured
 - `libconfig`, R2, not measured
 - `libgmp`, R2, not measured
+- `duktape`, R3, not measured
+
+### `large-switch`
+
+a switch with hundreds of cases, where the jump table decision is the compiler's
+
+- `libconfig`, R2, not measured
+- `pcre2`, R2, not measured
+- `duktape`, R3, not measured
+- `lua`, R3, not measured
+- `lua-nojumptable`, R3, not measured
+- `quickjs`, R3, not measured
 
 ### `computed-goto`
 
@@ -175,16 +187,6 @@ labels as values, goto *
 - `quickjs`, R3, not measured
 - `wren`, R3, not measured
 
-### `large-switch`
-
-a switch with hundreds of cases, where the jump table decision is the compiler's
-
-- `libconfig`, R2, not measured
-- `pcre2`, R2, not measured
-- `lua`, R3, not measured
-- `lua-nojumptable`, R3, not measured
-- `quickjs`, R3, not measured
-
 ### `setjmp-longjmp`
 
 setjmp and longjmp as an error mechanism, which constrains what the optimizer may keep in a register
@@ -195,14 +197,6 @@ setjmp and longjmp as an error mechanism, which constrains what the optimizer ma
 - `lua`, R3, not measured
 - `lua-nojumptable`, R3, not measured
 
-### `cmake-probes`
-
-the compiler answers cmake's compiler identification and abi detection the way cmake expects
-
-- `brotli`, R2, not measured
-- `cjson`, R2, not measured
-- `cmocka`, R2, not measured
-
 ### `double-formatting`
 
 printf and strtod round tripping a double without losing a digit
@@ -210,6 +204,15 @@ printf and strtod round tripping a double without losing a digit
 - `parson`, R0, not measured
 - `cjson`, R2, not measured
 - `libjansson`, R2, not measured
+- `duktape`, R3, not measured
+
+### `cmake-probes`
+
+the compiler answers cmake's compiler identification and abi detection the way cmake expects
+
+- `brotli`, R2, not measured
+- `cjson`, R2, not measured
+- `cmocka`, R2, not measured
 
 ### `float-arithmetic`
 
