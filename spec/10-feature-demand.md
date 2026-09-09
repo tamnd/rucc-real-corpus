@@ -51,7 +51,7 @@ Populated from document 01's measurements, and from the failures the ladder is e
 |---|---|---|
 | `bit-builtins` | `rpmalloc`, `quickjs`, `micropython`, `zstd`, `brotli`, `libgmp`, `pcre2`, `grep`, `xz`, `busybox`, `git` | slimcc's `use_stdbit`: 18 projects, 52 sites |
 | `atomic-builtins` | `libjansson`, `libuv`, `rpmalloc`, `sqlite`, `chibi-scheme` | slimcc's `use_stdatomic`: 9 projects, 12 sites, SQLite among them |
-| `setjmp-longjmp` | `libpng`, `lua`, `femtolisp`, `bash`, `libcheck`, `oksh` | read from the sources |
+| `setjmp-longjmp` | `libpng`, `lua`, `femtolisp`, `bash`, `libcheck` | read from the sources |
 | `computed-goto` | `lua` (jumptable build), `quickjs`, `micropython` | `rucc-corpus` reports five cases on `block_addr` |
 | `inline-asm` | `libgmp`, `libsodium`, `incbin` | `longlong.h` is assembly for every target |
 | `driver-print-dirs` | every A3 project, 20 of them | autoconf and libtool interrogate the driver |

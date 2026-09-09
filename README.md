@@ -18,7 +18,7 @@ A third party file goes to rucc-compat. A third party project goes here.
 
 ## The rules
 
-**No source patches.** Not one. The bytes that come out of the pinned archive are the bytes the compiler sees. There is no patches directory and nothing in the manifest schema that could express one. A project that will not build unpatched is excluded, with an issue against rucc, until it does. This is stricter than every comparable project: kefir patches three of its 110, and slimcc patches 101 of its 289. The reason to accept the cost is that "sixty of seventy three projects build unpatched" is a claim about the compiler, and "sixty of seventy three build, some with edits we made" is a claim about our patience.
+**No source patches.** Not one. The bytes that come out of the pinned archive are the bytes the compiler sees. There is no patches directory and nothing in the manifest schema that could express one. A project that will not build unpatched is excluded, with an issue against rucc, until it does. This is stricter than every comparable project: kefir patches three of its 110, and slimcc patches 101 of its 289. The reason to accept the cost is that "sixty of seventy two projects build unpatched" is a claim about the compiler, and "sixty of seventy two build, some with edits we made" is a claim about our patience.
 
 **The project's own test suite is the oracle.** Not our expectations of it. Every project records the number of tests a GCC 16 build passes on the reference machine, and a run that comes in under that number fails even when the exit status is zero.
 

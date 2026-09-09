@@ -55,7 +55,7 @@ Two numbers per project per level, against a GCC 16 build of the same pin on the
 
 **Build time**, as wall-clock seconds for the build phase only, reported as a ratio against GCC. Parent document 02's axis three wants 2x `clang -O0` and 1.5x `clang -O2`, measured properly on the SQLite amalgamation per parent document 16. This is the same disclaimer: the number here is noisy, machine-dependent and useful only as a trend, and it is collected because the run is happening anyway.
 
-**Both are reported per project, never averaged into a corpus figure.** A geometric mean over seventy three projects of wildly different shapes is a number with no referent, and publishing one would invite exactly the comparison document 02.5 refuses.
+**Both are reported per project, never averaged into a corpus figure.** A geometric mean over seventy two projects of wildly different shapes is a number with no referent, and publishing one would invite exactly the comparison document 02.5 refuses.
 
 **`peak-rss` is recorded and reported for the worst ten projects only**, because compiler memory use is a real failure mode at R4 and R5 and nowhere else.
 

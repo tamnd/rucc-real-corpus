@@ -86,7 +86,7 @@ Writing the abandonment branch into the milestone in advance is the only way it 
 
 ## RC4: the programs, LTO, and the mixed build
 
-**Admit.** The sixteen R4 projects of document 05.5, including `sqlite-shell`.
+**Admit.** The fifteen R4 projects of document 05.5, including `sqlite-shell`.
 
 **Exit:**
 

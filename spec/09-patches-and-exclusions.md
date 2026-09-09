@@ -12,9 +12,9 @@ This is stricter than every prior art in document 01. Kefir patches three projec
 
 Document 01.2 measured it: 101 of slimcc's 289 projects need a source edit, roughly one third.
 
-If rucc's compatibility today resembled slimcc's, adopting this rule on document 05's list of seventy three would mean roughly twenty five entries starting life as exclusions. That is not a reason to weaken the rule. It is the reason document 14's milestones are shaped the way they are, with RC0's exit criterion being about R0 and R1 rather than about a percentage of the list, and it is the reason document 03.6 caps the list at eighty rather than reaching for slimcc's 289.
+If rucc's compatibility today resembled slimcc's, adopting this rule on document 05's list of seventy two would mean roughly twenty five entries starting life as exclusions. That is not a reason to weaken the rule. It is the reason document 14's milestones are shaped the way they are, with RC0's exit criterion being about R0 and R1 rather than about a percentage of the list, and it is the reason document 03.6 caps the list at eighty rather than reaching for slimcc's 289.
 
-**The rule's payoff is that the number means something.** "Sixty of seventy three projects build unpatched" is a claim about the compiler. "Sixty of seventy three build, some with edits we made" is a claim about our patience. Only the first one moves when the compiler improves, and only the first one can be compared against kefir's and slimcc's published results.
+**The rule's payoff is that the number means something.** "Sixty of seventy two projects build unpatched" is a claim about the compiler. "Sixty of seventy two build, some with edits we made" is a claim about our patience. Only the first one moves when the compiler improves, and only the first one can be compared against kefir's and slimcc's published results.
 
 ## 9.3 What is not a patch
 
