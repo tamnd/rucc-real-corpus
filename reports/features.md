@@ -20,9 +20,9 @@ Weight is what to do next. It is the sum over the held up projects of six minus 
 | `switch-dispatch` | standard | 9 | 0 | 0 | none open |
 | `struct-layout` | abi | 7 | 0 | 0 | none open |
 | `deep-macros` | preprocessor | 6 | 0 | 0 | none open |
+| `computed-goto` | gnu-extension | 5 | 0 | 0 | none open |
 | `large-switch` | standard | 5 | 0 | 0 | none open |
 | `setjmp-longjmp` | standard | 5 | 0 | 0 | none open |
-| `computed-goto` | gnu-extension | 4 | 0 | 0 | none open |
 | `cmake-probes` | driver | 3 | 0 | 0 | none open |
 | `double-formatting` | standard | 3 | 0 | 0 | none open |
 | `float-arithmetic` | standard | 3 | 0 | 0 | none open |
@@ -35,14 +35,15 @@ Weight is what to do next. It is the sum over the held up projects of six minus 
 | `inline-asm` | gnu-extension | 2 | 0 | 0 | none open |
 | `k-and-r-idioms` | standard | 2 | 0 | 0 | none open |
 | `libm-builtins` | gnu-builtin | 2 | 0 | 0 | [open](https://github.com/tamnd/rucc/issues/226) |
+| `nan-boxing` | standard | 2 | 0 | 0 | none open |
 | `overflow-builtins` | gnu-builtin | 2 | 0 | 0 | none open |
 | `recursion-depth` | standard | 2 | 0 | 0 | none open |
 | `rotate-idioms` | standard | 2 | 0 | 0 | none open |
 | `unaligned-access` | standard | 2 | 0 | 0 | none open |
 | `flexible-array-member` | standard | 1 | 0 | 0 | none open |
 | `long-double` | standard | 1 | 0 | 0 | none open |
-| `nan-boxing` | standard | 1 | 0 | 0 | none open |
 | `stdckdint` | standard | 1 | 0 | 0 | none open |
+| `visibility-attributes` | gnu-extension | 1 | 0 | 0 | none open |
 
 ## The projects behind each row
 
@@ -162,6 +163,16 @@ macros expanding through several layers, including __VA_ARGS__ forwarding
 - `libconfig`, R2, not measured
 - `libgmp`, R2, not measured
 
+### `computed-goto`
+
+labels as values, goto *
+
+- `femtolisp`, R3, not measured
+- `janet`, R3, not measured
+- `lua`, R3, not measured
+- `quickjs`, R3, not measured
+- `wren`, R3, not measured
+
 ### `large-switch`
 
 a switch with hundreds of cases, where the jump table decision is the compiler's
@@ -181,15 +192,6 @@ setjmp and longjmp as an error mechanism, which constrains what the optimizer ma
 - `femtolisp`, R3, not measured
 - `lua`, R3, not measured
 - `lua-nojumptable`, R3, not measured
-
-### `computed-goto`
-
-labels as values, goto *
-
-- `femtolisp`, R3, not measured
-- `lua`, R3, not measured
-- `quickjs`, R3, not measured
-- `wren`, R3, not measured
 
 ### `cmake-probes`
 
@@ -281,6 +283,13 @@ __builtin_ceil, __builtin_floor and the rest of the libm shaped builtins
 - `llama2.c`, R0, not measured
 - `tinyexpr`, R0, not measured
 
+### `nan-boxing`
+
+a double written to a union and read back as a uint64_t, with a pointer and a tag living in the payload of a quiet NaN
+
+- `janet`, R3, not measured
+- `wren`, R3, not measured
+
 ### `overflow-builtins`
 
 __builtin_add_overflow, __builtin_sub_overflow and __builtin_mul_overflow
@@ -321,17 +330,17 @@ long double at the 80 bit x86-64 format
 
 - `libmpfr`, R2, not measured
 
-### `nan-boxing`
-
-a double written to a union and read back as a uint64_t, with a pointer and a tag living in the payload of a quiet NaN
-
-- `wren`, R3, not measured
-
 ### `stdckdint`
 
 <stdckdint.h> and ckd_add, ckd_sub and ckd_mul
 
 - `jtckdint`, R0, not measured
+
+### `visibility-attributes`
+
+__attribute__((visibility)) on functions and on objects
+
+- `janet`, R3, not measured
 
 ## The SQLite column
 
@@ -395,5 +404,4 @@ A tag nothing reaches is either a gap in the list, which is a project worth admi
 - `always-inline`
 - `driver-print-dirs`
 - `lto`
-- `visibility-attributes`
 

@@ -46,6 +46,12 @@ system = "make"
 # oracle consults it, and a test command that always exits zero would be a check quietly switched
 # off. Both counts are captured, so a run that passes everything it ran while running fewer cases
 # than the reference did fails.
+#
+# The count is host dependent, and the number below is the reference machine's. suite-filewatch runs
+# 45 cases against inotify on linux and 1 case anywhere else, so a macOS run comes back 44 short and
+# is graded wrong for a reason that has nothing to do with any compiler. That host is excluded in
+# the register rather than papered over here, because a second baseline per host is a thing the
+# manifest cannot say and should not learn to say for one suite.
 [test]
 command = [
     "sh",
@@ -55,12 +61,13 @@ command = [
 oracle = "suite"
 parser = "custom-regex"
 regex = "janet suites: (\\d+) of (\\d+) tests passed"
-baseline-tests = 3752
+baseline-tests = 3795
 requires = ["sh", "awk"]
 
 # Sixty files and forty thousand lines, plus the bootstrap run in the middle of the build, so a slow
-# compiler pays for the same core twice over. The suite is thirty one files run one after another
-# and the ev suite is most of the second it takes.
+# compiler pays for the same core twice over. On the reference machine gcc takes between twenty and
+# forty two seconds depending on the level and the suite takes between two and three, so the build
+# limit is the one that matters and it is slack for a compiler several times slower than gcc.
 [limits]
 build-seconds = 1800
 test-seconds = 600
