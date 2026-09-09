@@ -81,10 +81,10 @@ requires = ["sh", "awk", "python3"]
 
 # Four hundred files and a hundred and thirty six thousand lines, and python3 is needed to build it
 # and not only to test it, which is unusual enough on this list to be worth saying. On the reference
-# machine gcc takes between a hundred and twenty seven seconds and two hundred and one, so the
-# build limit is head room for a compiler several times slower rather than a limit set for gcc.
+# machine gcc takes between ninety eight seconds and two hundred and five, so the build limit is
+# head room for a compiler several times slower rather than a limit set for gcc.
 #
-# The suite is between thirty two and forty seconds and the limit is not set from that number. It
+# The suite is thirty three seconds at every level and the limit is not set from that number. It
 # forks the interpreter a thousand times, so what it costs is a thousand process startups and a
 # thousand programs run by the binary that was just built, and a binary that is slow because the
 # level could not do its work makes it slower without anything having gone wrong.
