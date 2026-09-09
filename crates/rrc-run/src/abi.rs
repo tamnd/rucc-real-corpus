@@ -297,6 +297,7 @@ pub fn cross(job: &Job<'_>, abi: &Abi, pairing: Pairing) -> std::io::Result<Cros
         toolchain: &toolchain,
         level: job.level,
         flags: &flags,
+        cflags_in_environment: job.manifest.build.cflags_in_environment(),
         host_cc: job.manifest.build.host_cc,
         extra_path: job.extra_path,
         // No prefix here, and the lint keeps it that way by refusing an abi project with

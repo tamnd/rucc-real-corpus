@@ -32,9 +32,17 @@ strip-components = 1
 system = "recursive"
 subdir = "ports/unix"
 
+#
+# The environment is cleared as well, and that half is not about the level. Make hands a variable
+# that came from the environment down to every sub make it starts, carrying whatever the parent
+# appended to it, so a CFLAGS set here arrives in the mpy-cross sub build with the unix port's
+# include paths and its -DMICROPY_PY_THREAD=1 on the end. mpy-cross has no mpthreadport.h, so the
+# build stops on a missing header at every level. The same tree builds clean with the variable
+# simply absent, which is what this asks for.
 [build.level-flags]
 variable = "CFLAGS_EXTRA"
 why = "the port writes -Os into its own CFLAGS and appends CFLAGS_EXTRA after it, so this is the one variable that lands after the level the port chose for itself"
+clears-environment = true
 
 # The suite is a thousand python programs, each run and compared against the output recorded beside
 # it, and 29748 individual assertions inside them. run-tests.py prints one line saying how many
