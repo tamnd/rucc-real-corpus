@@ -52,6 +52,12 @@ configure = ["--source-path=."]
 # grade, here the exit status is the grade and the count is the guard around it. A run that stops
 # after four sections instead of nineteen exits non zero and fails on the status. A run that somehow
 # reaches the end having skipped a hundred of the tests2 programs exits zero and fails on the count.
+#
+# The count is host dependent, and the number below is the reference machine's. Two of the nineteen
+# sections are linux only, asm-c-connect-test and the PIC dlltest, so macOS attempts 168 and is
+# graded wrong over two sections it was never going to run. That host is excluded in the register
+# under the same issue janet is, because it is the same problem and one issue holding both is a
+# better argument than two holding one each.
 [test]
 command = [
     "sh",
@@ -66,8 +72,9 @@ requires = ["sh", "awk"]
 
 # Sixty nine thousand lines over thirty files, and then the build turns round and uses the compiler
 # it just built to compile tcc's own runtime library, so a miscompile can surface either as a broken
-# tcc or as a broken libtcc1.a. The suite is the long part here rather than the build, which is the
-# other way round from everything else on this rung.
+# tcc or as a broken libtcc1.a. On the reference machine gcc takes between nine and thirty four
+# seconds to build it and between twenty four and forty one to run the suite, which makes it the
+# only project on this rung where the suite costs more than the build.
 [limits]
 build-seconds = 900
 test-seconds = 1800
