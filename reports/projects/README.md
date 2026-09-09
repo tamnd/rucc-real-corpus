@@ -2,7 +2,7 @@
 
 [Back to the report](README.md).
 
-One row per project and one page behind each row. `cells` counts every level this run covered, so a project that ran at four levels and passed three of them reads three of four.
+One row per project and one page behind each row. `cells` counts every level this run covered, so a project that passed at every one of them reads 6 of 6.
 
 The `files` and `lines` columns are the size of the pinned source, counted before anything is built, and they are here so that the rest of the row can be read. A project that fails at one level out of six is a different piece of news at three hundred lines than at thirty thousand.
 

@@ -10,7 +10,7 @@ Every number on these pages comes from one run of `rrc run`, and every one of th
 | --- | --- |
 | [What it cost](cost.md) | compile time, suite time, build memory, binary size, every cell against GCC 16 |
 | [What failed](failures.md) | the failures, grouped by the diagnostic rather than by the project |
-| [Per project](projects/README.md) | one page each, with all four levels on it |
+| [Per project](projects/README.md) | one page each, with every level this run covered on it |
 | [Feature demand](features.md) | which C features the corpus actually asks for, generated from the manifests alone |
 
 ## What happened
@@ -37,7 +37,7 @@ The rungs are the ladder of `spec/05-project-list.md`. A failure low on it is a 
 
 ## By optimization level
 
-Four levels, and they are four different compilers as far as this corpus is concerned. A project that passes at `-O0` and fails at `-O2` is the most useful single result the corpus produces.
+This run covered 6 levels, `O0`, `O1`, `O2`, `Os`, `O3` and `lto`, and each of them is a different compiler as far as this corpus is concerned. A project that passes at `-O0` and fails at `-O2` is the most useful single result the corpus produces.
 
 | level | cells | passed | still to do |
 | --- | ---: | ---: | ---: |
