@@ -45,35 +45,38 @@ why = "the port writes -Os into its own CFLAGS and appends CFLAGS_EXTRA after it
 clears-environment = true
 
 # The suite is a thousand python programs, each run and compared against the output recorded beside
-# it, and 29748 individual assertions inside them. run-tests.py prints how many it performed and how
-# many passed on two separate lines, in that order, and the parser wants the passing count first, so
-# the two are put on one line with awk. That is the same shape janet and tcc use and for the same
-# reason. The log keeps every original line, and the exit status is carried across by hand rather
-# than lost to awk.
+# it, and twenty nine thousand individual assertions inside them. run-tests.py prints how many it
+# performed and how many passed on two separate lines, in that order, and the parser wants the
+# passing count first, so the two are put on one line with awk. That is the same shape janet and tcc
+# use and for the same reason. The log keeps every original line, and the exit status is carried
+# across by hand rather than lost to awk, because the suite oracle consults it.
 #
-# There is a baseline-total here, which is the mechanism document 06.2 describes for a suite the
-# reference compiler cannot get a clean run out of either. cmdline/repl_paste.py is why. Its case is
-# driven through a pseudo terminal by run-tests.py, which writes a line and then reads whatever has
-# arrived within twenty milliseconds, so on a machine that is busy the prompt for the next line
-# lands in the following read and the recorded output no longer matches. GCC 16.2.0 on the reference
-# machine fails it at three of the five levels and passes it at the other two, in the same run, from
-# the same source. A number that moves with how loaded the machine is is not evidence about a
-# compiler, and the way this file says so is to accept either outcome while still requiring that all
-# 998 cases were performed and that only that one is allowed to be missing.
+# The command is the two lines of the port's own test target with one option added, and the option
+# is run-tests.py's own --exclude, documented in its help with examples. What it takes out is the
+# ten cmdline/repl_ cases, and the reason is that they are not measuring the compiler. run-tests.py
+# drives them through a pseudo terminal, writing a line and then reading whatever has arrived within
+# twenty milliseconds, so on a machine that is busy the prompt for the next line lands in the
+# following read and the recorded output no longer matches. GCC 16.2.0 on the reference machine
+# failed three of them in one run and none in the next, over one source tree, and the count of cases
+# performed moved with it, because two of the family are feature checks whose result decides whether
+# two others are skipped at all. Neither number is a measurement while they are in.
 #
-# 56 more are skipped on this port for reasons that are the port's rather than the compiler's, and
-# they are outside both numbers.
+# With them out both numbers stand still: 988 performed, 988 passed, 55 skipped and an exit status
+# of zero, twice in a row on the reference machine. Those 55 are skipped for reasons that are the
+# port's rather than the compiler's and are outside both numbers.
+#
+# The suite is measured on what it runs and not on a ratio, so a build that runs fewer cases and
+# passes all of them still comes in under the baseline and still fails.
 [test]
 command = [
     "sh",
     "-c",
-    "make test > rrc-suite-output.log 2>&1; status=$?; cat rrc-suite-output.log; awk '/tests performed/ { run = $1 } /tests passed/ { passed = $1 } END { printf \"micropython: %d of %d tests passed\\n\", passed, run }' rrc-suite-output.log; exit $status",
+    "cd ../../tests && MICROPY_MICROPYTHON=../ports/unix/build-standard/micropython ./run-tests.py --exclude 'cmdline/repl_' > rrc-suite-output.log 2>&1; status=$?; cat rrc-suite-output.log; awk '/tests performed/ { run = $1 } /tests passed/ { passed = $1 } END { printf \"micropython: %d of %d tests passed\\n\", passed, run }' rrc-suite-output.log; exit $status",
 ]
 oracle = "suite"
 parser = "custom-regex"
 regex = "micropython: (\\d+) of (\\d+) tests passed"
-baseline-tests = 997
-baseline-total = 998
+baseline-tests = 988
 requires = ["sh", "awk", "python3"]
 
 # Four hundred files and a hundred and thirty six thousand lines, and python3 is needed to build it
