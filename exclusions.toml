@@ -61,3 +61,12 @@ host = "macos-aarch64"
 issue = "https://github.com/tamnd/rucc-real-corpus/issues/105"
 why = "The same shape as janet and the same issue. Two of the nineteen sections make test runs are linux only, asm-c-connect-test and the PIC dlltest, so this host attempts 168 cases against a reference of 170 and is graded a wrong answer over two sections it was never going to run. Everything it does run passes and the suite exits zero. Scoped to the host, because every level passes on the reference machine."
 since = "2026-09-09"
+
+[[exclude]]
+project = "micropython"
+case = "micropython"
+level = "*"
+host = "macos-aarch64"
+issue = "upstream:https://github.com/tamnd/rucc-real-corpus/issues/110"
+why = "The port compiles with -Werror and py/misc.h writes its static assert as sizeof of a char array whose size is a comparison between two object addresses. That is not a constant expression, gcc folds it anyway and clang folds it and then warns about having folded it, so py/parse.c stops the build on this host before any question about the compiler under test is reached. Upstream guards the macro for msvc and for C++ and not for clang compiling C. Every level on linux x86-64 builds and passes, which is why this is scoped to the one host."
+since = "2026-09-09"
