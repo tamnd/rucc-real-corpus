@@ -284,6 +284,9 @@ pub enum SuiteParser {
 pub enum Requirement {
     /// A POSIX shell.
     Sh,
+    /// Awk, which the same standard mandates as the shell but which is still a separate binary
+    /// and is still missing from a stripped container often enough to be worth naming.
+    Awk,
     /// Perl.
     Perl,
     /// Python 3.
@@ -306,8 +309,9 @@ pub enum Requirement {
 
 impl Requirement {
     /// Every requirement in the closed vocabulary.
-    pub const ALL: [Self; 10] = [
+    pub const ALL: [Self; 11] = [
         Self::Sh,
+        Self::Awk,
         Self::Perl,
         Self::Python3,
         Self::Tcl,
@@ -324,6 +328,7 @@ impl Requirement {
     pub const fn command(self) -> &'static str {
         match self {
             Self::Sh => "sh",
+            Self::Awk => "awk",
             Self::Perl => "perl",
             Self::Python3 => "python3",
             Self::Tcl => "tclsh",

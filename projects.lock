@@ -98,6 +98,14 @@ licence-sha256 = "7e12e5df4bae12cb21581ba157ced20e1986a0508dd10d0e8a4ab9a4cf94e8
 verified = "2026-09-08"
 
 [[project]]
+name = "janet"
+url = "https://codeload.github.com/janet-lang/janet/tar.gz/refs/tags/v1.38.0"
+sha256 = "84dbf7db9c09677618549fb4be23631fd64f527af21051db02753241a2f6f752"
+bytes = 590880
+licence-sha256 = "805858acec1df54018879efc78ee3ff7bab5e69908c58e46bbc2d94520f29023"
+verified = "2026-09-09"
+
+[[project]]
 name = "jsmn"
 url = "https://codeload.github.com/zserge/jsmn/tar.gz/25647e692c7906b96ffd2b05ca54c097948e879c"
 sha256 = "02ac62537ea34ee33b55efa41a832b78086548715298a454b6f304e29a7c9d43"
