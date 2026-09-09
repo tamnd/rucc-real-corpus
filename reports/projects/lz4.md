@@ -10,10 +10,18 @@ The pinned archive is 69 files, 28,036 lines, 1.1 MiB, counted before anything i
 
 | level | outcome | reached | graded by |
 | --- | --- | --- | --- |
-| O0 | passed | tested | self checking |
-| O1 | passed | tested | self checking |
-| O2 | passed | tested | self checking |
-| Os | passed | tested | self checking |
+| O0 | did not build | fetched | self checking |
+| O1 | did not build | fetched | self checking |
+| Os | did not build | fetched | self checking |
+| O2 | did not build | fetched | self checking |
+| O3 | did not build | fetched | self checking |
+
+## What the compiler said
+
+The first diagnostic only, normalized, which is the one the failure clustering groups on.
+
+- `O0`: `rucc: error: unknown option `-fPIC``
+- `Os`: `rucc: error: unknown option `-fPIC``
 
 ## The project's own tests
 
@@ -21,17 +29,19 @@ The pinned archive is 69 files, 28,036 lines, 1.1 MiB, counted before anything i
 | --- | ---: | ---: | ---: | ---: |
 | O0 | not counted | not counted | not counted | not comparable |
 | O1 | not counted | not counted | not counted | not comparable |
-| O2 | not counted | not counted | not counted | not comparable |
 | Os | not counted | not counted | not counted | not comparable |
+| O2 | not counted | not counted | not counted | not comparable |
+| O3 | not counted | not counted | not counted | not comparable |
 
 ## Time and memory
 
 | level | compile | gcc 16 | vs gcc | suite | gcc 16 | vs gcc | build memory | gcc 16 | vs gcc |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| O0 | 2.15s | not measured | not measured | 42.98s | not measured | not measured | 87.3 MiB | not measured | not measured |
-| O1 | 5.08s | not measured | not measured | 44.56s | not measured | not measured | 86.7 MiB | not measured | not measured |
-| O2 | 10.42s | not measured | not measured | 48.11s | not measured | not measured | 126.6 MiB | not measured | not measured |
-| Os | 7.76s | not measured | not measured | 46.76s | not measured | not measured | 114.1 MiB | not measured | not measured |
+| O0 [^cached] | 0.63s | 10.87s | 0.06x | 0.00s | 54.36s | 0.00x | 11.7 MiB | 93.4 MiB | 0.12x |
+| O1 [^cached] | 1.11s | 20.65s | 0.05x | 0.00s | 61s | 0.00x | 11.9 MiB | 95.1 MiB | 0.13x |
+| Os [^cached] | 0.65s | 31.07s | 0.02x | 0.00s | 73s | 0.00x | 15.3 MiB | 116.8 MiB | 0.13x |
+| O2 [^cached] | 0.98s | 41.71s | 0.02x | 0.00s | 81s | 0.00x | 12.0 MiB | 131.9 MiB | 0.09x |
+| O3 [^cached] | 0.87s | 59.69s | 0.01x | 0.00s | 102s | 0.00x | 12.0 MiB | 177.8 MiB | 0.07x |
 
 ## Size
 
@@ -39,5 +49,6 @@ The pinned archive is 69 files, 28,036 lines, 1.1 MiB, counted before anything i
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
 | O0 | not measured | not measured | not measured | not measured | not measured | not measured |
 | O1 | not measured | not measured | not measured | not measured | not measured | not measured |
-| O2 | not measured | not measured | not measured | not measured | not measured | not measured |
 | Os | not measured | not measured | not measured | not measured | not measured | not measured |
+| O2 | not measured | not measured | not measured | not measured | not measured | not measured |
+| O3 | not measured | not measured | not measured | not measured | not measured | not measured |

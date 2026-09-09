@@ -10,34 +10,48 @@ The pinned archive is 73 files, 19,927 lines, 627.4 KiB, counted before anything
 
 | level | outcome | reached | graded by |
 | --- | --- | --- | --- |
-| O0 | passed | tested | suite count |
-| O1 | passed | tested | suite count |
-| O2 | passed | tested | suite count |
-| Os | passed | tested | suite count |
+| O1 | did not build | fetched | suite count |
+| O0 | did not build | fetched | suite count |
+| Os | did not build | fetched | suite count |
+| O2 | did not build | fetched | suite count |
+| O3 | did not build | fetched | suite count |
+
+## What the compiler said
+
+The first diagnostic only, normalized, which is the one the failure clustering groups on.
+
+- `O0`: `rucc: error: unknown option `-MMD``
+- `O1`: `rucc: error: unknown option `-MMD``
+- `O2`: `rucc: error: unknown option `-MMD``
+- `O3`: `rucc: error: unknown option `-MMD``
+- `Os`: `rucc: error: unknown option `-MMD``
 
 ## The project's own tests
 
 | level | passed | of | gcc 16 passed | behind gcc |
 | --- | ---: | ---: | ---: | ---: |
-| O0 | 36 | 36 | not counted | not comparable |
-| O1 | 36 | 36 | not counted | not comparable |
-| O2 | 36 | 36 | not counted | not comparable |
-| Os | 36 | 36 | not counted | not comparable |
+| O1 | not counted | not counted | not counted | not comparable |
+| O0 | not counted | not counted | not counted | not comparable |
+| Os | not counted | not counted | not counted | not comparable |
+| O2 | not counted | not counted | not counted | not comparable |
+| O3 | not counted | not counted | not counted | not comparable |
 
 ## Time and memory
 
 | level | compile | gcc 16 | vs gcc | suite | gcc 16 | vs gcc | build memory | gcc 16 | vs gcc |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| O0 | 1.75s | not measured | not measured | 3.10s | not measured | not measured | 134.8 MiB | not measured | not measured |
-| O1 | 1.73s | not measured | not measured | 3.10s | not measured | not measured | 52.0 MiB | not measured | not measured |
-| O2 | 2.60s | not measured | not measured | 3.10s | not measured | not measured | 53.7 MiB | not measured | not measured |
-| Os | 2.27s | not measured | not measured | 3.10s | not measured | not measured | 134.6 MiB | not measured | not measured |
+| O1 [^cached] | 0.06s | 8.35s | 0.01x | 0.00s | 0.04s | not measured | 2.2 MiB | 55.2 MiB | 0.04x |
+| O0 [^cached] | 0.09s | 6.45s | 0.01x | 0.00s | 0.01s | not measured | 2.2 MiB | 50.7 MiB | 0.04x |
+| Os [^cached] | 0.11s | 11.07s | 0.01x | 0.00s | 0.00s | not measured | 2.2 MiB | 58.1 MiB | 0.04x |
+| O2 [^cached] | 0.07s | 12.02s | 0.01x | 0.00s | 0.03s | not measured | 2.2 MiB | 61.1 MiB | 0.04x |
+| O3 [^cached] | 0.09s | 12.29s | 0.01x | 0.00s | 0.03s | not measured | 2.2 MiB | 61.9 MiB | 0.04x |
 
 ## Size
 
 | level | text and data | gcc 16 | vs gcc | on disk | gcc 16 | vs gcc |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| O0 | not measured | not measured | not measured | not measured | not measured | not measured |
 | O1 | not measured | not measured | not measured | not measured | not measured | not measured |
-| O2 | not measured | not measured | not measured | not measured | not measured | not measured |
+| O0 | not measured | not measured | not measured | not measured | not measured | not measured |
 | Os | not measured | not measured | not measured | not measured | not measured | not measured |
+| O2 | not measured | not measured | not measured | not measured | not measured | not measured |
+| O3 | not measured | not measured | not measured | not measured | not measured | not measured |

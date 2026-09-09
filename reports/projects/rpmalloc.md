@@ -14,15 +14,17 @@ The pinned archive is 10 files, 6,823 lines, 225.8 KiB, counted before anything 
 | O1 | did not build | fetched | self checking |
 | O2 | did not build | fetched | self checking |
 | Os | did not build | fetched | self checking |
+| O3 | did not build | fetched | self checking |
 
 ## What the compiler said
 
 The first diagnostic only, normalized, which is the one the failure clustering groups on.
 
-- `O0`: `test/main.c:1696:9: error: implicit declaration of function 'CPU_ZERO'; did you mean 'FP_ZERO'? [-Wimplicit-function-declaration]`
-- `O1`: `test/main.c:1696:9: error: implicit declaration of function 'CPU_ZERO'; did you mean 'FP_ZERO'? [-Wimplicit-function-declaration]`
-- `O2`: `test/main.c:1696:9: error: implicit declaration of function 'CPU_ZERO'; did you mean 'FP_ZERO'? [-Wimplicit-function-declaration]`
-- `Os`: `test/main.c:1696:9: error: implicit declaration of function 'CPU_ZERO'; did you mean 'FP_ZERO'? [-Wimplicit-function-declaration]`
+- `O0`: `rpmalloc/rpmalloc.c:766:14: error: implicit declaration of function '__builtin_thread_pointer' [E0521]`
+- `O1`: `rpmalloc/rpmalloc.c:766:14: error: implicit declaration of function '__builtin_thread_pointer' [E0521]`
+- `O2`: `rpmalloc/rpmalloc.c:766:14: error: implicit declaration of function '__builtin_thread_pointer' [E0521]`
+- `O3`: `rpmalloc/rpmalloc.c:766:14: error: implicit declaration of function '__builtin_thread_pointer' [E0521]`
+- `Os`: `rpmalloc/rpmalloc.c:766:14: error: implicit declaration of function '__builtin_thread_pointer' [E0521]`
 
 ## The project's own tests
 
@@ -32,15 +34,17 @@ The first diagnostic only, normalized, which is the one the failure clustering g
 | O1 | not counted | not counted | not counted | not comparable |
 | O2 | not counted | not counted | not counted | not comparable |
 | Os | not counted | not counted | not counted | not comparable |
+| O3 | not counted | not counted | not counted | not comparable |
 
 ## Time and memory
 
 | level | compile | gcc 16 | vs gcc | suite | gcc 16 | vs gcc | build memory | gcc 16 | vs gcc |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| O0 | 0.28s | not measured | not measured | 0.00s | not measured | not measured | 14.7 MiB | not measured | not measured |
-| O1 | 0.30s | not measured | not measured | 0.00s | not measured | not measured | 46.8 MiB | not measured | not measured |
-| O2 | 0.49s | not measured | not measured | 0.00s | not measured | not measured | 54.8 MiB | not measured | not measured |
-| Os | 0.41s | not measured | not measured | 0.00s | not measured | not measured | 50.0 MiB | not measured | not measured |
+| O0 [^cached] | 0.31s | 0.78s | 0.40x | 0.00s | 0.00s | not measured | 9.4 MiB | 43.7 MiB | 0.22x |
+| O1 [^cached] | 0.19s | 1.19s | 0.16x | 0.00s | 0.00s | not measured | 9.4 MiB | 51.6 MiB | 0.18x |
+| O2 [^cached] | 0.21s | 1.86s | 0.11x | 0.00s | 0.00s | not measured | 9.3 MiB | 59.3 MiB | 0.16x |
+| Os [^cached] | 0.17s | 1.65s | 0.10x | 0.00s | 0.00s | not measured | 9.2 MiB | 53.4 MiB | 0.17x |
+| O3 [^cached] | 0.17s | 2.31s | 0.07x | 0.00s | 0.00s | not measured | 9.5 MiB | 66.6 MiB | 0.14x |
 
 ## Size
 
@@ -50,3 +54,4 @@ The first diagnostic only, normalized, which is the one the failure clustering g
 | O1 | not measured | not measured | not measured | not measured | not measured | not measured |
 | O2 | not measured | not measured | not measured | not measured | not measured | not measured |
 | Os | not measured | not measured | not measured | not measured | not measured | not measured |
+| O3 | not measured | not measured | not measured | not measured | not measured | not measured |

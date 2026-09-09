@@ -149,7 +149,7 @@ fn hub(summary: &Summary, records: &[RunRecord], costs: &[Cost], projects: &[Str
     out.push_str("| [What it cost](cost.md) | compile time, suite time, build memory, binary size, every cell against GCC 16 |\n");
     out.push_str("| [What failed](failures.md) | the failures, grouped by the diagnostic rather than by the project |\n");
     out.push_str(
-        "| [Per project](projects/README.md) | one page each, with all four levels on it |\n",
+        "| [Per project](projects/README.md) | one page each, with every level this run covered on it |\n",
     );
     out.push_str("| [Feature demand](features.md) | which C features the corpus actually asks for, generated from the manifests alone |\n\n");
 
@@ -163,7 +163,11 @@ fn hub(summary: &Summary, records: &[RunRecord], costs: &[Cost], projects: &[Str
     out.push('\n');
 
     out.push_str("## By optimization level\n\n");
-    out.push_str("Four levels, and they are four different compilers as far as this corpus is concerned. A project that passes at `-O0` and fails at `-O2` is the most useful single result the corpus produces.\n\n");
+    let _ = writeln!(
+        out,
+        "This run covered {}, and each of them is a different compiler as far as this corpus is concerned. A project that passes at `-O0` and fails at `-O2` is the most useful single result the corpus produces.\n",
+        levels_phrase(records),
+    );
     out.push_str(&by_level(records));
     out.push('\n');
 
@@ -266,6 +270,32 @@ fn by_rung(records: &[RunRecord]) -> String {
 }
 
 /// Cells and passes per optimization level.
+/// The levels this run covered, cheapest first, whether that is the four a per commit run uses or
+/// the six a full one does.
+///
+/// Every sentence on these pages that used to say "four levels" said it in a string literal, and
+/// none of them changed when the `lto` level was added. A count that is read off the records
+/// cannot go stale that way, and a level that no cell ran at is not one this run covered.
+fn levels_covered(records: &[RunRecord]) -> Vec<&'static str> {
+    Level::ALL
+        .into_iter()
+        .filter(|level| records.iter().any(|record| record.level == *level))
+        .map(Level::name)
+        .collect()
+}
+
+/// The same levels as a phrase, so that the page names them rather than making a reader go and
+/// count the rows of the table underneath it.
+fn levels_phrase(records: &[RunRecord]) -> String {
+    let levels = levels_covered(records);
+    let named: Vec<String> = levels.iter().map(|name| format!("`{name}`")).collect();
+    match named.split_last() {
+        None => "no levels at all".to_string(),
+        Some((last, [])) => format!("one level, {last}"),
+        Some((last, rest)) => format!("{} levels, {} and {last}", named.len(), rest.join(", ")),
+    }
+}
+
 fn by_level(records: &[RunRecord]) -> String {
     let mut counted: BTreeMap<&str, (usize, usize)> = BTreeMap::new();
     for record in records {
@@ -482,7 +512,11 @@ fn project_index(records: &[RunRecord], costs: &[Cost], projects: &[String]) -> 
     let mut out = String::new();
     out.push_str("# Every project\n\n");
     out.push_str("[Back to the report](README.md).\n\n");
-    out.push_str("One row per project and one page behind each row. `cells` counts every level this run covered, so a project that ran at four levels and passed three of them reads three of four.\n\n");
+    let _ = writeln!(
+        out,
+        "One row per project and one page behind each row. `cells` counts every level this run covered, so a project that passed at every one of them reads {covered} of {covered}.\n",
+        covered = levels_covered(records).len(),
+    );
     out.push_str("The `files` and `lines` columns are the size of the pinned source, counted before anything is built, and they are here so that the rest of the row can be read. A project that fails at one level out of six is a different piece of news at three hundred lines than at thirty thousand.\n\n");
     out.push_str(
         "| project | rung | files | lines | cells passed | behind gcc on tests |\n| --- | --- | ---: | ---: | ---: | ---: |\n",
@@ -649,6 +683,23 @@ mod tests {
         r.source_lines = Some(1_450);
         r.source_bytes = Some(48_000);
         r
+    }
+
+    #[test]
+    fn the_page_names_the_levels_the_run_actually_covered() {
+        let mine = vec![
+            cell("zlib", Level::O0, Outcome::Passed),
+            cell("zlib", Level::O2, Outcome::Passed),
+            cell("pdpmake", Level::Lto, Outcome::DidNotBuild),
+        ];
+        assert_eq!(levels_covered(&mine), vec!["O0", "O2", "lto"]);
+        assert_eq!(levels_phrase(&mine), "3 levels, `O0`, `O2` and `lto`");
+    }
+
+    #[test]
+    fn one_level_is_not_described_in_the_plural() {
+        let mine = vec![cell("zlib", Level::O2, Outcome::Passed)];
+        assert_eq!(levels_phrase(&mine), "one level, `O2`");
     }
 
     #[test]

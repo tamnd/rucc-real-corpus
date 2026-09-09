@@ -10,28 +10,41 @@ The pinned archive is 1,054 files, 212,797 lines, 6.7 MiB, counted before anythi
 
 | level | outcome | reached | graded by |
 | --- | --- | --- | --- |
-| O0 | wrong answer | tested | suite count |
-| O1 | wrong answer | tested | suite count |
-| O2 | wrong answer | tested | suite count |
-| Os | wrong answer | tested | suite count |
+| O0 | did not build | fetched | suite count |
+| O1 | did not build | fetched | suite count |
+| O2 | did not build | fetched | suite count |
+| Os | did not build | fetched | suite count |
+| O3 | did not build | fetched | suite count |
+
+## What the compiler said
+
+The first diagnostic only, normalized, which is the one the failure clustering groups on.
+
+- `O0`: `configure: error: could not find a working compiler, see config.log for details`
+- `O1`: `configure: error: could not find a working compiler, see config.log for details`
+- `O2`: `configure: error: could not find a working compiler, see config.log for details`
+- `O3`: `configure: error: could not find a working compiler, see config.log for details`
+- `Os`: `configure: error: could not find a working compiler, see config.log for details`
 
 ## The project's own tests
 
 | level | passed | of | gcc 16 passed | behind gcc |
 | --- | ---: | ---: | ---: | ---: |
-| O0 | 177 | 178 | not counted | not comparable |
-| O1 | 177 | 178 | not counted | not comparable |
-| O2 | 177 | 178 | not counted | not comparable |
-| Os | 177 | 178 | not counted | not comparable |
+| O0 | not counted | not counted | 177 | not comparable |
+| O1 | not counted | not counted | 177 | not comparable |
+| O2 | not counted | not counted | 177 | not comparable |
+| Os | not counted | not counted | 177 | not comparable |
+| O3 | not counted | not counted | 177 | not comparable |
 
 ## Time and memory
 
 | level | compile | gcc 16 | vs gcc | suite | gcc 16 | vs gcc | build memory | gcc 16 | vs gcc |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| O0 | 52.13s | not measured | not measured | 42.95s | not measured | not measured | 139.2 MiB | not measured | not measured |
-| O1 | 56.17s | not measured | not measured | 39.07s | not measured | not measured | 139.2 MiB | not measured | not measured |
-| O2 | 60s | not measured | not measured | 41.94s | not measured | not measured | 103.5 MiB | not measured | not measured |
-| Os | 62s | not measured | not measured | 43.72s | not measured | not measured | 139.1 MiB | not measured | not measured |
+| O0 [^cached] | 3.60s | 275s | 0.01x | 0.00s | 174s | 0.00x | 28.1 MiB | 58.3 MiB | 0.48x |
+| O1 [^cached] | 4.23s | 299s | 0.01x | 0.00s | 164s | 0.00x | 8.7 MiB | 58.4 MiB | 0.15x |
+| O2 [^cached] | 3.75s | 323s | 0.01x | 0.00s | 177s | 0.00x | 18.0 MiB | 58.4 MiB | 0.31x |
+| Os [^cached] | 5.06s | 319s | 0.02x | 0.00s | 182s | 0.00x | 9.9 MiB | 58.3 MiB | 0.17x |
+| O3 [^cached] | 4.06s | 329s | 0.01x | 0.00s | 189s | 0.00x | 21.2 MiB | 58.3 MiB | 0.36x |
 
 ## Size
 
@@ -41,3 +54,4 @@ The pinned archive is 1,054 files, 212,797 lines, 6.7 MiB, counted before anythi
 | O1 | not measured | not measured | not measured | not measured | not measured | not measured |
 | O2 | not measured | not measured | not measured | not measured | not measured | not measured |
 | Os | not measured | not measured | not measured | not measured | not measured | not measured |
+| O3 | not measured | not measured | not measured | not measured | not measured | not measured |
