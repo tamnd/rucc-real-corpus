@@ -50,7 +50,7 @@ Ranked by how much of the plan changes if the answer is the unwelcome one. Each 
 
 **Why it is open rather than planned.** It is a different project with a different shape: a distribution build, not a corpus. It needs a package set, a bootstrap order, and an answer for every package that is not C. Document 04.9 excludes it and this question is the record of the exclusion being a decision.
 
-**What would inform it.** The R4 results. If sixteen command-line programs with behavioural suites pass unpatched at six levels, a userland is a scheduling problem. If they do not, the question is moot.
+**What would inform it.** The R4 results. If fifteen command-line programs with behavioural suites pass unpatched at six levels, a userland is a scheduling problem. If they do not, the question is moot.
 
 **By when.** After M5. It is explicitly not a question RC0 to RC5 need answered, and it is here so that it is not raised as a surprise at M7.
 
@@ -58,7 +58,7 @@ Ranked by how much of the plan changes if the answer is the unwelcome one. Each 
 
 **The question.** Document 09.1 forbids source patches absolutely, and document 09.2 costs it at roughly a third of the list based on slimcc's 101 of 289. That number is an average over slimcc's whole list. The patches are not evenly distributed: the large behavioural programs at R4, `busybox`, `toybox`, `git`, the GNU tools, are where slimcc patches most.
 
-**The failure mode to watch for.** R4 arriving with fourteen of sixteen projects excluded, at which point the rung produces no signal and the rule is doing harm rather than good.
+**The failure mode to watch for.** R4 arriving with thirteen of fifteen projects excluded, at which point the rung produces no signal and the rule is doing harm rather than good.
 
 **What would answer it.** The exclusion count at R4 in RC4's first full run, compared against slimcc's patch count for the same projects, which is already extractable from document 01.2's classification.
 
@@ -82,7 +82,7 @@ Ranked by how much of the plan changes if the answer is the unwelcome one. Each 
 
 **The question.** Parent document 02's axis four wants three hosts. Document 12.2's nightly runs macOS aarch64. Document 01.5 already notes that SQLite's `os_unix.c` is the file most likely to differ between a Linux and a macOS build, and much of document 05's R4 list is GNU software that assumes glibc and GNU userland tools.
 
-**Why it is a question and not a task.** If forty of seventy three projects fail on macOS for reasons that have nothing to do with rucc, the macOS nightly produces noise rather than signal, and the honest response is a per-host project list rather than a pretence that the corpus is host-independent.
+**Why it is a question and not a task.** If forty of seventy two projects fail on macOS for reasons that have nothing to do with rucc, the macOS nightly produces noise rather than signal, and the honest response is a per-host project list rather than a pretence that the corpus is host-independent.
 
 **What would answer it.** A GCC 16 baseline run of the full list on macOS at admission time. This is criterion 3 of document 03.2 applied per host, and it costs one run.
 
