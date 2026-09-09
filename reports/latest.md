@@ -226,13 +226,13 @@ Both numbers are cheap proxies against a GCC 16 build of the same pin on the sam
 The worst few only. Compiler memory use is a real failure mode at the top of the ladder and a curiosity everywhere else.
 
 - pcre2: 333 MiB
-- brotli: 263 MiB
+- brotli: 264 MiB
 - brotli: 262 MiB
 - brotli: 262 MiB
-- brotli: 262 MiB
-- pcre2: 238 MiB
-- pcre2: 224 MiB
-- zstd: 209 MiB
+- brotli: 260 MiB
+- pcre2: 236 MiB
+- pcre2: 222 MiB
+- zstd: 207 MiB
 - zstd: 168 MiB
 - zstd: 162 MiB
 

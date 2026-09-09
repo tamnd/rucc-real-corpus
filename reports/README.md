@@ -77,7 +77,7 @@ Added up rather than averaged, and it is a bill rather than a score. A corpus fi
 
 | | compile seconds |
 | --- | ---: |
-| under test | 1826 |
+| under test | 1739 |
 
 ## Every project
 

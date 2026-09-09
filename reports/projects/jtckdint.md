@@ -29,9 +29,9 @@ The pinned archive is 3 files, 854 lines, 37.0 KiB, counted before anything is b
 | level | compile | gcc 16 | vs gcc | suite | gcc 16 | vs gcc | build memory | gcc 16 | vs gcc |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
 | O0 | 0.04s | not measured | not measured | 0.02s | not measured | not measured | 3.0 MiB | not measured | not measured |
-| O1 | 0.13s | not measured | not measured | 0.02s | not measured | not measured | 3.1 MiB | not measured | not measured |
+| O1 | 0.04s | not measured | not measured | 0.02s | not measured | not measured | 3.0 MiB | not measured | not measured |
 | O2 | 0.04s | not measured | not measured | 0.02s | not measured | not measured | 3.0 MiB | not measured | not measured |
-| Os | 0.04s | not measured | not measured | 0.02s | not measured | not measured | 3.0 MiB | not measured | not measured |
+| Os | 0.02s | not measured | not measured | 0.02s | not measured | not measured | 3.0 MiB | not measured | not measured |
 
 ## Size
 

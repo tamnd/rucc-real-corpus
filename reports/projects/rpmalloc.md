@@ -37,10 +37,10 @@ The first diagnostic only, normalized, which is the one the failure clustering g
 
 | level | compile | gcc 16 | vs gcc | suite | gcc 16 | vs gcc | build memory | gcc 16 | vs gcc |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| O0 | 0.16s | not measured | not measured | 0.00s | not measured | not measured | 3.8 MiB | not measured | not measured |
-| O1 | 0.35s | not measured | not measured | 0.00s | not measured | not measured | 46.7 MiB | not measured | not measured |
-| O2 | 0.54s | not measured | not measured | 0.00s | not measured | not measured | 54.7 MiB | not measured | not measured |
-| Os | 0.43s | not measured | not measured | 0.00s | not measured | not measured | 49.6 MiB | not measured | not measured |
+| O0 | 0.28s | not measured | not measured | 0.00s | not measured | not measured | 14.7 MiB | not measured | not measured |
+| O1 | 0.30s | not measured | not measured | 0.00s | not measured | not measured | 46.8 MiB | not measured | not measured |
+| O2 | 0.49s | not measured | not measured | 0.00s | not measured | not measured | 54.8 MiB | not measured | not measured |
+| Os | 0.41s | not measured | not measured | 0.00s | not measured | not measured | 50.0 MiB | not measured | not measured |
 
 ## Size
 
