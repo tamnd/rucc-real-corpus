@@ -106,7 +106,7 @@ Some fraction of eighty URLs will be dead within five years. That is not a risk,
 
 ## 6.5 Test-suite dependencies are declared
 
-`test.requires` is a list of external commands the suite needs before it can run at all, drawn from a closed vocabulary: `sh`, `perl`, `python3`, `tcl`, `pkg-config`, `autoconf`, `cmake`, `flex`, `bison`, `ruby`. This is document 03.1's axis E made mechanical.
+`test.requires` is a list of external commands the suite needs before it can run at all, drawn from a closed vocabulary: `sh`, `awk`, `perl`, `python3`, `tcl`, `pkg-config`, `autoconf`, `cmake`, `flex`, `bison`, `ruby`. This is document 03.1's axis E made mechanical.
 
 The reason this is a field and not a README note is document 01.5. SQLite's `make tcltest` needs a Tcl installation, so a machine without Tcl runs SQLite's build and then silently grades it with a weaker oracle. That is the worst possible failure of an instrument: it reports green at a lower confidence than the reader assumes.
 

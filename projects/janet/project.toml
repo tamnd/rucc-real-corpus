@@ -1,0 +1,73 @@
+[project]
+name = "janet"
+rung = 3
+upstream = "https://github.com/janet-lang/janet"
+licence = "MIT"
+licence-file = "LICENSE"
+description = "a lisp with a bytecode VM, forty thousand lines of C, that builds part of itself with itself"
+# Two things put this one on the list. The first is that the value representation changes with the
+# host. On x86-64 janet turns on JANET_NANBOX_64 and a value is a double with a payload hidden in
+# the bits a quiet NaN does not use, so making one and reading one are a shift and a mask over a
+# reinterpreted double. On aarch64 the same header switches nan boxing off and a value becomes a
+# tagged struct instead. That means the reference machine and the macOS host are not compiling the
+# same program, and it is the first row in the corpus where that is true on purpose.
+#
+# The second is the bootstrap. The build compiles janet_boot, runs it over the core library written
+# in janet, and turns the result into a C source file that the real interpreter is then compiled
+# from. A compiler that gets janet_boot wrong does not produce a broken binary, it produces a
+# broken source file and then compiles that, so the failure arrives one step away from the mistake.
+demands = ["computed-goto", "nan-boxing", "visibility-attributes"]
+
+[source]
+url = "https://codeload.github.com/janet-lang/janet/tar.gz/refs/tags/v1.38.0"
+sha256 = "84dbf7db9c09677618549fb4be23631fd64f527af21051db02753241a2f6f752"
+strip-components = 1
+
+# No level-flags entry, and this is the first rung three project that needs none. The Makefile says
+# CFLAGS?=-O2 -g, a conditional assignment, so a CFLAGS in the environment wins outright, and
+# BUILD_CFLAGS is built as $(CFLAGS) followed by flags that carry no -O of their own. The level is
+# therefore the last -O on every compile line without anything having to be replaced.
+#
+# One exception, and it is upstream's and not ours. BOOT_CFLAGS hard codes -O0, so janet_boot is at
+# -O0 in every cell. That is not a gap in the measurement, it is a smaller measurement than it
+# looks: the bootstrap is still compiled by the compiler under test and still has to run correctly
+# for the build to finish, it just always runs the same way. Everything in the shipped binary is at
+# the level.
+[build]
+system = "make"
+
+# The test target is two shell loops, one over test/suite*.janet and one over the examples, and each
+# suite prints its own count to stderr and exits 1 the moment its passing count plus its skips stop
+# adding up to what it ran. There is no grand total anywhere, which is why the command is not just
+# make test: the awk pass adds the per suite lines up into one line the parser can read. The log
+# keeps every original line, so a failing run still says which suite it was.
+#
+# The exit status is carried across the pipeline by hand rather than lost to awk, because the suite
+# oracle consults it, and a test command that always exits zero would be a check quietly switched
+# off. Both counts are captured, so a run that passes everything it ran while running fewer cases
+# than the reference did fails.
+#
+# The count is host dependent, and the number below is the reference machine's. suite-filewatch runs
+# 45 cases against inotify on linux and 1 case anywhere else, so a macOS run comes back 44 short and
+# is graded wrong for a reason that has nothing to do with any compiler. That host is excluded in
+# the register rather than papered over here, because a second baseline per host is a thing the
+# manifest cannot say and should not learn to say for one suite.
+[test]
+command = [
+    "sh",
+    "-c",
+    "make test > rrc-suite-output.log 2>&1; status=$?; cat rrc-suite-output.log; awk '/tests passed/ { for (i = 1; i <= NF; i++) if ($i == \"of\") { passed += $(i - 1); run += $(i + 1) } } END { printf \"janet suites: %d of %d tests passed\\n\", passed, run }' rrc-suite-output.log; exit $status",
+]
+oracle = "suite"
+parser = "custom-regex"
+regex = "janet suites: (\\d+) of (\\d+) tests passed"
+baseline-tests = 3795
+requires = ["sh", "awk"]
+
+# Sixty files and forty thousand lines, plus the bootstrap run in the middle of the build, so a slow
+# compiler pays for the same core twice over. On the reference machine gcc takes between twenty and
+# forty two seconds depending on the level and the suite takes between two and three, so the build
+# limit is the one that matters and it is slack for a compiler several times slower than gcc.
+[limits]
+build-seconds = 1800
+test-seconds = 600
