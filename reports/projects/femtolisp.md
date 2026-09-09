@@ -1,30 +1,30 @@
-# zlib
+# femtolisp
 
 [Back to every project](README.md) or [to the report](../README.md).
 
-Rung R1, pinned at `d9e270d46252`, run on linux-x86_64.
+Rung R3, pinned at `a3a50cd092eb`, run on linux-x86_64.
 
-The pinned archive is 75 files, 42,769 lines, 1.7 MiB, counted before anything is built. Every number below is against that.
+The pinned archive is 55 files, 19,287 lines, 544.8 KiB, counted before anything is built. Every number below is against that.
 
 ## What happened
 
 | level | outcome | reached | graded by |
 | --- | --- | --- | --- |
-| O0 | did not build | configured | self checking |
-| O1 | did not build | configured | self checking |
-| Os | did not build | configured | self checking |
-| O2 | did not build | configured | self checking |
-| O3 | did not build | configured | self checking |
+| O0 | did not build | fetched | recorded output |
+| O1 | did not build | fetched | recorded output |
+| Os | did not build | fetched | recorded output |
+| O2 | did not build | fetched | recorded output |
+| O3 | did not build | fetched | recorded output |
 
 ## What the compiler said
 
 The first diagnostic only, normalized, which is the one the failure clustering groups on.
 
-- `O0`: `rucc: error: unknown option `-include``
-- `O1`: `rucc: error: unknown option `-include``
-- `O2`: `rucc: error: unknown option `-include``
-- `O3`: `rucc: error: unknown option `-include``
-- `Os`: `rucc: error: unknown option `-include``
+- `O0`: `rucc: error: unknown option `-falign-functions``
+- `O1`: `rucc: error: unknown option `-falign-functions``
+- `O2`: `rucc: error: unknown option `-falign-functions``
+- `O3`: `rucc: error: unknown option `-falign-functions``
+- `Os`: `rucc: error: unknown option `-falign-functions``
 
 ## The project's own tests
 
@@ -40,11 +40,11 @@ The first diagnostic only, normalized, which is the one the failure clustering g
 
 | level | compile | gcc 16 | vs gcc | suite | gcc 16 | vs gcc | build memory | gcc 16 | vs gcc |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| O0 [^cached] | 0.92s | 4.40s | 0.21x | 0.00s | 0.04s | not measured | 8.4 MiB | 40.9 MiB | 0.21x |
-| O1 [^cached] | 0.49s | 5.77s | 0.09x | 0.00s | 0.04s | not measured | 2.3 MiB | 47.2 MiB | 0.05x |
-| Os [^cached] | 0.46s | 7.15s | 0.06x | 0.00s | 0.05s | 0.00x | 2.3 MiB | 50.5 MiB | 0.05x |
-| O2 [^cached] | 0.65s | 8.70s | 0.07x | 0.00s | 0.05s | 0.00x | 8.5 MiB | 52.8 MiB | 0.16x |
-| O3 [^cached] | 0.59s | 10.23s | 0.06x | 0.00s | 0.03s | not measured | 8.6 MiB | 57.0 MiB | 0.15x |
+| O0 [^cached] | 0.09s | 7.67s | 0.01x | 0.00s | 1.20s | 0.00x | 2.1 MiB | 67.5 MiB | 0.03x |
+| O1 [^cached] | 0.08s | 9.73s | 0.01x | 0.00s | 0.49s | 0.00x | 2.3 MiB | 84.9 MiB | 0.03x |
+| Os [^cached] | 0.05s | 15.23s | 0.00x | 0.00s | 0.49s | 0.00x | 2.3 MiB | 98.0 MiB | 0.02x |
+| O2 [^cached] | 0.21s | 18.83s | 0.01x | 0.00s | 0.55s | 0.00x | 2.3 MiB | 118.7 MiB | 0.02x |
+| O3 [^cached] | 0.10s | 23.89s | 0.00x | 0.00s | 0.38s | 0.00x | 2.3 MiB | 144.1 MiB | 0.02x |
 
 ## Size
 

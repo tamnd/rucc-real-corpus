@@ -1,30 +1,30 @@
-# zlib
+# quickjs
 
 [Back to every project](README.md) or [to the report](../README.md).
 
-Rung R1, pinned at `d9e270d46252`, run on linux-x86_64.
+Rung R3, pinned at `2a87ffcca6c8`, run on linux-x86_64.
 
-The pinned archive is 75 files, 42,769 lines, 1.7 MiB, counted before anything is built. Every number below is against that.
+The pinned archive is 35 files, 91,003 lines, 2.9 MiB, counted before anything is built. Every number below is against that.
 
 ## What happened
 
 | level | outcome | reached | graded by |
 | --- | --- | --- | --- |
-| O0 | did not build | configured | self checking |
-| O1 | did not build | configured | self checking |
-| Os | did not build | configured | self checking |
-| O2 | did not build | configured | self checking |
-| O3 | did not build | configured | self checking |
+| O0 | did not build | fetched | self checking |
+| O1 | did not build | fetched | self checking |
+| O2 | did not build | fetched | self checking |
+| Os | did not build | fetched | self checking |
+| O3 | did not build | fetched | self checking |
 
 ## What the compiler said
 
 The first diagnostic only, normalized, which is the one the failure clustering groups on.
 
-- `O0`: `rucc: error: unknown option `-include``
-- `O1`: `rucc: error: unknown option `-include``
-- `O2`: `rucc: error: unknown option `-include``
-- `O3`: `rucc: error: unknown option `-include``
-- `Os`: `rucc: error: unknown option `-include``
+- `O0`: `rucc: error: unknown option `-MMD``
+- `O1`: `rucc: error: unknown option `-MMD``
+- `O2`: `rucc: error: unknown option `-MMD``
+- `O3`: `rucc: error: unknown option `-MMD``
+- `Os`: `rucc: error: unknown option `-MMD``
 
 ## The project's own tests
 
@@ -32,19 +32,19 @@ The first diagnostic only, normalized, which is the one the failure clustering g
 | --- | ---: | ---: | ---: | ---: |
 | O0 | not counted | not counted | not counted | not comparable |
 | O1 | not counted | not counted | not counted | not comparable |
-| Os | not counted | not counted | not counted | not comparable |
 | O2 | not counted | not counted | not counted | not comparable |
+| Os | not counted | not counted | not counted | not comparable |
 | O3 | not counted | not counted | not counted | not comparable |
 
 ## Time and memory
 
 | level | compile | gcc 16 | vs gcc | suite | gcc 16 | vs gcc | build memory | gcc 16 | vs gcc |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| O0 [^cached] | 0.92s | 4.40s | 0.21x | 0.00s | 0.04s | not measured | 8.4 MiB | 40.9 MiB | 0.21x |
-| O1 [^cached] | 0.49s | 5.77s | 0.09x | 0.00s | 0.04s | not measured | 2.3 MiB | 47.2 MiB | 0.05x |
-| Os [^cached] | 0.46s | 7.15s | 0.06x | 0.00s | 0.05s | 0.00x | 2.3 MiB | 50.5 MiB | 0.05x |
-| O2 [^cached] | 0.65s | 8.70s | 0.07x | 0.00s | 0.05s | 0.00x | 8.5 MiB | 52.8 MiB | 0.16x |
-| O3 [^cached] | 0.59s | 10.23s | 0.06x | 0.00s | 0.03s | not measured | 8.6 MiB | 57.0 MiB | 0.15x |
+| O0 [^cached] | 0.15s | 26.54s | 0.01x | 0.00s | 1.37s | 0.00x | 2.2 MiB | 250.1 MiB | 0.01x |
+| O1 [^cached] | 0.17s | 69s | 0.00x | 0.00s | 0.98s | 0.00x | 6.2 MiB | 345.0 MiB | 0.02x |
+| O2 [^cached] | 0.09s | 148s | 0.00x | 0.00s | 0.63s | 0.00x | 2.2 MiB | 370.5 MiB | 0.01x |
+| Os [^cached] | 0.12s | 87s | 0.00x | 0.00s | 0.70s | 0.00x | 2.2 MiB | 340.4 MiB | 0.01x |
+| O3 [^cached] | 0.25s | 194s | 0.00x | 0.00s | 0.80s | 0.00x | 4.8 MiB | 373.2 MiB | 0.01x |
 
 ## Size
 
@@ -52,6 +52,6 @@ The first diagnostic only, normalized, which is the one the failure clustering g
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
 | O0 | not measured | not measured | not measured | not measured | not measured | not measured |
 | O1 | not measured | not measured | not measured | not measured | not measured | not measured |
-| Os | not measured | not measured | not measured | not measured | not measured | not measured |
 | O2 | not measured | not measured | not measured | not measured | not measured | not measured |
+| Os | not measured | not measured | not measured | not measured | not measured | not measured |
 | O3 | not measured | not measured | not measured | not measured | not measured | not measured |
