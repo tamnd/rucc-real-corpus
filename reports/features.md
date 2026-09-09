@@ -15,10 +15,10 @@ Weight is what to do next. It is the sum over the held up projects of six minus 
 | `pointer-arithmetic` | standard | 14 | 0 | 0 | none open |
 | `autoconf-probes` | driver | 11 | 0 | 0 | none open |
 | `bit-manipulation` | standard | 11 | 0 | 0 | none open |
+| `switch-dispatch` | standard | 10 | 0 | 0 | none open |
 | `function-pointers` | standard | 9 | 0 | 0 | none open |
 | `integer-conversion` | standard | 9 | 0 | 0 | none open |
-| `switch-dispatch` | standard | 9 | 0 | 0 | none open |
-| `struct-layout` | abi | 7 | 0 | 0 | none open |
+| `struct-layout` | abi | 8 | 0 | 0 | none open |
 | `deep-macros` | preprocessor | 6 | 0 | 0 | none open |
 | `computed-goto` | gnu-extension | 5 | 0 | 0 | none open |
 | `large-switch` | standard | 5 | 0 | 0 | none open |
@@ -28,6 +28,7 @@ Weight is what to do next. It is the sum over the held up projects of six minus 
 | `float-arithmetic` | standard | 3 | 0 | 0 | none open |
 | `memcpy-idioms` | gnu-builtin | 3 | 0 | 0 | none open |
 | `thread-local` | standard | 3 | 0 | 0 | none open |
+| `unaligned-access` | standard | 3 | 0 | 0 | none open |
 | `varargs-depth` | standard | 3 | 0 | 0 | none open |
 | `atomic-builtins` | gnu-builtin | 2 | 0 | 0 | [open](https://github.com/tamnd/rucc/issues/311) |
 | `bit-builtins` | gnu-builtin | 2 | 0 | 0 | [open](https://github.com/tamnd/rucc/issues/310) |
@@ -39,7 +40,6 @@ Weight is what to do next. It is the sum over the held up projects of six minus 
 | `overflow-builtins` | gnu-builtin | 2 | 0 | 0 | none open |
 | `recursion-depth` | standard | 2 | 0 | 0 | none open |
 | `rotate-idioms` | standard | 2 | 0 | 0 | none open |
-| `unaligned-access` | standard | 2 | 0 | 0 | none open |
 | `flexible-array-member` | standard | 1 | 0 | 0 | none open |
 | `long-double` | standard | 1 | 0 | 0 | none open |
 | `stdckdint` | standard | 1 | 0 | 0 | none open |
@@ -98,6 +98,21 @@ shifts, masks and bit level packing across byte boundaries
 - `chibi-scheme`, R3, not measured
 - `femtolisp`, R3, not measured
 
+### `switch-dispatch`
+
+a state machine written as a switch, with deliberate fall through between cases
+
+- `c4`, R0, not measured
+- `coremark`, R0, not measured
+- `heatshrink`, R0, not measured
+- `picohttpparser`, R0, not measured
+- `brotli`, R2, not measured
+- `libexpat`, R2, not measured
+- `libyaml`, R2, not measured
+- `pcre2`, R2, not measured
+- `chibi-scheme`, R3, not measured
+- `tcc`, R3, not measured
+
 ### `function-pointers`
 
 calls through a pointer, including pointers to library functions
@@ -126,20 +141,6 @@ the integer types are the widths the standard says they are, and conversions bet
 - `libmpfr`, R2, not measured
 - `libtommath`, R2, not measured
 
-### `switch-dispatch`
-
-a state machine written as a switch, with deliberate fall through between cases
-
-- `c4`, R0, not measured
-- `coremark`, R0, not measured
-- `heatshrink`, R0, not measured
-- `picohttpparser`, R0, not measured
-- `brotli`, R2, not measured
-- `libexpat`, R2, not measured
-- `libyaml`, R2, not measured
-- `pcre2`, R2, not measured
-- `chibi-scheme`, R3, not measured
-
 ### `struct-layout`
 
 struct offsets, padding and alignment as the ABI states them
@@ -151,6 +152,7 @@ struct offsets, padding and alignment as the ABI states them
 - `libpsl`, R2, not measured
 - `libuv`, R2, not measured
 - `oniguruma`, R2, not measured
+- `tcc`, R3, not measured
 
 ### `deep-macros`
 
@@ -233,6 +235,14 @@ _Thread_local and __thread
 - `tinycthread`, R1, not measured
 - `libuv`, R2, not measured
 
+### `unaligned-access`
+
+loads and stores through pointers the compiler cannot prove are aligned
+
+- `lz4`, R1, not measured
+- `zstd`, R2, not measured
+- `tcc`, R3, not measured
+
 ### `varargs-depth`
 
 varargs forwarded through several layers of function
@@ -310,13 +320,6 @@ a shift left or-ed with a shift right recognised as one rotate instruction
 
 - `blake2`, R1, not measured
 - `xxhash`, R1, not measured
-
-### `unaligned-access`
-
-loads and stores through pointers the compiler cannot prove are aligned
-
-- `lz4`, R1, not measured
-- `zstd`, R2, not measured
 
 ### `flexible-array-member`
 

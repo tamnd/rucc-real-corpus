@@ -380,6 +380,14 @@ licence-sha256 = "bb0d0d505009fdf584b0f44dbb62562eebada497d53d726cd2e940ada512dc
 verified = "2026-09-08"
 
 [[project]]
+name = "tcc"
+url = "https://codeload.github.com/TinyCC/tinycc/tar.gz/a338258d309c888bde96b2d1f206299231a54ddf"
+sha256 = "5b57d2fc37304cf60aee41f194af69ab555a458af828f21ddd24f22888c8abc8"
+bytes = 1034789
+licence-sha256 = "512d2d21b6b3384ba64781abb0208a1b87740bc31e2df48e2b206ddb7e4d5779"
+verified = "2026-09-09"
+
+[[project]]
 name = "tinf"
 url = "https://codeload.github.com/jibsen/tinf/tar.gz/9929246b87f0946b124cfa2a89894b8943b0b072"
 sha256 = "7bd54db053e9cd9290cd28a6a4250ea8d4cc3f2e2598da29387e4ea2b956f2e3"
