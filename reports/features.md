@@ -18,12 +18,13 @@ Weight is what to do next. It is the sum over the held up projects of six minus 
 | `switch-dispatch` | standard | 10 | 0 | 0 | none open |
 | `function-pointers` | standard | 9 | 0 | 0 | none open |
 | `integer-conversion` | standard | 9 | 0 | 0 | none open |
+| `deep-macros` | preprocessor | 8 | 0 | 0 | none open |
 | `struct-layout` | abi | 8 | 0 | 0 | none open |
-| `deep-macros` | preprocessor | 7 | 0 | 0 | none open |
+| `computed-goto` | gnu-extension | 6 | 0 | 0 | none open |
 | `large-switch` | standard | 6 | 0 | 0 | none open |
-| `computed-goto` | gnu-extension | 5 | 0 | 0 | none open |
 | `setjmp-longjmp` | standard | 5 | 0 | 0 | none open |
 | `double-formatting` | standard | 4 | 0 | 0 | none open |
+| `bit-builtins` | gnu-builtin | 3 | 0 | 0 | [open](https://github.com/tamnd/rucc/issues/310) |
 | `cmake-probes` | driver | 3 | 0 | 0 | none open |
 | `float-arithmetic` | standard | 3 | 0 | 0 | none open |
 | `memcpy-idioms` | gnu-builtin | 3 | 0 | 0 | none open |
@@ -31,7 +32,6 @@ Weight is what to do next. It is the sum over the held up projects of six minus 
 | `unaligned-access` | standard | 3 | 0 | 0 | none open |
 | `varargs-depth` | standard | 3 | 0 | 0 | none open |
 | `atomic-builtins` | gnu-builtin | 2 | 0 | 0 | [open](https://github.com/tamnd/rucc/issues/311) |
-| `bit-builtins` | gnu-builtin | 2 | 0 | 0 | [open](https://github.com/tamnd/rucc/issues/310) |
 | `constant-time` | standard | 2 | 0 | 0 | none open |
 | `inline-asm` | gnu-extension | 2 | 0 | 0 | none open |
 | `k-and-r-idioms` | standard | 2 | 0 | 0 | none open |
@@ -141,6 +141,19 @@ the integer types are the widths the standard says they are, and conversions bet
 - `libmpfr`, R2, not measured
 - `libtommath`, R2, not measured
 
+### `deep-macros`
+
+macros expanding through several layers, including __VA_ARGS__ forwarding
+
+- `picohttpparser`, R0, not measured
+- `libsir`, R1, not measured
+- `minunit`, R1, not measured
+- `libcheck`, R2, not measured
+- `libconfig`, R2, not measured
+- `libgmp`, R2, not measured
+- `duktape`, R3, not measured
+- `micropython`, R3, not measured
+
 ### `struct-layout`
 
 struct offsets, padding and alignment as the ABI states them
@@ -154,17 +167,16 @@ struct offsets, padding and alignment as the ABI states them
 - `oniguruma`, R2, not measured
 - `tcc`, R3, not measured
 
-### `deep-macros`
+### `computed-goto`
 
-macros expanding through several layers, including __VA_ARGS__ forwarding
+labels as values, goto *
 
-- `picohttpparser`, R0, not measured
-- `libsir`, R1, not measured
-- `minunit`, R1, not measured
-- `libcheck`, R2, not measured
-- `libconfig`, R2, not measured
-- `libgmp`, R2, not measured
-- `duktape`, R3, not measured
+- `femtolisp`, R3, not measured
+- `janet`, R3, not measured
+- `lua`, R3, not measured
+- `micropython`, R3, not measured
+- `quickjs`, R3, not measured
+- `wren`, R3, not measured
 
 ### `large-switch`
 
@@ -176,16 +188,6 @@ a switch with hundreds of cases, where the jump table decision is the compiler's
 - `lua`, R3, not measured
 - `lua-nojumptable`, R3, not measured
 - `quickjs`, R3, not measured
-
-### `computed-goto`
-
-labels as values, goto *
-
-- `femtolisp`, R3, not measured
-- `janet`, R3, not measured
-- `lua`, R3, not measured
-- `quickjs`, R3, not measured
-- `wren`, R3, not measured
 
 ### `setjmp-longjmp`
 
@@ -205,6 +207,14 @@ printf and strtod round tripping a double without losing a digit
 - `cjson`, R2, not measured
 - `libjansson`, R2, not measured
 - `duktape`, R3, not measured
+
+### `bit-builtins`
+
+__builtin_clz, __builtin_ctz, __builtin_popcount and their l and ll forms
+
+- `rpmalloc`, R1, not measured
+- `micropython`, R3, not measured
+- `quickjs`, R3, not measured
 
 ### `cmake-probes`
 
@@ -260,13 +270,6 @@ __atomic_load_n and __atomic_store_n at relaxed ordering
 
 - `rpmalloc`, R1, not measured
 - `libjansson`, R2, not measured
-
-### `bit-builtins`
-
-__builtin_clz, __builtin_ctz, __builtin_popcount and their l and ll forms
-
-- `rpmalloc`, R1, not measured
-- `quickjs`, R3, not measured
 
 ### `constant-time`
 
