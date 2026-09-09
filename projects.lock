@@ -302,6 +302,14 @@ licence-sha256 = "4bc9c403f6b679cc076dee210e0e21c27b4e8f6d3fb43d85364c76657bfaaa
 verified = "2026-09-08"
 
 [[project]]
+name = "micropython"
+url = "https://github.com/micropython/micropython/releases/download/v1.26.0/micropython-1.26.0.tar.xz"
+sha256 = "a1b8e0f6bf7a8a78b55ac865c46c4c45f9623a86a1785d2063ff1cb3b6e661d7"
+bytes = 110526232
+licence-sha256 = "419137268636eb7d29b83c68e4f5f4494bcb172c24b18a122eb46312c4966940"
+verified = "2026-09-09"
+
+[[project]]
 name = "minunit"
 url = "https://codeload.github.com/siu/minunit/tar.gz/a0586569bd8abfb7a37390d670484c201e9173bf"
 sha256 = "3e3ecbcdc4e166c782dcd1d9c1f80ce14297d948695089521a2a7769224507b9"

@@ -262,6 +262,20 @@ impl Build {
         Some(format!("{}={value}", carrier.variable))
     }
 
+    /// Whether the level also goes into `CFLAGS` in the environment, which is the normal answer.
+    ///
+    /// The only project that says no is one where make would hand the parent's `CFLAGS` to a sub
+    /// make that cannot compile with it. `build.level-flags.clears-environment` is where that is
+    /// said, and it can only be said by a manifest that has already named a carrier variable, so
+    /// there is no way to turn the environment off and leave the level with no way in.
+    #[must_use]
+    pub fn cflags_in_environment(&self) -> bool {
+        !self
+            .level_flags
+            .as_ref()
+            .is_some_and(|carrier| carrier.clears_environment)
+    }
+
     /// Just the flags, without the reasons that go with them.
     ///
     /// The reasons are for a person reading the manifest and the lint that insists on them. What
@@ -409,6 +423,19 @@ pub struct LevelFlags {
     /// the make command line and nothing else.
     #[serde(default)]
     pub suffix: Option<String>,
+    /// Whether `CFLAGS` is kept out of the environment altogether, leaving the variable named
+    /// above as the only way the level arrives.
+    ///
+    /// For a recursive build, and only for one. Make passes a variable that came from the
+    /// environment down to every sub make it starts, with whatever the parent appended to it,
+    /// and a variable that was never in the environment is not passed down at all.
+    /// `micropython` is the project that shows what that costs: the unix port appends its own
+    /// include paths and its own `-DMICROPY_PY_THREAD=1` to `CFLAGS`, then builds `mpy-cross`
+    /// with a sub make, and `mpy-cross` is a directory with no `mpthreadport.h` in it. The build
+    /// stops there, and it stops there whatever the level was, so the failure is the harness
+    /// having set a variable rather than anything about the compiler.
+    #[serde(default, rename = "clears-environment")]
+    pub clears_environment: bool,
 }
 
 const fn default_build_system() -> BuildSystem {
@@ -704,6 +731,31 @@ oracle = "self-checking"
         // And the environment does not learn about it, which is the whole reason it is not
         // spelled as a flag: CFLAGS=-O0 $(CFLAGS) is a variable that references itself.
         assert_eq!(manifest.build.flag_list(), vec!["-fwrapv".to_string()]);
+    }
+
+    #[test]
+    fn clearing_the_environment_is_off_unless_a_carrier_asks_for_it() {
+        // Three manifests, because the interesting thing is that the field can only be reached
+        // through a carrier. A project with no carrier at all and a project with an ordinary
+        // carrier both keep the environment, and only the one that says so loses it.
+        let plain = parse(SAMPLE).unwrap();
+        assert!(plain.build.cflags_in_environment());
+        let carried = parse(&format!(
+            "{SAMPLE}\n[build.level-flags]\nvariable = \"OPT\"\nwhy = \"the Makefile builds CFLAGS out of OPT\"\n"
+        ))
+        .unwrap();
+        assert!(carried.build.cflags_in_environment());
+        let cleared = parse(&format!(
+            "{SAMPLE}\n[build.level-flags]\nvariable = \"CFLAGS_EXTRA\"\nwhy = \"the port appends CFLAGS_EXTRA after its own level\"\nclears-environment = true\n"
+        ))
+        .unwrap();
+        assert!(!cleared.build.cflags_in_environment());
+        // And the level still has a way in, which is the reason the field lives on the carrier
+        // rather than next to it.
+        assert_eq!(
+            cleared.build.level_assignment(Level::O2).unwrap(),
+            "CFLAGS_EXTRA=-O2"
+        );
     }
 
     const TWO_PROGRAMS: &str = r#"

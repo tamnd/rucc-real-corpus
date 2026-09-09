@@ -49,6 +49,13 @@ pub struct EnvPlan<'a> {
     /// nothing happen. There is nothing about a flag in `[build]` that says it is only for rung
     /// zero, and a manifest that is quietly ignored is worse than one that is refused.
     pub flags: &'a [String],
+    /// Whether `CFLAGS` is set here at all. `spec/07-harness.md` section 7.8.
+    ///
+    /// True for every project but one. A variable that came from the environment is handed to
+    /// every sub make with whatever the parent appended to it, so on a recursive build the
+    /// environment is not a neutral place to put the level, it is a place that changes what the
+    /// children compile with.
+    pub cflags_in_environment: bool,
     /// Which compiler a build time host tool gets.
     pub host_cc: HostCc,
     /// Extra directories for tools the corpus needs and the base system does not carry, such as
@@ -88,9 +95,14 @@ pub fn environment(plan: &EnvPlan<'_>) -> BTreeMap<String, String> {
     env.insert("LC_ALL".into(), "C".into());
     env.insert("LANG".into(), "C".into());
 
-    // The compiler, by absolute path through the shim, and the level through CFLAGS.
+    // The compiler, by absolute path through the shim, and the level through CFLAGS. The level
+    // goes somewhere else for a project that asked for that, and the variable is then left out
+    // rather than set to nothing, because make exports an empty variable it got from the
+    // environment exactly as eagerly as a full one.
     env.insert("CC".into(), display(&plan.shim.cc()));
-    env.insert("CFLAGS".into(), cflags(plan));
+    if plan.cflags_in_environment {
+        env.insert("CFLAGS".into(), cflags(plan));
+    }
 
     // The host compiler, which the shim deliberately does not decide. A generator built with a
     // miscompiling compiler emits wrong source, and the failure then shows up in a file that
@@ -217,6 +229,7 @@ mod tests {
             toolchain: &f.toolchain,
             level: Level::O2,
             flags: &[],
+            cflags_in_environment: true,
             host_cc: HostCc::Reference,
             extra_path: &[],
             prefix: None,
@@ -325,6 +338,29 @@ mod tests {
         with_flags.flags = &flags;
         let env = environment(&with_flags);
         assert_eq!(env["CFLAGS"], "-O2 -std=gnu17");
+        std::fs::remove_dir_all(&f.root).ok();
+    }
+
+    #[test]
+    fn a_recursive_build_can_ask_for_no_cflags_at_all() {
+        // micropython is the case. Its unix port appends its own include paths and its own
+        // -DMICROPY_PY_THREAD=1 to CFLAGS and then builds mpy-cross with a sub make, and make
+        // hands a variable that came from the environment down to that sub make with everything
+        // the parent added still on it. mpy-cross has no mpthreadport.h, so the build stops, and
+        // it stops at every level, which makes it the harness having set a variable rather than
+        // anything the compiler did.
+        //
+        // The variable is absent and not empty. An empty CFLAGS in the environment is still a
+        // CFLAGS in the environment and make exports it just the same.
+        let f = fixture("no-cflags");
+        let empty = BTreeMap::new();
+        let mut cleared = plan(&f, &empty);
+        cleared.cflags_in_environment = false;
+        let env = environment(&cleared);
+        assert!(!env.contains_key("CFLAGS"));
+        // Everything else is still there, including the compiler itself, because this says
+        // nothing about which compiler runs.
+        assert_eq!(env["CC"], f.shim.cc().to_string_lossy());
         std::fs::remove_dir_all(&f.root).ok();
     }
 

@@ -1,0 +1,93 @@
+[project]
+name = "micropython"
+rung = 3
+upstream = "https://github.com/micropython/micropython"
+licence = "MIT"
+licence-file = "LICENSE"
+description = "a python implementation for microcontrollers, built here for unix, with a suite of a thousand programs"
+# The dispatch loop is a computed goto, switched on for this port in the variant header rather than
+# left at the default. The opcode table it jumps through is generated during the build, which is
+# the other half of why this project is here: the build runs the compiler under test as a
+# preprocessor over the whole source set, feeds what comes out to a python program that collects
+# every interned string, and generates headers the real compile then depends on. A compiler whose
+# -E output is subtly wrong does not fail to build, it builds a different program.
+demands = ["computed-goto", "bit-builtins", "deep-macros"]
+
+# The release tarball and not the tag. micropython keeps its dependencies in git submodules and the
+# codeload tarball of a tag has none of them, so a build from it stops on berkeley-db, then on
+# mbedtls, then on micropython-lib, and switching each one off with the make variables the port
+# offers ends with a smaller program than anybody ships. The release asset is the tree with the
+# submodules already in it, which is the thing upstream means when it says version 1.26.0. It is a
+# hundred and ten megabytes, which is the price of that.
+[source]
+url = "https://github.com/micropython/micropython/releases/download/v1.26.0/micropython-1.26.0.tar.xz"
+sha256 = "a1b8e0f6bf7a8a78b55ac865c46c4c45f9623a86a1785d2063ff1cb3b6e661d7"
+strip-components = 1
+
+# Recursive, which is axis A5 and the first of them on the list. The port's makefile includes three
+# more, generates two headers with a python program in the middle of the build, and drives the
+# compiler under test twice for two different purposes, once as a preprocessor over everything and
+# once to compile.
+[build]
+system = "recursive"
+subdir = "ports/unix"
+
+#
+# The environment is cleared as well, and that half is not about the level. Make hands a variable
+# that came from the environment down to every sub make it starts, carrying whatever the parent
+# appended to it, so a CFLAGS set here arrives in the mpy-cross sub build with the unix port's
+# include paths and its -DMICROPY_PY_THREAD=1 on the end. mpy-cross has no mpthreadport.h, so the
+# build stops on a missing header at every level. The same tree builds clean with the variable
+# simply absent, which is what this asks for.
+[build.level-flags]
+variable = "CFLAGS_EXTRA"
+why = "the port writes -Os into its own CFLAGS and appends CFLAGS_EXTRA after it, so this is the one variable that lands after the level the port chose for itself"
+clears-environment = true
+
+# The suite is a thousand python programs, each run and compared against the output recorded beside
+# it, and twenty nine thousand individual assertions inside them. run-tests.py prints how many it
+# performed and how many passed on two separate lines, in that order, and the parser wants the
+# passing count first, so the two are put on one line with awk. That is the same shape janet and tcc
+# use and for the same reason. The log keeps every original line, and the exit status is carried
+# across by hand rather than lost to awk, because the suite oracle consults it.
+#
+# The command is the two lines of the port's own test target with one option added, and the option
+# is run-tests.py's own --exclude, documented in its help with examples. What it takes out is the
+# ten cmdline/repl_ cases, and the reason is that they are not measuring the compiler. run-tests.py
+# drives them through a pseudo terminal, writing a line and then reading whatever has arrived within
+# twenty milliseconds, so on a machine that is busy the prompt for the next line lands in the
+# following read and the recorded output no longer matches. GCC 16.2.0 on the reference machine
+# failed three of them in one run and none in the next, over one source tree, and the count of cases
+# performed moved with it, because two of the family are feature checks whose result decides whether
+# two others are skipped at all. Neither number is a measurement while they are in.
+#
+# With them out both numbers stand still: 988 performed, 988 passed, 55 skipped and an exit status
+# of zero, twice in a row on the reference machine. Those 55 are skipped for reasons that are the
+# port's rather than the compiler's and are outside both numbers.
+#
+# The suite is measured on what it runs and not on a ratio, so a build that runs fewer cases and
+# passes all of them still comes in under the baseline and still fails.
+[test]
+command = [
+    "sh",
+    "-c",
+    "cd ../../tests && MICROPY_MICROPYTHON=../ports/unix/build-standard/micropython ./run-tests.py --exclude 'cmdline/repl_' > rrc-suite-output.log 2>&1; status=$?; cat rrc-suite-output.log; awk '/tests performed/ { run = $1 } /tests passed/ { passed = $1 } END { printf \"micropython: %d of %d tests passed\\n\", passed, run }' rrc-suite-output.log; exit $status",
+]
+oracle = "suite"
+parser = "custom-regex"
+regex = "micropython: (\\d+) of (\\d+) tests passed"
+baseline-tests = 988
+requires = ["sh", "awk", "python3"]
+
+# Four hundred files and a hundred and thirty six thousand lines, and python3 is needed to build it
+# and not only to test it, which is unusual enough on this list to be worth saying. On the reference
+# machine gcc takes between ninety eight seconds and two hundred and five, so the build limit is
+# head room for a compiler several times slower rather than a limit set for gcc.
+#
+# The suite is thirty three seconds at every level and the limit is not set from that number. It
+# forks the interpreter a thousand times, so what it costs is a thousand process startups and a
+# thousand programs run by the binary that was just built, and a binary that is slow because the
+# level could not do its work makes it slower without anything having gone wrong.
+[limits]
+build-seconds = 3600
+test-seconds = 900

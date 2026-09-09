@@ -275,6 +275,18 @@ fn check_build(manifest: &Manifest, say: &mut Vec<String>) {
                 carrier.variable
             ));
         }
+        // Clearing the environment is a make level answer to a make level problem, and configure
+        // is where CFLAGS stops being an environment variable and becomes a line in a generated
+        // Makefile. Take it away there and configure falls back to its own default, the level is
+        // decided before make is ever run, and a command line assignment to one variable does not
+        // reliably undo that. No project needs both, so the combination is a finding rather than a
+        // thing to reason about case by case.
+        if carrier.clears_environment && manifest.build.system.interrogates() {
+            say.push(
+                "keeps CFLAGS out of the environment on a build that configures first, and configure is where CFLAGS is read and written into the Makefile"
+                    .into(),
+            );
+        }
         if carrier.why.trim().is_empty() {
             say.push(
                 "overrides the level variable with no reason, and the reason is the line of the Makefile that makes it necessary"
@@ -1040,6 +1052,23 @@ kind = "standard"
             );
         let findings = check(&corpus_of(&text));
         assert!(findings.iter().any(|f| f.what.contains("empty suffix")));
+    }
+
+    #[test]
+    fn clearing_the_environment_on_a_build_that_configures_first_is_caught() {
+        // The field is for a recursive make, where the problem is what a sub make inherits.
+        // configure is a different world: it reads CFLAGS once and writes what it read into the
+        // Makefile it generates, so taking the variable away hands the level to whatever default
+        // configure carries and no later assignment reliably takes it back.
+        let text = SAMPLE
+            .replace("system = \"direct\"", "system = \"configure\"")
+            .replace("sources = [\"jsmn_test.c\"]\n", "")
+            .replace(
+                "[test]",
+                "[build.level-flags]\nvariable = \"CFLAGS_EXTRA\"\nwhy = \"the Makefile appends it last\"\nclears-environment = true\n\n[test]",
+            );
+        let findings = check(&corpus_of(&text));
+        assert!(findings.iter().any(|f| f.what.contains("configures first")));
     }
 
     #[test]
