@@ -281,6 +281,24 @@ fn check_build(manifest: &Manifest, say: &mut Vec<String>) {
                     .into(),
             );
         }
+        if let Some(suffix) = &carrier.suffix {
+            if suffix.trim().is_empty() {
+                say.push(
+                    "puts an empty suffix after the level, which is a field doing nothing rather than a field saying nothing"
+                        .into(),
+                );
+            }
+            // The failure this catches is not a wrong build, it is make refusing to start. A
+            // command line assignment whose value names the variable being assigned is a
+            // recursive variable that references itself, and make says so and stops, which
+            // arrives in the report as the compiler having failed to build the project.
+            let name = carrier.variable.trim();
+            if suffix.contains(&format!("$({name})")) || suffix.contains(&format!("${{{name}}}")) {
+                say.push(format!(
+                    "puts `{name}` after the level in the assignment to `{name}`, which is a variable that references itself and make refuses to run at all"
+                ));
+            }
+        }
     }
     for note in manifest
         .build
@@ -989,6 +1007,39 @@ kind = "standard"
             );
         let findings = check(&corpus_of(&text));
         assert!(findings.iter().any(|f| f.what.contains("with no reason")));
+    }
+
+    #[test]
+    fn a_level_suffix_naming_the_variable_it_goes_into_is_caught() {
+        // Not a wrong build. Make reads the assignment, sees a variable whose value names
+        // itself, prints `references itself` and stops before it compiles anything, which
+        // arrives in the report as the compiler having refused the project.
+        let text = SAMPLE
+            .replace("system = \"direct\"", "system = \"make\"")
+            .replace("sources = [\"jsmn_test.c\"]\n", "")
+            .replace(
+                "[test]",
+                "[build.level-flags]\nvariable = \"CFLAGS\"\nwhy = \"the Makefile assigns it outright\"\nsuffix = \"$(CFLAGS)\"\n\n[test]",
+            );
+        let findings = check(&corpus_of(&text));
+        assert!(
+            findings
+                .iter()
+                .any(|f| f.what.contains("references itself"))
+        );
+    }
+
+    #[test]
+    fn an_empty_level_suffix_is_caught() {
+        let text = SAMPLE
+            .replace("system = \"direct\"", "system = \"make\"")
+            .replace("sources = [\"jsmn_test.c\"]\n", "")
+            .replace(
+                "[test]",
+                "[build.level-flags]\nvariable = \"CFLAGS_OPT\"\nwhy = \"the Makefile builds it out of CFLAGS\"\nsuffix = \"  \"\n\n[test]",
+            );
+        let findings = check(&corpus_of(&text));
+        assert!(findings.iter().any(|f| f.what.contains("empty suffix")));
     }
 
     #[test]
