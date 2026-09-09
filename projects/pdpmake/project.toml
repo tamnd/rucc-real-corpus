@@ -1,0 +1,68 @@
+[project]
+name = "pdpmake"
+rung = 4
+upstream = "https://github.com/rmyorston/pdpmake"
+licence = "Unlicense"
+licence-file = "LICENSE"
+description = "a POSIX make in nine files, whose suite runs the make it just built over recorded makefiles and compares what comes out"
+# The error reporting is one va_list handed down two levels: error, warning and diagnostic each
+# take a format and the rest, and each calls vwarning, which is the only function that ever touches
+# vfprintf. The option and feature machinery is a family of variadic macros that expand to their
+# arguments or to nothing depending on which POSIX level was compiled in, and they are used inside
+# argument lists and inside string literals, so the preprocessor has to get the empty expansion
+# right in places where the result is not a statement. Everything else is pointers walking through
+# strings, because macro expansion is the largest thing this program does.
+demands = ["varargs-depth", "deep-macros", "pointer-arithmetic"]
+
+[source]
+url = "https://codeload.github.com/rmyorston/pdpmake/tar.gz/refs/tags/2.0.4"
+sha256 = "7e19294d54edf360591d76d3b7a0a511864902ac3a75a0b5b11c7b3cae14c13f"
+strip-components = 1
+
+# A1 and the smallest build on this rung by a wide margin. The Makefile opens with .POSIX:, lists
+# nine object files, and assigns CFLAGS nowhere at all, so the level in the environment reaches the
+# built in .c.o rule and there is nothing for a build.level-flags carrier to correct. That also
+# makes this the first project on the list where the lto level goes through the link step untouched:
+# the link line is $(CC) $(LDFLAGS) -o make $(OBJS) with no CFLAGS on it, so -flto is on every
+# compile and on none of the link, and gcc resolves that through the linker plugin without being
+# asked. Whether the compiler under test does the same is the question the level is here to put.
+[build]
+system = "make"
+
+# runtest prints PASS: or FAIL: or SKIPPED: and a name, one line per case, and prints no total of
+# any kind when everything passes. It prints a count only on the way out and only when something
+# failed, which is the one run where the count is least useful, so the counting is done here with
+# awk over the log. That is the same shape janet, tcc and micropython use. The log keeps every
+# original line and the exit status is carried across by hand, because the suite oracle consults it.
+#
+# The run count is passes plus failures and leaves the skip out. One case is skipped, "Macro
+# skipping in POSIX 2017", and it is skipped because of what the binary was compiled to support
+# rather than because of anything that happened while it ran. That is decided by the defines in
+# make.h, which are the same defines in both slots of a differential, so a skip that turned into a
+# run would be a real difference and would show up as a count above the baseline rather than below.
+#
+# On the reference machine gcc 16.2.0 gives 66 of 66 with 1 skipped and an exit status of zero at
+# all six levels, including lto.
+[test]
+command = [
+    "sh",
+    "-c",
+    "cd testsuite && ./runtest > rrc-suite-output.log 2>&1; status=$?; cat rrc-suite-output.log; awk '/^PASS: /{ passed++ } /^FAIL: /{ failed++ } END { printf \"pdpmake: %d of %d tests passed\\n\", passed, passed + failed }' rrc-suite-output.log; exit $status",
+]
+oracle = "suite"
+parser = "custom-regex"
+regex = "pdpmake: (\\d+) of (\\d+) tests passed"
+baseline-tests = 66
+requires = ["sh", "awk"]
+
+# Nine translation units and about four thousand three hundred lines, and gcc builds it in between
+# three and eleven seconds depending on the level, so the build limit is head room for a compiler an
+# order of magnitude slower rather than a limit set for gcc.
+#
+# The suite is four to five seconds and the limit is not set from that number. Every one of the
+# sixty seven cases forks the make that was just built, most of them more than once, so what it
+# costs is process startups and a program run under a shell, and a binary that is slow because the
+# level could not do its work makes the whole suite slower without anything having gone wrong.
+[limits]
+build-seconds = 900
+test-seconds = 300
