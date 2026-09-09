@@ -1,0 +1,80 @@
+[project]
+name = "tcc"
+rung = 3
+upstream = "https://repo.or.cz/tinycc.git"
+licence = "LGPL-2.1"
+licence-file = "COPYING"
+description = "a C compiler in thirty files, whose own suite is a compiler test suite, run through ours"
+# The reason to have a compiler on the list is that its suite asks the questions this corpus asks,
+# and asks them of a binary the compiler under test produced. abitest walks the calling convention
+# argument by argument. tests2 is a hundred and twenty seven small programs with their output
+# recorded beside them. The preprocessor tests are a token stream compared character for character.
+# If the compiler under test mangles tccgen.c, what comes out is not a crash, it is a C compiler
+# that is subtly wrong, and the suite is built to notice exactly that.
+#
+# What the build itself demands is more ordinary: a state machine written as a switch with fall
+# through, ELF structures written to disk through pointers whose alignment nothing can prove, and
+# the layouts those structures are required to have.
+demands = ["switch-dispatch", "struct-layout", "unaligned-access"]
+
+# A commit and not the 0.9.27 tag that the table used to carry. That release is from 2017 and it
+# cannot be built on a current system at all: lib/bcheck.c assigns to __malloc_hook, which glibc
+# removed in 2.34, so the build stops partway through building tcc's own runtime library with the
+# tcc it just made. That is not a compiler question and no flag turns it off in 0.9.27, so the pin
+# moves to the branch where upstream fixed it. There has been no tag since, which is the same
+# situation chibi-scheme is in and is handled the same way: the sha256 is the pin, so the bytes are
+# fixed even though the branch is not.
+[source]
+url = "https://codeload.github.com/TinyCC/tinycc/tar.gz/a338258d309c888bde96b2d1f206299231a54ddf"
+sha256 = "5b57d2fc37304cf60aee41f194af69ab555a458af828f21ddd24f22888c8abc8"
+strip-components = 1
+
+# The configure script is tcc's own and not autoconf. It takes CFLAGS from the environment and only
+# falls back to a default of its own when there is none, and it writes what it took into config.mak,
+# so the level arrives the ordinary way and needs no carrier variable. It defaults CC to gcc, which
+# the shim answers, so it needs no --cc either.
+[build]
+system = "configure"
+# The harness invokes configure by absolute path, and tcc derives its source path from how it was
+# invoked, so it decides the build is out of tree and starts linking its own Makefiles into a
+# directory they are already in. On linux that is a cp that fails and takes configure's exit status
+# with it, and on macOS it is a symlink pointing at itself and make gives up on the first line. The
+# option below is tcc's own and says the source path is here, which is what an in tree build is, so
+# it is a build system argument under document 09.3 case one rather than a patch.
+configure = ["--source-path=."]
+
+# make test is a list of sections run one after another, and make stops at the first one that fails,
+# so the exit status is the verdict. What it does not have is a count, and a suite with no count can
+# quietly run less than it did last time and still exit zero.
+#
+# So the count here is a count of cases attempted rather than of cases passed, and the two numbers
+# are equal by construction. That is worth being plain about: unlike janet, where the counts are the
+# grade, here the exit status is the grade and the count is the guard around it. A run that stops
+# after four sections instead of nineteen exits non zero and fails on the status. A run that somehow
+# reaches the end having skipped a hundred of the tests2 programs exits zero and fails on the count.
+#
+# The count is host dependent, and the number below is the reference machine's. Two of the nineteen
+# sections are linux only, asm-c-connect-test and the PIC dlltest, so macOS attempts 168 and is
+# graded wrong over two sections it was never going to run. That host is excluded in the register
+# under the same issue janet is, because it is the same problem and one issue holding both is a
+# better argument than two holding one each.
+[test]
+command = [
+    "sh",
+    "-c",
+    "make test > rrc-suite-output.log 2>&1; status=$?; cat rrc-suite-output.log; awk '/^Test: / || /^PPTest / || /^------------ / { n++ } END { printf \"tcc cases: %d of %d cases attempted\\n\", n, n }' rrc-suite-output.log; exit $status",
+]
+oracle = "suite"
+parser = "custom-regex"
+regex = "tcc cases: (\\d+) of (\\d+) cases attempted"
+baseline-tests = 170
+requires = ["sh", "awk"]
+
+# Sixty nine thousand lines over thirty files, and then the build turns round and uses the compiler
+# it just built to compile tcc's own runtime library, so a miscompile can surface either as a broken
+# tcc or as a broken libtcc1.a. On the reference machine gcc takes between nine and thirty four
+# seconds to build it and between twenty four and forty one to run the suite, which makes it the
+# only project on this rung where the suite costs more than the build.
+[limits]
+build-seconds = 900
+test-seconds = 1800

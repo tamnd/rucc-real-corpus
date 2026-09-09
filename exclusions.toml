@@ -52,3 +52,12 @@ host = "macos-aarch64"
 issue = "https://github.com/tamnd/rucc-real-corpus/issues/105"
 why = "The suite count is host dependent and baseline-tests holds one number. test/suite-filewatch.janet runs 45 cases against inotify on linux and 1 case anywhere else, so a run on this host comes back with 3751 of 3751 against a reference of 3795 and is graded a wrong answer for a reason that has nothing to do with the compiler. The 3751 it does run all pass. Scoped to the host, because the reference machine is where the number was taken and where every level passes."
 since = "2026-09-09"
+
+[[exclude]]
+project = "tcc"
+case = "tcc"
+level = "*"
+host = "macos-aarch64"
+issue = "https://github.com/tamnd/rucc-real-corpus/issues/105"
+why = "The same shape as janet and the same issue. Two of the nineteen sections make test runs are linux only, asm-c-connect-test and the PIC dlltest, so this host attempts 168 cases against a reference of 170 and is graded a wrong answer over two sections it was never going to run. Everything it does run passes and the suite exits zero. Scoped to the host, because every level passes on the reference machine."
+since = "2026-09-09"
