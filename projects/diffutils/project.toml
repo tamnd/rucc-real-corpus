@@ -1,0 +1,102 @@
+[project]
+name = "diffutils"
+rung = 4
+upstream = "https://www.gnu.org/software/diffutils/"
+licence = "GPL-3.0-or-later"
+licence-file = "COPYING"
+description = "diff, diff3, cmp and sdiff, graded by the shell scripts the project ships and by gnulib's own suite underneath them"
+# The four programs are about seven thousand lines between them and gnulib underneath is the rest of
+# the eight hundred and seventy files and hundred and eighty nine thousand lines this row measures.
+# That ratio is the same one gzip is on the list for and it is not the reason diffutils is here.
+#
+# The reason is src/analyze.c, which is the Myers difference algorithm, and specifically the way it
+# addresses its two diagonal arrays. Line 548 allocates one buffer of two times diags entries, line
+# 549 points bdiag at the middle of it, and lines 550 and 551 then move both pointers forward by the
+# number of lines in the second file so that a diagonal index of minus three is a legal subscript.
+# Line 566 frees the allocation by subtracting that offset back off. Every read and write in the
+# inner loop of the algorithm is therefore an access to the interior of one object through a pointer
+# that no longer points at its start, which is what pointer-arithmetic names, and a compiler that
+# gets the offsetting wrong produces a diff that is subtly not minimal rather than one that crashes.
+#
+# feature-test-macros is the measured blocker rather than the interesting part. `AC_USE_SYSTEM_
+# EXTENSIONS` writes an `#undef __STDC_WANT_LIB_EXT1__` followed by a `#define` of the same name into
+# the first lines of config.h, and rucc rejects the undef of a macro that is not currently defined,
+# which the standard says has no effect. That is tamnd/rucc#757 and it stands in front of every
+# gnulib row on this list.
+#
+# integer-conversion takes the third slot and it is the weakest of the three, in the sense that many
+# projects here carry it. It earns the slot anyway because diffutils counts lines in `lin`, which is
+# `ptrdiff_t`, sizes buffers in `idx_t`, and reads file offsets in `off_t`, and the algorithm above
+# indexes one of them with another in its hot loop. Left off: deep-macros and autoconf-probes, both
+# true of every gnulib project on the list and both already carried by more rows than either of the
+# tags above.
+demands = ["feature-test-macros", "pointer-arithmetic", "integer-conversion"]
+
+[source]
+url = "https://ftp.gnu.org/gnu/diffutils/diffutils-3.12.tar.xz"
+sha256 = "7c8b7f9fc8609141fdea9cece85249d308624391ff61dedaf528fcb337727dfd"
+strip-components = 1
+
+# A3, ordinary autoconf and automake, and the level needs no carrier: configure takes CFLAGS out of
+# the environment and automake puts it on every compile and on the link, so `-flto` lands on both
+# halves without anything added.
+#
+# The expect lines are the autoconf 2.72 spellings, because that is what diffutils 3.12 ships. The
+# older spelling, `checking whether we are using the GNU C compiler`, is what a tarball generated
+# with 2.69 prints and it is the one flex needs. A manifest is pinned to the script inside its own
+# tarball rather than to the corpus habit.
+#
+# The second line is the one worth having. `__restrict__` is the answer gcc gives, and a compiler
+# that does not have the keyword makes configure define restrict away to nothing, at which point the
+# build succeeds, every test passes, and nothing has been learned except that the fallback compiles.
+# That is exactly the failure mode expect-configure exists to refuse.
+[build]
+system = "configure"
+expect-configure = [
+    "checking whether the compiler supports GNU C... yes",
+    "checking for C/C++ restrict keyword... __restrict__",
+]
+# The tree builds four programs and this is the one the row is named for. gcc 16.2.0 at -O2 gives
+# 644064 bytes for diff against 226880 for cmp, so the size column follows the program with the
+# algorithm in it rather than the smallest of the four.
+binary = "src/diff"
+
+# make check runs two automake harnesses, the project's own tests directory and gnulib-tests, and
+# each prints its own `# PASS:` block. The automake parser sums them, which is the behaviour
+# libjansson already needed, so nothing special is required here.
+#
+# gcc 16.2.0 on the reference machine gives 33 cases in the project's own suite, 30 passing, 2
+# skipped and 1 expected failure, and 344 in gnulib-tests, 276 passing and 68 skipped. An expected
+# failure counts as a pass, so the harness sees 377 run and 307 passing.
+#
+# 70 skips out of 377 is a lot and it is worth saying what they are, because they are what makes this
+# number a property of the machine as well as of the compiler. Most of them are the character
+# conversion tests, test-btoc32, test-c32rtomb and their relatives, which skip when the locale they
+# want has not been generated on the host. The rest are tests that want a condition the machine does
+# not offer, brief-vs-stat-zero-kernel-lies being the clearest of them.
+#
+# So 307 is the number measured on the reference machine and not a number every host is guaranteed to
+# reach. A host with more locales generated runs more of those cases and comes in above it, which
+# passes. A host with fewer comes in below it and fails, and that failure would be about the host
+# rather than about the compiler. That is tamnd/rucc-real-corpus#105 and this row is now the sharpest
+# instance of it on the list. The alternative was to run only the project's own tests and declare 31,
+# which does not help: the skips are in both halves, and it would throw away three hundred and forty
+# four cases of real C to avoid a problem it does not avoid.
+#
+# perl is required rather than optional, for the reason gzip's manifest already writes down. Several
+# cases invoke it, a case that cannot find it skips instead of running, and a skip is one fewer
+# passing case, so a host without perl would come in under the baseline. Requiring it means such a
+# host skips the whole project, which is the honest answer.
+[test]
+command = ["make", "check"]
+oracle = "suite"
+parser = "automake"
+baseline-tests = 307
+requires = ["sh", "perl"]
+
+# Configure is the expensive half and it is the same shape as gzip's: a few hundred compiles of ten
+# line programs, so what it costs is process startup rather than compilation. The limit is head room
+# for a compiler an order of magnitude slower at both starting and compiling.
+[limits]
+build-seconds = 1800
+test-seconds = 900

@@ -74,6 +74,14 @@ licence-sha256 = "9577b9c846f61fd69a0d8ac965998c6450c7d8969f71f0bb4a931b91aebad2
 verified = "2026-09-08"
 
 [[project]]
+name = "diffutils"
+url = "https://ftp.gnu.org/gnu/diffutils/diffutils-3.12.tar.xz"
+sha256 = "7c8b7f9fc8609141fdea9cece85249d308624391ff61dedaf528fcb337727dfd"
+bytes = 1938800
+licence-sha256 = "8ceb4b9ee5adedde47b31e975c1d90c73ad27b6b165a1dcd80c7c545eb65b903"
+verified = "2026-09-10"
+
+[[project]]
 name = "duktape"
 url = "https://duktape.org/duktape-2.7.0.tar.xz"
 sha256 = "90f8d2fa8b5567c6899830ddef2c03f3c27960b11aca222fa17aa7ac613c2890"
@@ -104,6 +112,14 @@ sha256 = "6a24504a14de4a744103dcb936be976df6fbe88ccff26065e54c1c47946f4a5e"
 bytes = 1226591
 licence-sha256 = "690d762f2e8e149ab1e2d6a409a3853b6151a2533b2382fae549a176d6bedecf"
 verified = "2026-09-08"
+
+[[project]]
+name = "grep"
+url = "https://ftp.gnu.org/gnu/grep/grep-3.12.tar.xz"
+sha256 = "2649b27c0e90e632eadcd757be06c6e9a4f48d941de51e7c0f83ff76408a07b9"
+bytes = 1918448
+licence-sha256 = "3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986"
+verified = "2026-09-10"
 
 [[project]]
 name = "gzip"
