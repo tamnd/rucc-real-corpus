@@ -116,6 +116,8 @@ Three lines, and the third and fourth are what make it actionable: the level at 
 
 **Markdown** to `reports/latest.md`, committed on the default branch by the nightly job, so that the history of the corpus is `git log` on one file.
 
+**The report names the cells the reference itself could not pass**, in a section that is absent when there are none. A cell that GCC 16 built and did not come out green is saying something about the manifest or about the machine and nothing at all about the compiler under test, and it cannot report a regression because there is nothing above it to regress from. The lint cannot catch this, since whether nine failures are expected is a fact about the host rather than about the file, and a run can, since a run has the reference in front of it. `bash` was admitted with a baseline of 77 passes out of 86 cases and no `baseline-total`, which is exactly this mistake, and this section is what found it. Skipped and excluded rows are left out, because a declared requirement missing from a host is already in the count table and an excluded row already has an issue number.
+
 **JSON Lines** as the run's raw records, retained as a CI artefact for ninety days and permanently for tagged releases, because a report format will change and the records must survive it.
 
 **JUnit XML** for the CI check UI, with one test case per project per level, so that a failure is clickable in the same place every other failure in the project is.
