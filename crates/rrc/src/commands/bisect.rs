@@ -2,9 +2,11 @@
 //!
 //! A command of its own rather than a mode of the run, because it costs one full build and one
 //! full suite run per step and the whole reason it exists is that somebody already has a failure
-//! they cannot attribute. Section 8.6 also describes running the mixed build as a mode at R4, once
-//! per project with a fixed tenth of the tree ours, and that belongs to the rung it is written for
-//! rather than to this command.
+//! they cannot attribute. Section 8.6's other half, the same split build run as a standing mode at
+//! R4 with a fixed tenth of the tree ours, is `rrc run --mixed` and lives in [`crate::commands::mixed`].
+//! The two share the dispatcher, the journal and the grading, and they answer different questions:
+//! the mode asks whether a failure is in generated code or in the build, and this command asks
+//! which file.
 
 use crate::cli::{BisectPlan, Options};
 use crate::commands::schedule::Setup;
