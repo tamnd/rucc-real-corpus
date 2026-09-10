@@ -5,24 +5,24 @@ upstream = "https://tukaani.org/xz/"
 licence = "0BSD"
 licence-file = "COPYING.0BSD"
 description = "a compressor and the liblzma behind it, graded by a suite that round trips its own output"
-# The first is what a compressor is made of. The range coder in rc_encoder.h and rc_decoder.h works
-# a bit at a time against a probability model, the match finders in lz_encoder_mf.c hash and shift
-# their way through the window, and the crc32 and crc64 tables in src/liblzma/check are generated
-# byte tables that are then indexed and xored. None of that is reachable except through arithmetic
-# that has to be exactly right, which is why a wrong answer here is a corrupted archive and not a
-# crash.
+# `bit-builtins` because of __builtin_bswap16, 32 and 64, and the reason it is first is in the
+# `expect-configure` note below rather than here.
 #
-# The second is what the format is. A .xz file is a stream header, a sequence of blocks each with
-# its own header, an index and a stream footer, and every one of those is a structure written
-# straight to disk. block.h, index.h and stream_flags_common.h describe layouts that another
-# implementation has to agree with byte for byte.
+# `struct-layout` because a .xz file is a stream header, a sequence of blocks each with its own
+# header, an index and a stream footer, and block.h, index.h and stream_flags_common.h describe
+# layouts that another implementation has to agree with byte for byte. Getting an offset wrong here
+# does not crash anything, it writes an archive nobody else can read.
 #
-# The third is the configure script, and it is here because it is what the compiler under test
-# actually fails on today. This project never reaches its own source.
+# `autoconf-probes` because this is the largest configure script in the corpus, better than two
+# hundred and nineteen checks, and because it is where the compiler under test stops today. rucc
+# 0.10.4 never reaches a line of xz's own source.
 #
-# Left off: bit-manipulation and memcpy-idioms, both true here and both already carried by twelve
-# projects or more, and there are only three slots.
-demands = ["constant-time", "struct-layout", "autoconf-probes"]
+# Left off: `bit-manipulation`, which is true of the range coder in rc_encoder.h and the match
+# finders in lz_encoder_mf.c and is as central here as anywhere, but twelve projects already carry
+# it and there are only three slots. Also left off `constant-time`, which was on an earlier draft of
+# this file and should not have been: xz computes checksums, it does not keep secrets, and nothing
+# in the tree asks for timing independence.
+demands = ["bit-builtins", "struct-layout", "autoconf-probes"]
 
 # spec/05-the-projects.md pins 5.8.1 and this is that release tarball, taken from the project's own
 # GitHub releases rather than from a codeload snapshot, because the release ships a generated
@@ -46,7 +46,23 @@ strip-components = 1
 # 0BSD part.
 [build]
 system = "configure"
-expect-configure = ["checking whether we are using the GNU C compiler... yes"]
+# The second line is the one that earns its place, and it is the same argument libjansson's atomics
+# line is built on. m4/tuklib_integer.m4 line 27 probes for the byte swap builtins, and when the
+# probe says no, src/common/tuklib_integer.h falls through to <byteswap.h> on glibc, to
+# <sys/endian.h> on the BSDs and Darwin, and to <sys/byteorder.h> on Solaris. Every one of those
+# fallbacks compiles, links, and passes all nineteen tests. So a compiler with no __builtin_bswap at
+# all would come back green from this project and nothing would say a word. Naming the line turns
+# that silence into a did-not-build with the missing sentence on the record.
+#
+# The first line is the GNU C check, and it is spelled the way autoconf 2.72 spells it rather than
+# the way older autoconf did. An earlier draft of this file asked for `checking whether we are using
+# the GNU C compiler... yes`, which is the 2.69 wording, and gcc 16.2.0 failed the row on it. That
+# is the expectation mechanism working, but it is worth writing down that a stale expectation looks
+# exactly like a broken compiler until you read the log.
+expect-configure = [
+    "checking whether the compiler supports GNU C... yes",
+    "checking if __builtin_bswap16/32/64 are supported... yes",
+]
 # libtool builds a shell script wrapper at src/xz/xz and puts the real executable one directory
 # down. 6,266 bytes of Bourne shell is not the number this column is for.
 binary = "src/xz/.libs/xz"
@@ -67,10 +83,10 @@ parser = "automake"
 baseline-tests = 19
 requires = ["sh"]
 
-# A hundred and forty two translation units and sixty three thousand lines, of which liblzma is
-# eighty four files and thirty seven thousand. gcc goes from tarball to binary in between 33 and 55
-# seconds, which makes this the second most expensive row on the rung after sqlite-shell, and the
-# 900 that every other autoconf row carries is enough.
+# Two hundred and forty eight files and sixty four thousand lines as the harness counts them, of
+# which liblzma is eighty four C files and thirty seven thousand lines. gcc goes from tarball to
+# binary in between 33 and 55 seconds, which makes this the second most expensive row on the rung
+# after sqlite-shell, and the 900 that every other autoconf row carries is enough.
 #
 # The suite is between 31 and 39 seconds and almost all of it is real work rather than process
 # setup, because each case compresses and decompresses generated files of a few megabytes. 300
