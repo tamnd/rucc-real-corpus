@@ -169,9 +169,18 @@ standard = "GNU builtin; the portable spelling is a call to memcpy that the comp
 summary = "a double written to a union and read back as a uint64_t, with a pointer and a tag living in the payload of a quiet NaN"
 kind = "standard"
 
+# The diagnostic is one string for two different bugs and there is no way to tell them apart from
+# the text, which is worth knowing before anybody trusts the classification. E0694 is printed when
+# the implementation cannot find a type wide enough to hold every value the operation could produce.
+# jtckdint reaches it with operands that really are 128 bits wide, which is tamnd/rucc#602 and waits
+# on the type existing at all. bash reaches it with nothing wider than 64 bits anywhere, because a
+# signed 64 operand and an unsigned 64 result have no common type and the answer is computed by
+# widening rather than from the operand signs, which is tamnd/rucc#836. Same words, different fix.
 [overflow-builtins]
-summary = "__builtin_add_overflow, __builtin_sub_overflow and __builtin_mul_overflow"
+summary = "__builtin_add_overflow, __builtin_sub_overflow and __builtin_mul_overflow, including the mixed signedness forms that gnulib's ckd_add generates"
 kind = "gnu-builtin"
+diagnostic = ["needs an integer type wider than 64 bits for these arguments"]
+rucc-issue = "https://github.com/tamnd/rucc/issues/836"
 standard = "GNU extension; C23 <stdckdint.h> is the portable spelling"
 
 [pointer-arithmetic]
@@ -189,6 +198,22 @@ kind = "standard"
 [setjmp-longjmp]
 summary = "setjmp and longjmp as an error mechanism, which constrains what the optimizer may keep in a register"
 kind = "standard"
+
+# Two spellings of one demand, and rucc is missing the same thing under both of them, which is why
+# they are one entry with two needles. A variable length array and a call to alloca both ask the
+# frame to grow by an amount that is not known until the function runs, and both ask for it to
+# shrink again at the end of the block. The shrinking is the part that carries the weight: an alloca
+# inside a loop that never gives the space back grows the frame on every trip, so a compiler that
+# implements the growing and not the release has not implemented this.
+[stack-allocation]
+summary = "an array whose size is a runtime value, spelled either as a C99 variable length array or as a call to alloca, and a frame that grows and shrinks to hold it"
+kind = "standard"
+diagnostic = [
+    "`__builtin_alloca` is not implemented yet",
+    "no rule lowers a `stacksave`",
+]
+rucc-issue = "https://github.com/tamnd/rucc/issues/631"
+standard = "variable length arrays are C99 and optional from C11 onward; alloca is a GNU and BSD extension with no portable spelling"
 
 [stdckdint]
 summary = "<stdckdint.h> and ckd_add, ckd_sub and ckd_mul"
