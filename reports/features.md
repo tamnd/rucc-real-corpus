@@ -19,11 +19,11 @@ Weight is what to do next. It is the sum over the held up projects of six minus 
 | `deep-macros` | preprocessor | 9 | 0 | 0 | none open |
 | `function-pointers` | standard | 9 | 0 | 0 | none open |
 | `integer-conversion` | standard | 9 | 0 | 0 | none open |
+| `large-switch` | standard | 8 | 0 | 0 | none open |
 | `struct-layout` | abi | 8 | 0 | 0 | none open |
-| `large-switch` | standard | 7 | 0 | 0 | none open |
 | `computed-goto` | gnu-extension | 6 | 0 | 0 | [open](https://github.com/tamnd/rucc/issues/353) |
-| `setjmp-longjmp` | standard | 5 | 0 | 0 | none open |
-| `double-formatting` | standard | 4 | 0 | 0 | none open |
+| `setjmp-longjmp` | standard | 6 | 0 | 0 | none open |
+| `double-formatting` | standard | 5 | 0 | 0 | none open |
 | `varargs-depth` | standard | 4 | 0 | 0 | none open |
 | `atomic-builtins` | gnu-builtin | 3 | 0 | 0 | [open](https://github.com/tamnd/rucc/issues/311) |
 | `bit-builtins` | gnu-builtin | 3 | 0 | 0 | [open](https://github.com/tamnd/rucc/issues/310) |
@@ -156,6 +156,19 @@ the integer types are the widths the standard says they are, and conversions bet
 - `libmpfr`, R2, not measured
 - `libtommath`, R2, not measured
 
+### `large-switch`
+
+a switch with hundreds of cases, where the jump table decision is the compiler's
+
+- `libconfig`, R2, not measured
+- `pcre2`, R2, not measured
+- `duktape`, R3, not measured
+- `lua`, R3, not measured
+- `lua-nojumptable`, R3, not measured
+- `quickjs`, R3, not measured
+- `mawk`, R4, not measured
+- `sqlite-shell`, R4, not measured
+
 ### `struct-layout`
 
 struct offsets, padding and alignment as the ABI states them
@@ -168,18 +181,6 @@ struct offsets, padding and alignment as the ABI states them
 - `libuv`, R2, not measured
 - `oniguruma`, R2, not measured
 - `tcc`, R3, not measured
-
-### `large-switch`
-
-a switch with hundreds of cases, where the jump table decision is the compiler's
-
-- `libconfig`, R2, not measured
-- `pcre2`, R2, not measured
-- `duktape`, R3, not measured
-- `lua`, R3, not measured
-- `lua-nojumptable`, R3, not measured
-- `quickjs`, R3, not measured
-- `sqlite-shell`, R4, not measured
 
 ### `computed-goto`
 
@@ -201,6 +202,7 @@ setjmp and longjmp as an error mechanism, which constrains what the optimizer ma
 - `femtolisp`, R3, not measured
 - `lua`, R3, not measured
 - `lua-nojumptable`, R3, not measured
+- `mawk`, R4, not measured
 
 ### `double-formatting`
 
@@ -210,6 +212,7 @@ printf and strtod round tripping a double without losing a digit
 - `cjson`, R2, not measured
 - `libjansson`, R2, not measured
 - `duktape`, R3, not measured
+- `mawk`, R4, not measured
 
 ### `varargs-depth`
 

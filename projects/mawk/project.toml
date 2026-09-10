@@ -1,0 +1,80 @@
+[project]
+name = "mawk"
+rung = 4
+upstream = "https://invisible-island.net/mawk/"
+licence = "GPL-2.0"
+licence-file = "COPYING"
+description = "a one true awk, a bytecode interpreter with a yacc generated parser in front of it, graded by the suite the project ships"
+# Two large switches and they are different kinds of large. execute.c line 185 is the interpreter,
+# switch ((cdp++)->op) over the bytecode, and parse.c is the yacc action table with 182 cases in it.
+# One is written by hand and one is generated, which is the pair worth having on the same row.
+#
+# rexp.c is where setjmp and longjmp are, and they are load bearing rather than decorative: the
+# regex compiler is recursive descent and it reports an error by jumping out of however deep it got,
+# setjmp at line 475 and longjmp at line 113. fpe_check.c uses the same pair to find out at startup
+# whether the host traps floating point exceptions.
+#
+# The third is what an awk is. Every value is a double that has to print like an integer when it is
+# one, so CONVFMT and OFMT go through sprintf in ninety eight places and cast.c reads numbers back
+# with strtod. A digit lost in that round trip is a wrong answer and not a rounding difference.
+#
+# Left off: pointer-arithmetic and switch-dispatch, both true here and both already carried by ten
+# projects or more, and there are only three slots.
+demands = ["large-switch", "setjmp-longjmp", "double-formatting"]
+
+# Thomas Dickey's releases are dated inside the 1.3.4 version, so the pin is the date and not the
+# version. spec/05-the-projects.md said `1.3.4`, which names four years of tarballs rather than one.
+[source]
+url = "https://invisible-island.net/archives/mawk/mawk-1.3.4-20260302.tgz"
+sha256 = "e2c08a77d0a84a01f9be454d1ca3872d4f103f9ada683d075198b0c6e965633d"
+strip-components = 1
+
+# A3, ordinary autoconf, and the level needs no carrier. configure takes CFLAGS out of the
+# environment and writes `CFLAGS = -O2 $(EXTRA_CFLAGS)` into the Makefile, so the level arrives on
+# every compile and on the link, which is the line that matters for lto here.
+#
+# The expect line is the one seven other autoconf projects in this corpus use. It is checked rather
+# than assumed for a reason: a compiler that answered no to it would still configure and still
+# build, and the resulting binary would be a different program compiled out of the same tree.
+[build]
+system = "configure"
+expect-configure = ["checking whether we are using the GNU C compiler... yes"]
+
+# make check runs three scripts, mawktest, mawkerrs and fpe_test, and none of them prints a total.
+# The first two print one line per case through a shell function that says "<name> OK" when the case
+# had no failures, "<name> had one failure" when it had exactly one and "<name> had N failures"
+# otherwise, so the count is assembled here with awk. Same shape as janet, tcc, micropython,
+# pdpmake and sqlite-shell.
+#
+# The line `$1 == "tested"` skips is the per script summary, which prints in exactly the same three
+# shapes over the whole script. Counting it would add one to the passes on a clean run and would
+# double count every failure on a dirty one, which is the sort of thing that only shows up on the
+# day something breaks.
+#
+# fpe_test contributes nothing to the count because it prints no OK line at all. It still decides
+# the cell, because it exits 1 when the three return values disagree and make check carries that
+# out, and the exit status is carried across by hand here.
+#
+# On the reference machine gcc 16.2.0 gives 50 of 50 at all six levels, in about half a second.
+[test]
+command = [
+    "sh",
+    "-c",
+    "make check > rrc-suite-output.log 2>&1; status=$?; cat rrc-suite-output.log; awk '$1 == \"tested\" { next } / OK$/ { passed++ } /had one failure$/ { failed += 1 } /had [0-9]+ failures$/ { failed += $(NF-1) } END { printf \"mawk: %d of %d tests passed\\n\", passed, passed + failed }' rrc-suite-output.log; exit $status",
+]
+oracle = "suite"
+parser = "custom-regex"
+regex = "mawk: (\\d+) of (\\d+) tests passed"
+baseline-tests = 50
+requires = ["sh", "awk"]
+
+# Forty translation units and twenty five thousand lines, and gcc gets from the tarball to a binary
+# in between eight and seventeen seconds, most of which is the configure script rather than the
+# compiler. 900 is the same head room pdpmake has for a build of the same order.
+#
+# The suite is half a second, so the test limit is not derived from it. It is set at 120 because
+# every case forks the mawk that was just built, usually several times, and a binary that is slow
+# because the level could not do its work makes the whole suite slower with nothing wrong.
+[limits]
+build-seconds = 900
+test-seconds = 120
