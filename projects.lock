@@ -404,6 +404,14 @@ licence-sha256 = "bb0d0d505009fdf584b0f44dbb62562eebada497d53d726cd2e940ada512dc
 verified = "2026-09-08"
 
 [[project]]
+name = "sqlite-shell"
+url = "https://sqlite.org/2026/sqlite-src-3530400.zip"
+sha256 = "d18fa15aec74d8c17e1463f861095adc01b5ad190256acb4f91d22f0368d232b"
+bytes = 14557315
+licence-sha256 = "ee6af51062b30d532991face5164136ae6f84e265ecf8abe89dc69dac45ca1e7"
+verified = "2026-09-10"
+
+[[project]]
 name = "tcc"
 url = "https://codeload.github.com/TinyCC/tinycc/tar.gz/a338258d309c888bde96b2d1f206299231a54ddf"
 sha256 = "5b57d2fc37304cf60aee41f194af69ab555a458af828f21ddd24f22888c8abc8"

@@ -1,0 +1,86 @@
+[project]
+name = "sqlite-shell"
+rung = 4
+upstream = "https://sqlite.org"
+licence = "blessing"
+licence-file = "LICENSE.md"
+description = "the sqlite3 command line tool, graded by the eleven test files the project keeps for it"
+# shell.c is ordinary application code sitting on top of the library, and the two halves of the
+# binary fail for different reasons: the shell reaches __builtin_ceil and __builtin_floor, and the
+# amalgamation underneath it reaches the atomic builtins. Both are in the exclusion register with
+# an issue each. The rest is what the library is: one function of eight and a half thousand lines
+# holding a switch with 188 cases, and about eight hundred calls through a pointer, which is how
+# the virtual file system, the virtual table interface and the function registry all work. Three
+# is the cap, so the two blockers take two of the slots and the interpreter takes the third. The
+# indirect calls are left off because oniguruma already carries function-pointers, and the configure
+# probes are left off because twenty projects already carry autoconf-probes.
+demands = ["libm-builtins", "atomic-builtins", "large-switch"]
+
+# The source tree rather than the amalgamation zip or the autoconf tarball, and the choice is
+# forced. The amalgamation zip is four files and no build system. The autoconf tarball has a
+# configure and a Makefile and no test target of any kind, which is the same hole oksh was taken
+# off this rung for. The shell tests are in this tree and nowhere else, and it is also the tarball
+# the R5 amalgamation row will be pinned to, per spec/07-harness.md section 7.10.
+[source]
+url = "https://sqlite.org/2026/sqlite-src-3530400.zip"
+sha256 = "d18fa15aec74d8c17e1463f861095adc01b5ad190256acb4f91d22f0368d232b"
+strip-components = 1
+
+# A2. The configure is autosetup rather than autoconf, it ships generated in the tarball, and it
+# takes CFLAGS out of the environment and writes it into the Makefile as a plain assignment, so the
+# level arrives without a build.level-flags carrier. Checked at -Os as well as -O2 rather than
+# assumed, because a project whose Makefile assigns its own CFLAGS would give six identical cells
+# and nothing in the report would say so.
+#
+# readline is off because it is a host library that changes both the binary and what the tool does
+# when it has a terminal, and a corpus cell should not depend on which machine ran it. zlib has no
+# switch at all: configure probes for it and turns on SQLITE_HAVE_ZLIB and -lz when it finds one.
+# The reference machine has zlib, so the baseline below is a build that has it, and a host without
+# zlib builds a smaller shell. None of the eleven test files exercise the zlib functions, so the
+# count is the same either way, but the binary size in the cost report is not.
+#
+# Two targets, and both compile the amalgamation, which is why this project costs what it does.
+# sqlite3 is shell.c plus sqlite3.c in one command. testfixture is sqlite3.c again with the Tcl
+# glue and the test hooks, and it is the program that runs the test files. On the reference machine
+# with gcc 16.2.0 that is about 105 seconds for the first and about 101 for the second.
+[build]
+system = "configure"
+configure = ["--disable-readline"]
+targets = ["sqlite3", "testfixture"]
+expect-configure = ["Using tclConfig.sh:"]
+
+# The eleven files matching test/shell*.test, which is the set the project marks TESTRUNNER: shell
+# and which are the only tests it has for the command line tool. They drive the sqlite3 binary as a
+# subprocess and assert on what it prints, so this is a behavioural suite for the program and not
+# for the library underneath it.
+#
+# Each file prints its own line, "0 errors out of 198 tests on <host> Linux 64-bit", and there is no
+# total across the eleven, so awk adds them up. Passes are tests minus errors because that is the
+# only pair the line gives. The log keeps every original line and the exit status is carried by
+# hand, the same shape janet, tcc, micropython and pdpmake use.
+#
+# E3, because testfixture needs a tclConfig.sh to build and a tclsh to generate with. This is the
+# first project in the corpus that needs Tcl, and it is not the last: the R5 amalgamation is graded
+# by the same tree's full suite, which needs the same thing. A host without it skips the project
+# rather than failing it.
+#
+# On the reference machine gcc 16.2.0 gives 475 of 475 in about 9 seconds, at every level.
+[test]
+command = [
+    "sh",
+    "-c",
+    "status=0; for t in test/shell*.test; do ./testfixture \"$t\" || status=1; done > rrc-suite-output.log 2>&1; cat rrc-suite-output.log; awk '/errors out of/ { errors += $1; total += $5 } END { printf \"sqlite-shell: %d of %d tests passed\\n\", total - errors, total }' rrc-suite-output.log; exit $status",
+]
+oracle = "suite"
+parser = "custom-regex"
+regex = "sqlite-shell: (\\d+) of (\\d+) tests passed"
+baseline-tests = 475
+requires = ["sh", "awk", "tcl"]
+
+# Two hundred and six seconds of gcc for the two targets, over a quarter of a million lines compiled
+# twice, and the limit is head room for a compiler an order of magnitude slower rather than a number
+# taken from gcc. The suite is nine seconds and the limit is not set from that either, because every
+# one of the four hundred and seventy five cases forks the shell at least once.
+[limits]
+build-seconds = 3600
+test-seconds = 600
