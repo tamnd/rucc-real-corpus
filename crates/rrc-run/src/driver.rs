@@ -20,6 +20,7 @@ use crate::diagnostic::Normalizer;
 use crate::env::{EnvPlan, environment};
 use crate::exec::{self, Completed, Ending, Invocation};
 use crate::input::{self, Input};
+use crate::kconfig;
 use crate::parse::{self, Counts};
 use crate::privilege::{self, Privilege};
 use crate::record::{BuiltAgainst, Outcome, Phase, Provenance, RunRecord};
@@ -426,14 +427,11 @@ fn attempt_upto(
             return Ok(trial);
         }
         trial.phase = step.reaches;
-        // A probe that answered the wrong way does not fail the configure, it changes what gets
-        // built, so the only place to catch it is here with the output still in hand.
         if step.reaches == Phase::Configured
-            && let Some(said) = trial.build.as_ref()
-            && let Some(missing) = unanswered(job.manifest, said)
+            && let Some(said) = after_configure(job, &trial, &workdir)
         {
-            trial.first_diagnostic = Some(missing.clone());
-            trial.misconfigured = Some(missing);
+            trial.first_diagnostic = Some(said.clone());
+            trial.misconfigured = Some(said);
             return Ok(trial);
         }
     }
@@ -718,7 +716,23 @@ fn build_steps(job: &Job<'_>, env: &BTreeMap<String, String>, workdir: &Path) ->
                 .collect()
         }
         BuildSystem::Make | BuildSystem::Recursive => {
-            vec![at("make", Phase::Linked, "make", make())]
+            // A project that writes its own configuration gets two make invocations rather than
+            // one, because the symbols the manifest turns off live in a file that does not exist
+            // until the first of them has finished. Everywhere else the targets go on one command
+            // line, which is what `toybox` does with `defconfig toybox`, and that stays the right
+            // answer for a project with nothing to change in what defconfig wrote.
+            let Some(config) = &build.config else {
+                return vec![at("make", Phase::Linked, "make", make())];
+            };
+            vec![
+                at(
+                    "configure",
+                    Phase::Configured,
+                    "make",
+                    vec![config.target.clone()],
+                ),
+                at("make", Phase::Linked, "make", make()),
+            ]
         }
         BuildSystem::Configure => vec![
             at(
@@ -831,6 +845,28 @@ fn test_invocation(
         timeout: Duration::from_secs(job.manifest.limits.test_seconds),
         as_user: job.privilege.ids(),
     })
+}
+
+/// Everything that happens between a configure step finishing and the build starting, and the
+/// sentence that stops the trial when one of them goes wrong.
+///
+/// Two things, in this order. A kconfig project's configuration is rewritten with the symbols
+/// `build.config` turns off, which cannot happen in `build_steps` because the file does not exist
+/// until the step above has run. Then `build.expect-configure` is checked against what the step
+/// printed.
+///
+/// Both failures are graded the same way and it is not `did not build`: the build stops at
+/// `configured` with the sentence in the record. A probe that answered the wrong way does not fail
+/// the configure, it changes what gets built, and a symbol the configuration no longer has means
+/// the manifest is describing a pin that moved. Neither is the compiler saying no, and neither can
+/// be left to the build to notice, because the build would succeed.
+fn after_configure(job: &Job<'_>, trial: &Trial, workdir: &Path) -> Option<String> {
+    if let Some(config) = &job.manifest.build.config
+        && let Err(said) = kconfig::turn_off(config, workdir)
+    {
+        return Some(said);
+    }
+    unanswered(job.manifest, trial.build.as_ref()?)
 }
 
 /// The first sentence from `build.expect-configure` that configure did not print.
