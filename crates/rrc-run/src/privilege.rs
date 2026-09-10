@@ -87,6 +87,21 @@ impl Privilege {
         }
     }
 
+    /// The name to put in the environment, which is the dropped user's when there is one and
+    /// whoever started the run otherwise.
+    ///
+    /// A suite that asks who it is has to get the same answer the kernel would give it. toybox's
+    /// find tests interpolate `$USER` into a `-user` predicate, so an environment with no name in
+    /// it turns a real case into `find -user` with nothing after it, which fails for a reason
+    /// that has nothing to do with the compiler.
+    #[must_use]
+    pub fn name(&self) -> Option<String> {
+        match self {
+            Self::AsIs => whoami(),
+            Self::Drop(user) => Some(user.name.clone()),
+        }
+    }
+
     /// The line the run prints about itself, or nothing when there is nothing to say.
     ///
     /// Printed rather than left implicit because two runs of the same corpus on the same machine
@@ -99,6 +114,28 @@ impl Privilege {
             user.name, user.uid
         ))
     }
+}
+
+/// The name of the account the harness itself is running as.
+///
+/// Asked of `id` for the same reason [`am_root`] is, and cached for the same reason. `None` on a
+/// machine where `id` is not where it is meant to be, which is also the answer that leaves the
+/// name out of the environment rather than putting a wrong one in it.
+#[must_use]
+pub fn whoami() -> Option<String> {
+    static ANSWER: OnceLock<Option<String>> = OnceLock::new();
+    ANSWER
+        .get_or_init(|| {
+            Command::new("/usr/bin/id")
+                .arg("-un")
+                .output()
+                .ok()
+                .filter(|output| output.status.success())
+                .and_then(|output| String::from_utf8(output.stdout).ok())
+                .map(|said| said.trim().to_string())
+                .filter(|said| !said.is_empty())
+        })
+        .clone()
 }
 
 /// Whether the harness is running as root.
@@ -304,6 +341,16 @@ mod tests {
         assert!(privilege.ids().is_none());
         assert!(privilege.line().is_none());
         assert!(privilege.user().is_none());
+    }
+
+    #[test]
+    fn dropping_names_the_user_the_environment_will_report() {
+        let drop = Privilege::Drop(User {
+            name: "runner".into(),
+            uid: 1003,
+            gid: 1003,
+        });
+        assert_eq!(drop.name().as_deref(), Some("runner"));
     }
 
     #[test]

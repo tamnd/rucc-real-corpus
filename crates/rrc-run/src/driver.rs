@@ -355,6 +355,7 @@ fn attempt_upto(
     // puts the same flags on it. Passing them here anyway keeps the two paths saying the same
     // thing, and costs a variable nobody looks at.
     let flags = job.manifest.build.flag_list();
+    let user = job.privilege.name();
     let env = environment(&EnvPlan {
         sandbox: &sandbox,
         shim: &shim,
@@ -366,6 +367,7 @@ fn attempt_upto(
         extra_path: job.extra_path,
         prefix: prefix.as_deref(),
         project_env: &job.manifest.build.env,
+        user: user.as_deref(),
     });
 
     let mut trial = Trial {
@@ -527,6 +529,7 @@ fn install_needs(
             .map_or_else(|| root.clone(), |subdir| root.join(subdir));
 
         let flags = need.manifest.build.flag_list();
+        let user = job.privilege.name();
         let env = environment(&EnvPlan {
             sandbox: &trial.sandbox,
             shim,
@@ -538,6 +541,7 @@ fn install_needs(
             extra_path: job.extra_path,
             prefix: Some(prefix),
             project_env: &need.manifest.build.env,
+            user: user.as_deref(),
         });
 
         let normalizer = Normalizer::rooted_at(trial.sandbox.root());

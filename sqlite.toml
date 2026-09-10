@@ -210,3 +210,13 @@ evidence = "nothing in the amalgamation asks for it, because whether the program
 tag = "driver-print-dirs"
 sites = 0
 evidence = "the amalgamation is compiled directly and has no build system in front of it, so nothing asks the driver where it keeps anything"
+
+[[measured]]
+tag = "char-signedness"
+sites = 0
+evidence = "sqlite3.c spells the signedness it wants rather than asking for a flag, 392 uses of unsigned char and an explicit signed char on the operand fields of the VDBE opcode struct and on INT8_TYPE, so a build that changed the sign of a plain char would not change what the amalgamation means"
+
+[[measured]]
+tag = "driver-stdin-input"
+sites = 0
+evidence = "the amalgamation is one file handed to the compiler by name, and there is no configure step in front of it piping programs into the compiler to find out what the machine has"

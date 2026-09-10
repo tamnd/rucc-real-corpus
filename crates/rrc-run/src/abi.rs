@@ -294,6 +294,7 @@ pub fn cross(job: &Job<'_>, abi: &Abi, pairing: Pairing) -> std::io::Result<Cros
     // harness has made everything it makes, and before the four builds run anything.
     crate::privilege::hand_over(job.privilege, sandbox.root())?;
     let flags = job.manifest.build.flag_list();
+    let user = job.privilege.name();
     let env = environment(&EnvPlan {
         sandbox: &sandbox,
         shim: &shim,
@@ -308,6 +309,7 @@ pub fn cross(job: &Job<'_>, abi: &Abi, pairing: Pairing) -> std::io::Result<Cros
         // wrote itself, so there is nothing for a dependency to be linked into.
         prefix: None,
         project_env: &job.manifest.build.env,
+        user: user.as_deref(),
     });
 
     let workdir = build_dir(&sandbox, job);
