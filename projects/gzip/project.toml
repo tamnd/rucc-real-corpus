@@ -53,18 +53,18 @@ binary = "gzip"
 # make check runs the tests directory under automake's parallel harness, which prints the # PASS:
 # block at the end, so the automake parser reads it and no awk is needed.
 #
-# Thirty cases, twenty nine passing and one skipped, measured with gcc 16.2.0 on the reference
-# machine at all six levels including lto. The skip is write-error and the reason it skips is worth
-# writing down, because it is a property of the machine rather than of the compiler: the test makes a
-# directory unwritable and checks that gzip reports the failure, and root can write to it anyway, so
-# the script prints "being root, skipping this test" and exits 77. A cell that runs as an ordinary
-# user passes it and scores 30.
+# Thirty cases, all thirty passing, measured with gcc 16.2.0 on the reference machine at all six
+# levels including lto. This used to be twenty nine with one skipped, and the case that skipped is
+# write-error: it makes a directory unwritable and checks that gzip reports the failure, root can
+# write to it anyway, and the script prints "being root, skipping this test" and exits 77. So the
+# number was a property of the account the run started from rather than of the compiler.
 #
-# So the baseline is 29 and not 30, which is the number every host reaches rather than the number the
-# best host reaches. That is deliberate and it is the weaker of the two choices available: 30 would
-# be a harder standard and would fail on any machine that runs the corpus as root, which both
-# reference machines do. baseline-total is not set, because the reference compiler does get a clean
-# run out of this suite and there is no case it fails.
+# Section 7.12 of spec/07-harness.md took that away. A run started as root now drops to an ordinary
+# user before it builds anything, so write-error runs rather than skipping and thirty is the number
+# every host reaches. A run forced back with --as-root scores 29 and fails this baseline, which is
+# the point of that flag saying out loud that it grades several suites wrong. baseline-total is not
+# set, because the reference compiler does get a clean run out of this suite and there is no case it
+# fails.
 #
 # E2, perl, and it is required rather than optional. zgrep-signal skips itself when there is no perl
 # on the path, and a skipped case is one fewer passing case, so a host without perl would come in at
@@ -74,7 +74,7 @@ binary = "gzip"
 command = ["make", "check"]
 oracle = "suite"
 parser = "automake"
-baseline-tests = 29
+baseline-tests = 30
 requires = ["sh", "perl"]
 
 # gcc 16.2.0 builds this tree in five seconds and spends fifty two getting there, and almost all of
