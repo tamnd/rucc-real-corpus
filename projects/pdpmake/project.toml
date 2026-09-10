@@ -28,6 +28,8 @@ strip-components = 1
 # asked. Whether the compiler under test does the same is the question the level is here to put.
 [build]
 system = "make"
+# The Makefile links `-o make`, and it is the program every case in the suite forks.
+binary = "make"
 
 # runtest prints PASS: or FAIL: or SKIPPED: and a name, one line per case, and prints no total of
 # any kind when everything passes. It prints a count only on the way out and only when something

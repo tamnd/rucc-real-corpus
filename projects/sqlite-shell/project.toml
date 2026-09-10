@@ -54,6 +54,10 @@ system = "configure"
 configure = ["--disable-readline"]
 targets = ["sqlite3", "testfixture"]
 expect-configure = ["Using tclConfig.sh:"]
+# Two binaries come out of this build and the graded one is the shell. testfixture is the harness
+# the project ships to drive it, so its size is a fact about the test rig rather than about the
+# program, and the eleven test files all run `./sqlite3` as a subprocess.
+binary = "sqlite3"
 
 # The eleven files matching test/shell*.test, which is the set the project marks TESTRUNNER: shell
 # and which are the only tests it has for the command line tool. They drive the sqlite3 binary as a

@@ -39,6 +39,8 @@ strip-components = 1
 [build]
 system = "configure"
 expect-configure = ["checking whether we are using the GNU C compiler... yes"]
+# The one program this tree builds, and the one the suite runs.
+binary = "mawk"
 
 # make check runs three scripts, mawktest, mawkerrs and fpe_test, and none of them prints a total.
 # The first two print one line per case through a shell function that says "<name> OK" when the case
