@@ -15,6 +15,8 @@
 //!   of their numbers can be read.
 //! - [`features`] inverts the manifests into a feature to projects map, sorted by what to do
 //!   next, which is the only artefact here that answers a question about the future.
+//! - [`localization`] is the one page that answers how long a failure took to name a file, which
+//!   is the number `spec/02-the-goal.md` section 2.2 offers as the way to falsify claim two.
 //! - [`diff`] compares two runs, which is what turns a corpus into a regression suite.
 //! - [`markdown`] assembles those into the file the nightly job commits.
 //! - [`jsonl`] writes the records themselves, which outlive any format built on them.
@@ -24,6 +26,7 @@ pub mod cost;
 pub mod diff;
 pub mod features;
 pub mod jsonl;
+pub mod localization;
 pub mod markdown;
 pub mod pages;
 pub mod source;

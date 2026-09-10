@@ -10,6 +10,7 @@ use rrc_manifest::axes::Rung;
 use rrc_manifest::exclusions::Exclusions;
 use rrc_manifest::features::Features;
 use rrc_manifest::lint::Corpus;
+use rrc_manifest::localization::Localization;
 use rrc_manifest::lockfile::Lockfile;
 use rrc_manifest::manifest::Manifest;
 use rrc_manifest::sqlite::Sqlite;
@@ -108,9 +109,9 @@ pub fn find(start: &Path) -> Result<PathBuf, String> {
     }
 }
 
-/// Read every manifest and the four corpus wide files.
+/// Read every manifest and the five corpus wide files.
 ///
-/// All four are allowed to be missing and read as empty when they are. That is not leniency: an
+/// All five are allowed to be missing and read as empty when they are. That is not leniency: an
 /// empty vocabulary makes every `demands` tag unknown and an empty lockfile makes every project
 /// unfetchable, so `rrc lint` says so in as many sentences as there are projects. Failing here
 /// instead would only move the same complaint somewhere less useful.
@@ -133,6 +134,11 @@ pub fn load(root: &Path) -> Result<Loaded, String> {
         Exclusions::from_path,
         &mut problems,
     );
+    let localization = read_or_default(
+        &root.join("localization.toml"),
+        Localization::from_path,
+        &mut problems,
+    );
     let sqlite = read_or_default(&root.join("sqlite.toml"), Sqlite::from_path, &mut problems);
 
     if !problems.is_empty() {
@@ -146,6 +152,7 @@ pub fn load(root: &Path) -> Result<Loaded, String> {
             features,
             lockfile,
             exclusions,
+            localization,
             sqlite,
         },
     })

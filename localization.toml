@@ -1,0 +1,112 @@
+# The register from `spec/11-reporting.md` section 11.9.
+#
+# One entry per failing cell, the day it went red and the day somebody could name a file. The
+# median of the second column minus the first is the number `spec/02-the-goal.md` section 2.2
+# offers as the way to falsify claim two, and `reports/localization.md` is where it is printed.
+#
+# It is written by hand because the second date is not in any record. A run says a cell failed and
+# it says what the first diagnostic was, and it cannot say when a person understood it. The report
+# pages read no clock for the reason `crates/rrc-report/src/pages.rs` gives, so this file is the
+# clock, and every entry in it is a diff somebody signed.
+#
+# The register opens on 2026-09-10, which is the day the first differential run against rucc was
+# recorded, and nothing before that date is in the number. The entries below were written from the
+# measurements in the manifests rather than from a nightly that surprised anybody, because that is
+# the order this corpus admits a project in: a row is measured, the failure is read, and the row
+# and its explanation land in the same commit. So they are all zero and they were always going to
+# be. The number starts meaning something on the first cell that goes red after its row is already
+# on the list.
+#
+# An entry is one cell, not one bug. A cell goes red once and is localized once, and when three
+# blockers are stacked behind each other the entry names the first one and the note says what is
+# behind it. The level field is spelled the way the exclusion register spells it.
+
+[[failure]]
+project = "gzip"
+level = "*"
+went-red = "2026-09-10"
+named-file = "2026-09-10"
+file = "config.h"
+how = "diagnostic"
+issue = "https://github.com/tamnd/rucc/issues/757"
+note = "The build stopped eight times on one line, `#undef __STDC_WANT_LIB_EXT1__`, and the diagnostic printed the file, the line and the macro. Nothing had to be looked for. The only work was recognising that `AC_USE_SYSTEM_EXTENSIONS` writes that line into every gnulib config.h, which turned one row's blocker into three rows' blocker."
+
+[[failure]]
+project = "diffutils"
+level = "*"
+went-red = "2026-09-10"
+named-file = "2026-09-10"
+file = "config.h"
+how = "diagnostic"
+issue = "https://github.com/tamnd/rucc/issues/757"
+note = "The same line as gzip and known before the row was run, which is what a cluster is for. The first diagnostic named config.h on its own anyway."
+
+[[failure]]
+project = "grep"
+level = "*"
+went-red = "2026-09-10"
+named-file = "2026-09-10"
+file = "config.h"
+how = "diagnostic"
+issue = "https://github.com/tamnd/rucc/issues/757"
+note = "The third row on the same line. Three projects, one file name, one issue, which is the case the failures page groups by diagnostic to make visible."
+
+[[failure]]
+project = "sed"
+level = "O0"
+went-red = "2026-09-10"
+named-file = "2026-09-10"
+file = "/usr/include/x86_64-linux-gnu/sys/socket.h"
+how = "diagnostic"
+issue = "https://github.com/tamnd/rucc/issues/829"
+note = "sed itself builds at this level and passes all 58 of its own cases. The gnulib test directory does not, because three socket tests take the address of `accept`, `bind` and `connect`, and glibc declares all three with `__SOCKADDR_ARG`. The diagnostic printed `union <anonymous>` inside the type it complained about, which is the dropped attribute showing through, so the header was one grep away."
+
+[[failure]]
+project = "sed"
+level = "O1,O2,Os,O3,lto"
+went-red = "2026-09-10"
+named-file = "2026-09-10"
+file = "config.h"
+how = "by-hand"
+issue = "https://github.com/tamnd/rucc/issues/825"
+note = "The diagnostic named a glibc header and the cause was not in it. config.h line 57 defines `_FORTIFY_SOURCE` as 2 whenever `__OPTIMIZE__` is set, with nothing on the command line asking for it, so the level flag alone changes which version of string.h the program sees. Naming the right file meant reading the config.h the level had just changed rather than the header the error came out of."
+
+[[failure]]
+project = "tar"
+level = "O0"
+went-red = "2026-09-10"
+named-file = "2026-09-10"
+file = "/usr/include/x86_64-linux-gnu/bits/error.h"
+how = "by-hand"
+issue = "https://github.com/tamnd/rucc/issues/825"
+note = "The furthest any localization here had to travel. The build stopped on an implicit declaration of `error` at argmatch.c:148, and argmatch.c is fine. `checking for error.h` had answered no, because the probe compiles the system header and that header calls `__va_arg_pack`, so gnulib built its own error.h and the real declaration never arrived. A failed configure probe puts the diagnostic a long way from its cause and no cluster would have joined those two."
+
+[[failure]]
+project = "tar"
+level = "O1,O2,Os,O3,lto"
+went-red = "2026-09-10"
+named-file = "2026-09-10"
+file = "/usr/include/x86_64-linux-gnu/bits/strings_fortified.h"
+how = "diagnostic"
+issue = "https://github.com/tamnd/rucc/issues/825"
+note = "The same issue as the level below and a different road to it. Here fortification is on, so the build stops on `__builtin___memmove_chk` in the header that declares it, and the diagnostic names the file. Two levels of one project reaching one missing feature through two unrelated files is the reason this register is per cell."
+
+[[failure]]
+project = "bash"
+level = "*"
+went-red = "2026-09-11"
+named-file = "2026-09-11"
+file = "eval.c"
+how = "diagnostic"
+issue = "https://github.com/tamnd/rucc/issues/631"
+note = "`__builtin_alloca` is not implemented and bash is built on it, so the front end stopped at the top of the read eval print loop, which is the first of seven sites. Two more blockers are behind this one, `__builtin_add_overflow` with mixed signedness in braces.c and the transparent union again in lib/sh/netconn.c, and neither is reached until this one moves."
+
+[[failure]]
+project = "mawk"
+level = "lto"
+went-red = "2026-09-10"
+named-file = "2026-09-10"
+file = "configure"
+how = "by-hand"
+issue = "https://github.com/tamnd/rucc/issues/658"
+note = "The other five levels pass 50 of 50. This one never reaches the compiler: the driver refuses `-flto`, configure links a probe with it, and what the terminal says is `C compiler cannot create executables`, which names nothing. config.log has the real message in it. Every autoconf row on this rung stops here until the flag exists, so the shape of a green R4 row is five of six for now."

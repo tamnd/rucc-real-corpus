@@ -131,13 +131,14 @@ README.md                     the front page, with one generated block in it
 reports/README.md             the hub: what passed, what it cost, links to everything
 reports/cost.md               every cell against the GCC 16 build of the same pin
 reports/failures.md           the failures, grouped by diagnostic
+reports/localization.md       how long each failure took to name a file
 reports/projects/README.md    one row per project
 reports/projects/<name>.md    one project, every level, every number
 ```
 
 **The front page has a generated block rather than being generated.** It is mostly prose that a person wrote and should keep writing, so the generator replaces what is between two HTML comment markers and leaves everything else alone, and a front page with no markers in it comes back unchanged. A generator that appends to a file it does not understand eventually eats somebody's prose.
 
-**Every page is a pure function of the records**, with no clock and no filesystem in it, which is what makes `rrc report --pages --check` possible. That regenerates the whole tree and says which files no longer match, and it is the same code path as the write, so the check cannot drift away from the thing it checks.
+**Every page is a pure function of its inputs**, with no clock and no filesystem in it, which is what makes `rrc report --pages --check` possible. For every page but one the input is the records alone. `reports/localization.md` also reads `localization.toml`, which is a committed file and so is an input like any other, and section 11.9 explains why that register has to be written by hand. That regenerates the whole tree and says which files no longer match, and it is the same code path as the write, so the check cannot drift away from the thing it checks.
 
 **A pull request cannot run that check and does not pretend to.** The records behind the committed tree belong to a nightly on the reference machine with a compiler no runner has, and they are not in the repository. So what CI does on a pull request is the check that needs no records: every relative link in every page has to land on a file that exists. That is the failure a reader actually hits, and it is the one a rename or a swept page causes.
 
@@ -150,3 +151,19 @@ reports/projects/<name>.md    one project, every level, every number
 **A pass rate over time as a single chart.** The list changes. Projects are added and removed by document 03.6's rule, and a line chart across a changing denominator is a chart that misleads at exactly the moments people look at it hardest. The report shows counts per rung with the list size next to them.
 
 **Anything about compile throughput presented as a headline.** Parent document 16 owns axis three and its methodology, and a noisy per-project ratio collected as a side effect of a correctness run has no business being quoted as that measurement.
+
+## 11.9 Time to localization
+
+Document 02 section 2.2 makes a claim that can be falsified with a stopwatch. It says a failure on this corpus names a file, and it puts a number on what naming a file has to cost: a median of more than one day, measured from the run that first went red to the commit that names the file, and claim two is wrong. Until this section existed that number was an impression, and section 2.2 pointed here for it. `reports/localization.md` is the page and `localization.toml` is the register behind it.
+
+**Why the register is written by hand.** The obvious implementation is to compute it, and it cannot be computed. Section 11.7 says every page is a pure function of its inputs with no clock in it, and the run records carry no timestamp for the same reason, so the first of the two dates is not in the data. The second one is not in any data anybody could collect: the end of a localization is a person knowing which file to open, and no run observes that. A file somebody edits, with a lint over it, is the honest shape, and it has a property the computed version would not have, which is that every entry arrives as a diff with a name on it.
+
+**One entry is one cell, not one bug.** A cell goes red once and is localized once. When three blockers are stacked behind each other, as they are on bash, the entry names the first one and the note says what is behind it, because the second is not a failure the corpus has observed yet. The level field is spelled the way the exclusion register of section 9.4 spells it, so `*` is every level and `O1,O2,Os,O3,lto` is four of them, and the same project can hold two entries when two levels fail for two different reasons. sed and tar both do.
+
+**What the page prints, and the order it prints it in.** The open failures come first, above the median. A register with nothing closed in it has an excellent median over an empty numerator, and a reader who met the median first would have read the best possible summary of the worst possible state. Then the number, then the split by what did the naming, then every closed entry slowest first, because the tail is where the work is.
+
+**The `how` field is the one that says whether the instrument is working.** It has four values and the interesting line runs between the first three and the last. `diagnostic` means the compiler printed the file itself and localization was free. `mixed-build` means section 8.6 found it. `bisection` means the mixed build run repeatedly. `by-hand` means somebody read the code, and every one of those is a gap in the other three rather than a success. The page prints the count both ways.
+
+**The failure mode of this measurement is selection, not arithmetic.** A median over the entries somebody chose to write down is a true number about a set nobody audited. So the page ends with the cross-check: every cell the run found red that has no entry in the register, named. That list is generated from the records and cannot be edited from the register, which is the point of it.
+
+**Zero is a real answer and the page says why it is suspicious.** Most entries so far are zero days, because a compiler error carries a file and a line, and because of the order this corpus admits a project in: a row is measured, its first failure is read, and the row and its explanation land in the same commit. The page says that in as many words whenever every closed entry is zero. The number starts meaning something on the first cell that goes red after its row is already on the list.
