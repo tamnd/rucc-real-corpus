@@ -5,15 +5,21 @@ upstream = "https://sqlite.org"
 licence = "blessing"
 licence-file = "LICENSE.md"
 description = "the sqlite3 command line tool, graded by the eleven test files the project keeps for it"
-# shell.c is ordinary application code sitting on top of the library, and the two halves of the
-# binary fail for different reasons: the shell reaches __builtin_ceil and __builtin_floor, and the
-# amalgamation underneath it reaches the atomic builtins. Both are in the exclusion register with
-# an issue each. The rest is what the library is: one function of eight and a half thousand lines
-# holding a switch with 188 cases, and about eight hundred calls through a pointer, which is how
-# the virtual file system, the virtual table interface and the function registry all work. Three
-# is the cap, so the two blockers take two of the slots and the interpreter takes the third. The
-# indirect calls are left off because oniguruma already carries function-pointers, and the configure
-# probes are left off because twenty projects already carry autoconf-probes.
+# Read out of the source, and the two halves of the binary demand different things. shell.c is
+# ordinary application code sitting on top of the library and it calls __builtin_ceil and
+# __builtin_floor, which is rucc issue 226. The amalgamation underneath it reaches the atomic
+# builtins, which is rucc issue 311. The rest is what the library is: one function of eight and a
+# half thousand lines holding a switch with 188 cases, and about eight hundred calls through a
+# pointer, which is how the virtual file system, the virtual table interface and the function
+# registry all work. Three is the cap, so the two builtin families take two of the slots and the
+# interpreter takes the third. The indirect calls are left off because oniguruma already carries
+# function-pointers, and the configure probes are left off because twenty projects already carry
+# autoconf-probes.
+#
+# None of the three is reached yet. main.mk puts -fPIC in CFLAGS for every target, rucc's driver
+# rejects the option, and the cell stops at the first compile command with nothing compiled. That
+# is section 10.4's distinction between declared demand and discovered demand, and this row is
+# declared demand until the driver takes the flag.
 demands = ["libm-builtins", "atomic-builtins", "large-switch"]
 
 # The source tree rather than the amalgamation zip or the autoconf tarball, and the choice is
