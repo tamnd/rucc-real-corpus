@@ -195,6 +195,11 @@ pub struct Build {
     /// section 6.2.
     #[serde(default, rename = "program")]
     pub programs: Vec<Program>,
+    /// For a build the harness did not write, the binary whose size is recorded, relative to the
+    /// build directory. A direct build names its programs and needs no second spelling, so the
+    /// lint refuses this field alongside `output` or `program`. `spec/06-manifest.md` section 6.2.
+    #[serde(default)]
+    pub binary: Option<String>,
     /// Other projects in this corpus that are built and installed into a prefix first, with the
     /// dependent build pointed at that prefix. `spec/07-harness.md` section 7.11.
     #[serde(default, rename = "needs")]
@@ -311,8 +316,17 @@ impl Build {
     /// not, and the honest answer is the program being graded rather than the largest or the last
     /// one to be linked. `linenoise` is why: it builds an example and a test, the test is what
     /// runs, and the example only exists because the test drives it.
+    ///
+    /// A build the harness did not write names nothing at all, because `make` and `configure`
+    /// decide where their output goes and the manifest never says. Guessing from `test.command`
+    /// does not work either, since a project graded by a suite starts that command with `sh`. So
+    /// `build.binary` says it outright, and a project that does not set it records no size rather
+    /// than a size somebody inferred.
     #[must_use]
     pub fn measured(&self, command: &[String]) -> Option<String> {
+        if let Some(binary) = &self.binary {
+            return Some(binary.clone());
+        }
         if let Some(output) = &self.output {
             return Some(output.clone());
         }
@@ -801,6 +815,39 @@ sources = ["linenoise.c", "test.c"]
         assert_eq!(
             manifest.build.measured(&command),
             Some("linenoise-example".to_string())
+        );
+    }
+
+    #[test]
+    fn a_build_with_its_own_build_system_says_which_binary_to_measure() {
+        let text = SAMPLE
+            .replace(
+                "sources = [\"jsmn_test.c\"]\noutput = \"jsmn_test\"\n",
+                "binary = \"mawk\"\n",
+            )
+            .replace("system = \"direct\"", "system = \"configure\"");
+        let manifest = parse(&text).unwrap();
+        let command = vec!["sh".to_string(), "-c".to_string(), "make check".to_string()];
+        assert_eq!(
+            manifest.build.measured(&command),
+            Some("mawk".to_string()),
+            "a suite graded project starts its command with `sh`, so the name has to come from \
+             the manifest rather than from the command"
+        );
+    }
+
+    #[test]
+    fn a_build_that_names_no_binary_records_no_size() {
+        let text = SAMPLE
+            .replace("sources = [\"jsmn_test.c\"]\noutput = \"jsmn_test\"\n", "")
+            .replace("system = \"direct\"", "system = \"configure\"");
+        let manifest = parse(&text).unwrap();
+        let command = vec!["sh".to_string(), "-c".to_string(), "make check".to_string()];
+        assert_eq!(
+            manifest.build.measured(&command),
+            None,
+            "no size at all is the honest answer, and better than the size of whichever file was \
+             guessed at"
         );
     }
 

@@ -235,8 +235,34 @@ fn check_programs(manifest: &Manifest, say: &mut Vec<String>) {
     }
 }
 
+/// The binary whose size gets recorded, when the manifest has to say it outright.
+///
+/// A direct build already names its programs, so a second spelling could only disagree with the
+/// first. Everything else builds through `make` or `configure`, which put their output wherever
+/// they like without telling the manifest, and that is the case this field is for.
+fn check_binary(manifest: &Manifest, say: &mut Vec<String>) {
+    let Some(binary) = &manifest.build.binary else {
+        return;
+    };
+    if binary.trim().is_empty() {
+        say.push("names an empty binary to measure, which is not a file".into());
+    }
+    if binary.starts_with('/') {
+        say.push(format!(
+            "measures `{binary}`, which is an absolute path, and a cell runs in a sandbox that is somewhere else every time"
+        ));
+    }
+    if manifest.build.system == BuildSystem::Direct {
+        say.push(
+            "names a binary to measure on a direct build, which already says what it produces"
+                .into(),
+        );
+    }
+}
+
 fn check_build(manifest: &Manifest, say: &mut Vec<String>) {
     check_programs(manifest, say);
+    check_binary(manifest, say);
     if !manifest.build.system.interrogates() && !manifest.build.expect_configure.is_empty() {
         say.push(
             "expects something from configure and has no configure step, so nothing would check it"
@@ -821,6 +847,37 @@ kind = "standard"
             findings
                 .iter()
                 .any(|f| f.what.contains("both ways at once"))
+        );
+    }
+
+    #[test]
+    fn a_binary_to_measure_on_a_direct_build_is_caught() {
+        let text = SAMPLE.replace(
+            "output = \"jsmn_test\"\n",
+            "output = \"jsmn_test\"\nbinary = \"jsmn_test\"\n",
+        );
+        let findings = check(&corpus_of(&text));
+        assert!(
+            findings
+                .iter()
+                .any(|f| f.what.contains("already says what it produces")),
+            "a direct build names its programs, so a second spelling could only disagree"
+        );
+    }
+
+    #[test]
+    fn an_absolute_binary_to_measure_is_caught() {
+        let text = SAMPLE
+            .replace(
+                "sources = [\"jsmn_test.c\"]\noutput = \"jsmn_test\"\n",
+                "binary = \"/usr/bin/mawk\"\n",
+            )
+            .replace("system = \"direct\"", "system = \"configure\"");
+        let findings = check(&corpus_of(&text));
+        assert!(
+            findings.iter().any(|f| f.what.contains("absolute path")),
+            "a cell runs in a sandbox that is somewhere else every time, so an absolute path \
+             measures whatever the host happens to have"
         );
     }
 
