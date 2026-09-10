@@ -1,0 +1,103 @@
+[project]
+name = "busybox"
+rung = 4
+upstream = "https://busybox.net/"
+licence = "GPL-2.0"
+licence-file = "LICENSE"
+description = "the other four hundred command line tools in one binary, built from a configuration it writes itself"
+# `inline-asm` because busybox is the first row on the list that has hand written x86-64 in a path
+# the build actually takes. libbb/bitops.c guards a block of movups and xorps on `#if
+# defined(__SSE__)`, which every x86-64 target has, so the guard is not a guard here and a compiler
+# that does not assemble that block cannot build libbb. networking/tls_sp_c32.c has five more
+# blocks, and those are worse: they are the bignum multiply and carry chains of the TLS
+# implementation, written with explicit registers and the carry flag, and a compiler that assembles
+# them wrongly produces a TLS client that computes wrong numbers rather than one that fails to link.
+#
+# `char-signedness` because Makefile.flags asks for -funsigned-char through cc-option, and cc-option
+# is the interesting half. toybox puts the same flag on the command line and a compiler that will
+# not take it cannot build a single file, which is loud. busybox probes for it, so a compiler that
+# rejects the flag has it silently dropped and then builds every one of these tools with a signed
+# plain char. The tools read bytes out of files and index tables with them. That is the same demand
+# reached the other way round, and it is the way round where nothing says anything.
+#
+# `stack-allocation` because shell/math.c:687 and 695 size two stacks with alloca from the length of
+# the expression being parsed, and hush and ash do the same in their own files. This is tamnd/rucc#631
+# for the third time, after bash and git, and having it three times is the point: bash reaches it
+# through __builtin_alloca, git through a macro called xalloca, and busybox through a plain call.
+#
+# Left off: unaligned-access, which BB_UNALIGNED_MEMACCESS_OK turns on and which xorbuf_3 uses to
+# copy a long at a time out of any pointer it is handed. deep-macros, which the applet table is.
+# function-pointers, which is how one binary gets four hundred entry points.
+demands = ["inline-asm", "char-signedness", "stack-allocation"]
+
+# 1.38.0 is the current release. The bzip2 tarball is what upstream publishes first and it is 2.6 MB
+# against 5.4 for the same tree gzipped, which is the project demonstrating its own subject matter.
+[source]
+url = "https://busybox.net/downloads/busybox-1.38.0.tar.bz2"
+sha256 = "34f9ea6ff8636f2c9241153b9114eefa9e65674a45318ae1ef95bb5f31c53bb2"
+strip-components = 1
+
+# A1 by the letter of the axis and the most interesting build on the rung by any other measure. The
+# Makefile is kbuild, the same machinery the kernel uses, and what it does before it compiles
+# anything is build two host tools and generate a header per applet from the configuration.
+[build]
+system = "make"
+binary = "busybox"
+
+# The one thing this row needs that nothing else on the list does, and the reason spec 7.13 exists.
+#
+# busybox decides what to compile from a file its own `make defconfig` writes, and defconfig turns
+# on every applet there is, including tc. tc has not compiled against a current kernel header for
+# several years: networking/tc.c reads TCA_CBQ_MAX, TCA_CBQ_RATE, struct tc_cbq_lssopt and eleven
+# more names that were taken out of linux/pkt_sched.h, and upstream has left the applet where it is.
+# gcc 16.2.0 gives twenty two errors in that one file on this machine and builds everything else.
+#
+# So a row without this field would report the age of a kernel header at every level under both
+# compilers, and the alternatives were all worse: a sed hidden in a test command, an exclusion on a
+# row that builds fine, or a fork of the tarball. The field turns the symbol off in the spelling
+# kconfig itself uses, and it can do that and nothing else.
+[build.config]
+target = "defconfig"
+file = ".config"
+disable = ["CONFIG_TC"]
+why = "networking/tc.c reads TCA_CBQ_MAX and thirteen more names that linux/pkt_sched.h stopped defining several years ago, so gcc 16 fails on it too and the applet is a header the project is behind on rather than a compiler result"
+
+# EXTRA_CFLAGS and not CFLAGS, and this is a two line proof. Makefile.flags line 91 appends the
+# level itself, `cc-option -Oz, else -Os, else -O2`, to CFLAGS whenever CONFIG_DEBUG is off, which
+# defconfig leaves off. So a level exported as CFLAGS arrives first and busybox's own choice arrives
+# after it and wins. scripts/Makefile.lib line 89 builds every compile line as
+# `$(CFLAGS) $(EXTRA_CFLAGS) $(CFLAGS_$(*F).o)`, which puts EXTRA_CFLAGS after the level busybox
+# picked, and make takes a command line assignment over anything the makefiles say.
+#
+# CONFIG_EXTRA_CFLAGS is a different thing with a similar name. It is a string in the configuration
+# that Makefile.flags line 138 appends to CFLAGS, and it would work as a carrier, but it would mean
+# rewriting the configuration for something that is not a symbol being turned off.
+[build.level-flags]
+variable = "EXTRA_CFLAGS"
+why = "Makefile.flags line 91 puts busybox's own -Os into CFLAGS, and scripts/Makefile.lib line 89 puts $(EXTRA_CFLAGS) after $(CFLAGS) on every compile line"
+
+# `make test` is Makefile.custom line 71, it depends on busybox and busybox.links, and it runs
+# testsuite/runtest, which prints one line per case: `PASS: name`, `FAIL: name`, `UNTESTED: name`
+# when the case names a config symbol that is off, and `SKIPPED: applet (not built)` for a whole
+# applet that is not in the binary. There is no total anywhere, so the counting is done here with
+# awk, which is the shape toybox, pdpmake, janet, tcc and micropython already use.
+#
+# The run count is passes plus failures. UNTESTED and SKIPPED are left out for the reason they
+# always are: both are decided by reading the configuration before a case runs, so neither says
+# anything about a compiler, and a row that counted them would move its own denominator the first
+# time defconfig changed its mind about an applet.
+[test]
+command = [
+    "sh",
+    "-c",
+    "make test > rrc-suite-output.log 2>&1; status=$?; cat rrc-suite-output.log; awk '/^PASS: /{ passed++ } /^FAIL: /{ failed++ } END { printf \"busybox: %d of %d tests passed\\n\", passed, passed + failed }' rrc-suite-output.log; exit $status",
+]
+oracle = "suite"
+parser = "custom-regex"
+regex = "busybox: (\\d+) of (\\d+) tests passed"
+baseline-tests = 0
+requires = ["sh", "awk"]
+
+[limits]
+build-seconds = 900
+test-seconds = 900
