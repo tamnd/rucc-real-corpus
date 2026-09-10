@@ -10,10 +10,10 @@ The pinned archive is 3 files, 806 lines, 26.1 KiB, counted before anything is b
 
 | level | outcome | reached | graded by |
 | --- | --- | --- | --- |
+| O0 | did not build | fetched | self checking |
 | O1 | excluded | fetched | self checking |
 | O2 | excluded | fetched | self checking |
 | Os | excluded | fetched | self checking |
-| O0 | did not build | fetched | self checking |
 | O3 | did not build | fetched | self checking |
 
 ## What the compiler said
@@ -30,28 +30,28 @@ The first diagnostic only, normalized, which is the one the failure clustering g
 
 | level | passed | of | gcc 16 passed | behind gcc |
 | --- | ---: | ---: | ---: | ---: |
+| O0 | not counted | not counted | not counted | not comparable |
 | O1 | not counted | not counted | not counted | not comparable |
 | O2 | not counted | not counted | not counted | not comparable |
 | Os | not counted | not counted | not counted | not comparable |
-| O0 | not counted | not counted | not counted | not comparable |
 | O3 | not counted | not counted | not counted | not comparable |
 
 ## Time and memory
 
 | level | compile | gcc 16 | vs gcc | suite | gcc 16 | vs gcc | build memory | gcc 16 | vs gcc |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| O1 [^cached] | 0.14s | 0.39s | 0.36x | 0.00s | 0.33s | 0.00x | 3.3 MiB | 3.6 MiB | 0.91x |
-| O2 [^cached] | 0.11s | 0.48s | 0.23x | 0.00s | 0.61s | 0.00x | 3.9 MiB | 14.0 MiB | 0.28x |
-| Os [^cached] | 0.07s | 0.33s | 0.22x | 0.00s | 0.35s | 0.00x | 4.4 MiB | 3.1 MiB | 1.40x |
-| O0 [^cached] | 0.63s | 0.39s | 1.60x | 0.00s | 0.06s | 0.00x | 4.8 MiB | 6.4 MiB | 0.75x |
-| O3 [^cached] | 0.05s | 0.32s | 0.16x | 0.00s | 0.41s | 0.00x | 3.2 MiB | 28.1 MiB | 0.11x |
+| O0 | 0.03s | 0.09s | 0.30x | 0.00s | 0.00s | not measured | 4.3 MiB | 3.1 MiB | 1.37x |
+| O1 | 0.06s | 0.14s | 0.42x | 0.00s | 0.33s | 0.00x | 4.3 MiB | 20.9 MiB | 0.21x |
+| O2 | 0.06s | 0.20s | 0.28x | 0.00s | 0.26s | 0.00x | 4.0 MiB | 34.4 MiB | 0.12x |
+| Os | 0.03s | 0.12s | 0.25x | 0.00s | 0.26s | 0.00x | 4.4 MiB | 18.1 MiB | 0.24x |
+| O3 | 0.03s | 0.14s | 0.22x | 0.00s | 0.26s | 0.00x | 4.3 MiB | 14.9 MiB | 0.29x |
 
 ## Size
 
 | level | text and data | gcc 16 | vs gcc | on disk | gcc 16 | vs gcc |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| O0 | not measured | 5.8 KiB | not measured | not measured | 20.3 KiB | not measured |
 | O1 | not measured | 4.7 KiB | not measured | not measured | 16.2 KiB | not measured |
 | O2 | not measured | 4.7 KiB | not measured | not measured | 16.2 KiB | not measured |
 | Os | not measured | 4.7 KiB | not measured | not measured | 16.2 KiB | not measured |
-| O0 | not measured | 5.8 KiB | not measured | not measured | 20.3 KiB | not measured |
 | O3 | not measured | 4.7 KiB | not measured | not measured | 16.2 KiB | not measured |

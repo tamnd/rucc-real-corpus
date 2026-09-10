@@ -12,8 +12,8 @@ The pinned archive is 69 files, 32,378 lines, 912.3 KiB, counted before anything
 | --- | --- | --- | --- |
 | O0 | did not build | fetched | suite count |
 | O1 | did not build | fetched | suite count |
-| O2 | did not build | fetched | suite count |
 | Os | did not build | fetched | suite count |
+| O2 | did not build | fetched | suite count |
 | O3 | did not build | fetched | suite count |
 
 ## What the compiler said
@@ -32,19 +32,19 @@ The first diagnostic only, normalized, which is the one the failure clustering g
 | --- | ---: | ---: | ---: | ---: |
 | O0 | not counted | not counted | 26 | not comparable |
 | O1 | not counted | not counted | 26 | not comparable |
-| O2 | not counted | not counted | 26 | not comparable |
 | Os | not counted | not counted | 26 | not comparable |
+| O2 | not counted | not counted | 26 | not comparable |
 | O3 | not counted | not counted | 26 | not comparable |
 
 ## Time and memory
 
 | level | compile | gcc 16 | vs gcc | suite | gcc 16 | vs gcc | build memory | gcc 16 | vs gcc |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| O0 [^cached] | 1.30s | 8.12s | 0.16x | 0.00s | 1.69s | 0.00x | 11.8 MiB | 58.8 MiB | 0.20x |
-| O1 [^cached] | 1.50s | 12.92s | 0.12x | 0.00s | 1.22s | 0.00x | 11.3 MiB | 69.6 MiB | 0.16x |
-| O2 [^cached] | 2.49s | 20.44s | 0.12x | 0.00s | 1.39s | 0.00x | 10.7 MiB | 84.4 MiB | 0.13x |
-| Os [^cached] | 1.86s | 18.16s | 0.10x | 0.00s | 1.52s | 0.00x | 10.0 MiB | 74.9 MiB | 0.13x |
-| O3 [^cached] | 1.90s | 27.23s | 0.07x | 0.00s | 1.13s | 0.00x | 11.5 MiB | 83.6 MiB | 0.14x |
+| O0 | 1.29s | 6.20s | 0.21x | 0.00s | 1.66s | 0.00x | 10.2 MiB | 60.9 MiB | 0.17x |
+| O1 | 1.51s | 11.25s | 0.13x | 0.00s | 1.29s | 0.00x | 10.8 MiB | 68.2 MiB | 0.16x |
+| Os | 1.52s | 15.05s | 0.10x | 0.00s | 1.23s | 0.00x | 12.8 MiB | 75.4 MiB | 0.17x |
+| O2 | 1.57s | 17.60s | 0.09x | 0.00s | 1.14s | 0.00x | 13.6 MiB | 84.4 MiB | 0.16x |
+| O3 | 1.66s | 20.83s | 0.08x | 0.00s | 1.12s | 0.00x | 10.3 MiB | 83.6 MiB | 0.12x |
 
 ## Size
 
@@ -52,6 +52,6 @@ The first diagnostic only, normalized, which is the one the failure clustering g
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
 | O0 | not measured | not measured | not measured | not measured | not measured | not measured |
 | O1 | not measured | not measured | not measured | not measured | not measured | not measured |
-| O2 | not measured | not measured | not measured | not measured | not measured | not measured |
 | Os | not measured | not measured | not measured | not measured | not measured | not measured |
+| O2 | not measured | not measured | not measured | not measured | not measured | not measured |
 | O3 | not measured | not measured | not measured | not measured | not measured | not measured |

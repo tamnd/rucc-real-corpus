@@ -20,8 +20,11 @@ The pinned archive is 69 files, 28,036 lines, 1.1 MiB, counted before anything i
 
 The first diagnostic only, normalized, which is the one the failure clustering groups on.
 
-- `O0`: `rucc: error: unknown option `-fPIC``
-- `Os`: `rucc: error: unknown option `-fPIC``
+- `O0`: `lz4io.c:2688:27: error: initialization of 'const char' from 'char *' makes integer from pointer without a cast [E0513]`
+- `O1`: `lz4io.c:2688:27: error: initialization of 'const char' from 'char *' makes integer from pointer without a cast [E0513]`
+- `O2`: `lz4io.c:2688:27: error: initialization of 'const char' from 'char *' makes integer from pointer without a cast [E0513]`
+- `O3`: `lz4io.c:2688:27: error: initialization of 'const char' from 'char *' makes integer from pointer without a cast [E0513]`
+- `Os`: `lz4io.c:2688:27: error: initialization of 'const char' from 'char *' makes integer from pointer without a cast [E0513]`
 
 ## The project's own tests
 
@@ -37,11 +40,11 @@ The first diagnostic only, normalized, which is the one the failure clustering g
 
 | level | compile | gcc 16 | vs gcc | suite | gcc 16 | vs gcc | build memory | gcc 16 | vs gcc |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| O0 [^cached] | 0.63s | 10.87s | 0.06x | 0.00s | 54.36s | 0.00x | 11.7 MiB | 93.4 MiB | 0.12x |
-| O1 [^cached] | 1.11s | 20.65s | 0.05x | 0.00s | 61s | 0.00x | 11.9 MiB | 95.1 MiB | 0.13x |
-| Os [^cached] | 0.65s | 31.07s | 0.02x | 0.00s | 73s | 0.00x | 15.3 MiB | 116.8 MiB | 0.13x |
-| O2 [^cached] | 0.98s | 41.71s | 0.02x | 0.00s | 81s | 0.00x | 12.0 MiB | 131.9 MiB | 0.09x |
-| O3 [^cached] | 0.87s | 59.69s | 0.01x | 0.00s | 102s | 0.00x | 12.0 MiB | 177.8 MiB | 0.07x |
+| O0 | 1.38s | 8.47s | 0.16x | 0.00s | 54.81s | 0.00x | 12.8 MiB | 92.9 MiB | 0.14x |
+| O1 | 1.94s | 19.43s | 0.10x | 0.00s | 59.98s | 0.00x | 13.3 MiB | 95.6 MiB | 0.14x |
+| Os | 1.55s | 29.21s | 0.05x | 0.00s | 67s | 0.00x | 13.3 MiB | 116.5 MiB | 0.11x |
+| O2 | 1.89s | 39.14s | 0.05x | 0.00s | 72s | 0.00x | 13.5 MiB | 131.7 MiB | 0.10x |
+| O3 | 2.09s | 55.09s | 0.04x | 0.00s | 82s | 0.00x | 49.5 MiB | 177.1 MiB | 0.28x |
 
 ## Size
 

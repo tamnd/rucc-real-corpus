@@ -20,11 +20,11 @@ The pinned archive is 67 files, 14,811 lines, 438.3 KiB, counted before anything
 
 The first diagnostic only, normalized, which is the one the failure clustering groups on.
 
-- `O0`: `rucc: error: cannot generate code for 'wrenCompile': parameter 3 is a width no argument register holds [E0653]`
-- `O1`: `rucc: error: cannot generate code for 'wrenCompile': parameter 3 is a width no argument register holds [E0653]`
-- `O2`: `rucc: error: cannot generate code for 'wrenCompile': parameter 3 is a width no argument register holds [E0653]`
-- `O3`: `rucc: error: cannot generate code for 'wrenCompile': parameter 3 is a width no argument register holds [E0653]`
-- `Os`: `rucc: error: cannot generate code for 'wrenCompile': parameter 3 is a width no argument register holds [E0653]`
+- `O0`: `src/vm/wren_opcodes.h:16:1: error: initializer element is not constant [E0618]`
+- `O1`: `src/vm/wren_opcodes.h:16:1: error: initializer element is not constant [E0618]`
+- `O2`: `src/vm/wren_opcodes.h:16:1: error: initializer element is not constant [E0618]`
+- `O3`: `src/vm/wren_opcodes.h:16:1: error: initializer element is not constant [E0618]`
+- `Os`: `src/vm/wren_opcodes.h:16:1: error: initializer element is not constant [E0618]`
 
 ## The project's own tests
 
@@ -40,11 +40,11 @@ The first diagnostic only, normalized, which is the one the failure clustering g
 
 | level | compile | gcc 16 | vs gcc | suite | gcc 16 | vs gcc | build memory | gcc 16 | vs gcc |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| O0 [^cached] | 2.12s | 6.15s | 0.34x | 0.00s | 15.48s | 0.00x | 16.4 MiB | 53.0 MiB | 0.31x |
-| O1 [^cached] | 2.31s | 9.14s | 0.25x | 0.00s | 12.74s | 0.00x | 16.3 MiB | 57.6 MiB | 0.28x |
-| O2 [^cached] | 2.95s | 12.06s | 0.24x | 0.00s | 10.68s | 0.00x | 16.8 MiB | 66.0 MiB | 0.25x |
-| Os [^cached] | 1.48s | 9.21s | 0.16x | 0.00s | 11.70s | 0.00x | 16.2 MiB | 63.0 MiB | 0.26x |
-| O3 [^cached] | 1.53s | 12.60s | 0.12x | 0.00s | 12.09s | 0.00x | 16.9 MiB | 72.6 MiB | 0.23x |
+| O0 | 1.32s | 3.29s | 0.40x | 0.00s | 9.79s | 0.00x | 18.3 MiB | 47.5 MiB | 0.38x |
+| O1 | 1.63s | 5.25s | 0.31x | 0.00s | 8.49s | 0.00x | 17.6 MiB | 55.9 MiB | 0.31x |
+| O2 | 1.85s | 8.60s | 0.22x | 0.00s | 8.04s | 0.00x | 18.0 MiB | 66.0 MiB | 0.27x |
+| Os | 1.86s | 7.23s | 0.26x | 0.00s | 8.88s | 0.00x | 18.1 MiB | 63.6 MiB | 0.29x |
+| O3 | 1.75s | 10.75s | 0.16x | 0.00s | 9.63s | 0.00x | 18.7 MiB | 72.4 MiB | 0.26x |
 
 ## Size
 

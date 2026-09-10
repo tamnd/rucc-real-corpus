@@ -12,8 +12,8 @@ The pinned archive is 55 files, 19,287 lines, 544.8 KiB, counted before anything
 | --- | --- | --- | --- |
 | O0 | did not build | fetched | recorded output |
 | O1 | did not build | fetched | recorded output |
-| Os | did not build | fetched | recorded output |
 | O2 | did not build | fetched | recorded output |
+| Os | did not build | fetched | recorded output |
 | O3 | did not build | fetched | recorded output |
 
 ## What the compiler said
@@ -32,19 +32,19 @@ The first diagnostic only, normalized, which is the one the failure clustering g
 | --- | ---: | ---: | ---: | ---: |
 | O0 | not counted | not counted | not counted | not comparable |
 | O1 | not counted | not counted | not counted | not comparable |
-| Os | not counted | not counted | not counted | not comparable |
 | O2 | not counted | not counted | not counted | not comparable |
+| Os | not counted | not counted | not counted | not comparable |
 | O3 | not counted | not counted | not counted | not comparable |
 
 ## Time and memory
 
 | level | compile | gcc 16 | vs gcc | suite | gcc 16 | vs gcc | build memory | gcc 16 | vs gcc |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| O0 [^cached] | 0.09s | 7.67s | 0.01x | 0.00s | 1.20s | 0.00x | 2.1 MiB | 67.5 MiB | 0.03x |
-| O1 [^cached] | 0.08s | 9.73s | 0.01x | 0.00s | 0.49s | 0.00x | 2.3 MiB | 84.9 MiB | 0.03x |
-| Os [^cached] | 0.05s | 15.23s | 0.00x | 0.00s | 0.49s | 0.00x | 2.3 MiB | 98.0 MiB | 0.02x |
-| O2 [^cached] | 0.21s | 18.83s | 0.01x | 0.00s | 0.55s | 0.00x | 2.3 MiB | 118.7 MiB | 0.02x |
-| O3 [^cached] | 0.10s | 23.89s | 0.00x | 0.00s | 0.38s | 0.00x | 2.3 MiB | 144.1 MiB | 0.02x |
+| O0 | 0.05s | 4.88s | 0.01x | 0.00s | 0.48s | 0.00x | 2.3 MiB | 68.1 MiB | 0.03x |
+| O1 | 0.05s | 8.45s | 0.01x | 0.00s | 0.32s | 0.00x | 2.3 MiB | 85.1 MiB | 0.03x |
+| O2 | 0.03s | 13.64s | 0.00x | 0.00s | 0.35s | 0.00x | 2.2 MiB | 119.3 MiB | 0.02x |
+| Os | 0.04s | 10.77s | 0.00x | 0.00s | 0.37s | 0.00x | 2.2 MiB | 102.4 MiB | 0.02x |
+| O3 | 0.07s | 15.92s | 0.00x | 0.00s | 0.27s | 0.00x | 2.2 MiB | 143.9 MiB | 0.02x |
 
 ## Size
 
@@ -52,6 +52,6 @@ The first diagnostic only, normalized, which is the one the failure clustering g
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
 | O0 | not measured | not measured | not measured | not measured | not measured | not measured |
 | O1 | not measured | not measured | not measured | not measured | not measured | not measured |
-| Os | not measured | not measured | not measured | not measured | not measured | not measured |
 | O2 | not measured | not measured | not measured | not measured | not measured | not measured |
+| Os | not measured | not measured | not measured | not measured | not measured | not measured |
 | O3 | not measured | not measured | not measured | not measured | not measured | not measured |
