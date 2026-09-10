@@ -13,10 +13,10 @@ Weight is what to do next. It is the sum over the held up projects of six minus 
 | feature | kind | demanded by | held up | weight | issue |
 |---|---|---|---|---|---|
 | `pointer-arithmetic` | standard | 15 | 0 | 0 | none open |
+| `bit-manipulation` | standard | 12 | 0 | 0 | none open |
 | `autoconf-probes` | driver | 11 | 0 | 0 | none open |
-| `bit-manipulation` | standard | 11 | 0 | 0 | none open |
+| `deep-macros` | preprocessor | 10 | 0 | 0 | none open |
 | `switch-dispatch` | standard | 10 | 0 | 0 | none open |
-| `deep-macros` | preprocessor | 9 | 0 | 0 | none open |
 | `function-pointers` | standard | 9 | 0 | 0 | none open |
 | `integer-conversion` | standard | 9 | 0 | 0 | none open |
 | `large-switch` | standard | 8 | 0 | 0 | none open |
@@ -40,6 +40,7 @@ Weight is what to do next. It is the sum over the held up projects of six minus 
 | `overflow-builtins` | gnu-builtin | 2 | 0 | 0 | none open |
 | `recursion-depth` | standard | 2 | 0 | 0 | none open |
 | `rotate-idioms` | standard | 2 | 0 | 0 | none open |
+| `feature-test-macros` | preprocessor | 1 | 0 | 0 | [open](https://github.com/tamnd/rucc/issues/757) |
 | `flexible-array-member` | standard | 1 | 0 | 0 | none open |
 | `long-double` | standard | 1 | 0 | 0 | none open |
 | `stdckdint` | standard | 1 | 0 | 0 | none open |
@@ -67,6 +68,23 @@ arithmetic on object interiors, one past the end comparisons, and pointer differ
 - `chibi-scheme`, R3, not measured
 - `pdpmake`, R4, not measured
 
+### `bit-manipulation`
+
+shifts, masks and bit level packing across byte boundaries
+
+- `heatshrink`, R0, not measured
+- `tinf`, R0, not measured
+- `bzip2`, R1, not measured
+- `uzlib`, R1, not measured
+- `brotli`, R2, not measured
+- `gdbm`, R2, not measured
+- `libsodium`, R2, not measured
+- `libtommath`, R2, not measured
+- `zstd`, R2, not measured
+- `chibi-scheme`, R3, not measured
+- `femtolisp`, R3, not measured
+- `gzip`, R4, not measured
+
 ### `autoconf-probes`
 
 the compiler answers a generated configure script the way autoconf expects
@@ -83,21 +101,20 @@ the compiler answers a generated configure script the way autoconf expects
 - `oniguruma`, R2, not measured
 - `pcre2`, R2, not measured
 
-### `bit-manipulation`
+### `deep-macros`
 
-shifts, masks and bit level packing across byte boundaries
+macros expanding through several layers, including __VA_ARGS__ forwarding
 
-- `heatshrink`, R0, not measured
-- `tinf`, R0, not measured
-- `bzip2`, R1, not measured
-- `uzlib`, R1, not measured
-- `brotli`, R2, not measured
-- `gdbm`, R2, not measured
-- `libsodium`, R2, not measured
-- `libtommath`, R2, not measured
-- `zstd`, R2, not measured
-- `chibi-scheme`, R3, not measured
-- `femtolisp`, R3, not measured
+- `picohttpparser`, R0, not measured
+- `libsir`, R1, not measured
+- `minunit`, R1, not measured
+- `libcheck`, R2, not measured
+- `libconfig`, R2, not measured
+- `libgmp`, R2, not measured
+- `duktape`, R3, not measured
+- `micropython`, R3, not measured
+- `gzip`, R4, not measured
+- `pdpmake`, R4, not measured
 
 ### `switch-dispatch`
 
@@ -113,20 +130,6 @@ a state machine written as a switch, with deliberate fall through between cases
 - `pcre2`, R2, not measured
 - `chibi-scheme`, R3, not measured
 - `tcc`, R3, not measured
-
-### `deep-macros`
-
-macros expanding through several layers, including __VA_ARGS__ forwarding
-
-- `picohttpparser`, R0, not measured
-- `libsir`, R1, not measured
-- `minunit`, R1, not measured
-- `libcheck`, R2, not measured
-- `libconfig`, R2, not measured
-- `libgmp`, R2, not measured
-- `duktape`, R3, not measured
-- `micropython`, R3, not measured
-- `pdpmake`, R4, not measured
 
 ### `function-pointers`
 
@@ -336,6 +339,12 @@ a shift left or-ed with a shift right recognised as one rotate instruction
 - `blake2`, R1, not measured
 - `xxhash`, R1, not measured
 
+### `feature-test-macros`
+
+_GNU_SOURCE and the __STDC_WANT_ family, set by the program before it includes anything, and undefined first
+
+- `gzip`, R4, not measured
+
 ### `flexible-array-member`
 
 a struct ending in an incomplete array, allocated with the header in front of it
@@ -364,7 +373,7 @@ __attribute__((visibility)) on functions and on objects
 
 Every demand the SQLite amalgamation makes, the smallest project below it that makes the same demand, and what the run says about that project. Measured against 3.53.4 of `sqlite3.c`, which is 269649 lines. The counts and what was counted for each are in `sqlite.toml` at the root, which is the file to go and disagree with. SQLite is not admitted to the list until RC5, so until then this column is a measurement of the source rather than a run of it.
 
-This is the number RC2 turns on. The residue is the demands with nothing below them, which are the things the ladder was never going to find out about before the climb. It is currently 1 of 18.
+This is the number RC2 turns on. The residue is the demands with nothing below them, which are the things the ladder was never going to find out about before the climb. It is currently 1 of 19.
 
 | demand | sites | smallest reacher below | rung | outcome |
 |---|---|---|---|---|
@@ -386,6 +395,7 @@ This is the number RC2 turns on. The residue is the demands with nothing below t
 | `bit-builtins` | 10 | `rpmalloc` | R1 | not measured |
 | `overflow-builtins` | 3 | `jtckdint` | R0 | not measured |
 | `atomic-builtins` | 2 | `rpmalloc` | R1 | not measured |
+| `feature-test-macros` | 1 | `gzip` | R4 | not measured |
 
 ### The residue
 
