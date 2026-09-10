@@ -78,9 +78,9 @@ Add `-Os` to every program and `-flto` to the multi-TU programs of the new `link
 
 **`-Os` because the cost model is the variable.** Parent document 05's ægraph selects rewrites by cost, and `-Os` is a different cost function, so it selects different rewrites, so it exercises rules `-O2` never reaches. That is not a smaller version of `-O2`, it is a different traversal of the same rule set, and it is currently untested at every level of the stack.
 
-**`-flto` because it is a whole-program property** and document 04.7 puts it at R4 in the real corpus, which means it is first exercised on projects with hundreds of files where localization is hardest. A generated multi-TU program with a computed answer is a far better place to find an LTO bug than `busybox` is.
+**`-flto` because it is a whole-program property** and the real corpus first exercises it on somebody else's project. Document 04.7 puts it at R1 now rather than R4, which is a library and a program linked against it rather than a tree of five hundred files, and that is a real improvement in where the failure lands. It is still not a generated multi-TU program with a computed answer, which is the difference between knowing an LTO bug exists and knowing which inline caused it.
 
-**The cost.** Two more levels across 1,232 programs plus whatever the new facets add. `rucc-corpus` runs in minutes today and this is why it is the right place for the full cross-product: document 12's arithmetic says the real corpus cannot afford six levels on eighty projects, and this corpus can afford six levels on two thousand programs.
+**The cost.** Two more levels across 1,232 programs plus whatever the new facets add. `rucc-corpus` runs in minutes today and this is why it is the right place for the full cross-product: the real corpus takes hours to build six levels on seventy projects, and this corpus can afford six levels on two thousand programs.
 
 ## 13.6 Older dialects
 

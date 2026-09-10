@@ -55,7 +55,7 @@ The cheap position is to run each project at one representative level and save f
 
 **And the direction of surprise is not the one people expect.** The bug at `-O0` is the one nobody looks for, and rucc's `-O0` path is not GCC's `-O0` path.
 
-Document 04.7 stages the levels by rung anyway, because 480 builds does not fit in document 12's budget, and it names the resulting hole: an `-O3` bug in an R1 library is not caught here. Document 13.5 asks `rucc-corpus` to cover `-Os` and `-flto` on generated programs precisely because that corpus is cheap enough to run the full cross-product and this one is not.
+Document 04.7 used to stage the levels by rung, because 480 builds did not fit in document 12's budget, and it named the resulting hole: an `-O3` bug in an R1 library was not caught here. `-O3` now starts at R0 and `-flto` starts at R1, so the only cell the ladder still does not build is `-flto` on a rung with one translation unit in it, which is the one place the level has nothing to say. Document 13.5 still asks `rucc-corpus` to cover `-Os` and `-flto` on generated programs, now for localization rather than for coverage: a generated program with a computed answer names the bug and a real project only proves there is one.
 
 ## 8.5 The ABI cross-check
 
