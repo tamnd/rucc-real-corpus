@@ -12,14 +12,14 @@ Weight is what to do next. It is the sum over the held up projects of six minus 
 
 | feature | kind | demanded by | held up | weight | issue |
 |---|---|---|---|---|---|
-| `pointer-arithmetic` | standard | 15 | 0 | 0 | none open |
-| `bit-manipulation` | standard | 13 | 0 | 0 | none open |
+| `pointer-arithmetic` | standard | 16 | 0 | 0 | none open |
+| `bit-manipulation` | standard | 14 | 0 | 0 | none open |
+| `switch-dispatch` | standard | 12 | 0 | 0 | none open |
 | `autoconf-probes` | driver | 11 | 0 | 0 | none open |
-| `switch-dispatch` | standard | 11 | 0 | 0 | none open |
 | `deep-macros` | preprocessor | 10 | 0 | 0 | none open |
+| `integer-conversion` | standard | 10 | 0 | 0 | none open |
 | `struct-layout` | abi | 10 | 0 | 0 | none open |
 | `function-pointers` | standard | 9 | 0 | 0 | none open |
-| `integer-conversion` | standard | 9 | 0 | 0 | none open |
 | `large-switch` | standard | 9 | 0 | 0 | none open |
 | `computed-goto` | gnu-extension | 6 | 0 | 0 | [open](https://github.com/tamnd/rucc/issues/353) |
 | `setjmp-longjmp` | standard | 6 | 0 | 0 | none open |
@@ -29,6 +29,7 @@ Weight is what to do next. It is the sum over the held up projects of six minus 
 | `varargs-depth` | standard | 4 | 0 | 0 | none open |
 | `atomic-builtins` | gnu-builtin | 3 | 0 | 0 | [open](https://github.com/tamnd/rucc/issues/311) |
 | `cmake-probes` | driver | 3 | 0 | 0 | none open |
+| `feature-test-macros` | preprocessor | 3 | 0 | 0 | [open](https://github.com/tamnd/rucc/issues/757) |
 | `float-arithmetic` | standard | 3 | 0 | 0 | none open |
 | `libm-builtins` | gnu-builtin | 3 | 0 | 0 | [open](https://github.com/tamnd/rucc/issues/226) |
 | `memcpy-idioms` | gnu-builtin | 3 | 0 | 0 | none open |
@@ -41,7 +42,6 @@ Weight is what to do next. It is the sum over the held up projects of six minus 
 | `recursion-depth` | standard | 2 | 0 | 0 | none open |
 | `rotate-idioms` | standard | 2 | 0 | 0 | none open |
 | `cleanup-attribute` | gnu-extension | 1 | 0 | 0 | [open](https://github.com/tamnd/rucc/issues/786) |
-| `feature-test-macros` | preprocessor | 1 | 0 | 0 | [open](https://github.com/tamnd/rucc/issues/757) |
 | `flexible-array-member` | standard | 1 | 0 | 0 | none open |
 | `long-double` | standard | 1 | 0 | 0 | none open |
 | `stdckdint` | standard | 1 | 0 | 0 | none open |
@@ -67,6 +67,7 @@ arithmetic on object interiors, one past the end comparisons, and pointer differ
 - `libpsl`, R2, not measured
 - `libyaml`, R2, not measured
 - `chibi-scheme`, R3, not measured
+- `diffutils`, R4, not measured
 - `pdpmake`, R4, not measured
 
 ### `bit-manipulation`
@@ -85,7 +86,25 @@ shifts, masks and bit level packing across byte boundaries
 - `chibi-scheme`, R3, not measured
 - `femtolisp`, R3, not measured
 - `byacc`, R4, not measured
+- `grep`, R4, not measured
 - `gzip`, R4, not measured
+
+### `switch-dispatch`
+
+a state machine written as a switch, with deliberate fall through between cases
+
+- `c4`, R0, not measured
+- `coremark`, R0, not measured
+- `heatshrink`, R0, not measured
+- `picohttpparser`, R0, not measured
+- `brotli`, R2, not measured
+- `libexpat`, R2, not measured
+- `libyaml`, R2, not measured
+- `pcre2`, R2, not measured
+- `chibi-scheme`, R3, not measured
+- `tcc`, R3, not measured
+- `flex`, R4, not measured
+- `grep`, R4, not measured
 
 ### `autoconf-probes`
 
@@ -103,22 +122,6 @@ the compiler answers a generated configure script the way autoconf expects
 - `pcre2`, R2, not measured
 - `xz`, R4, not measured
 
-### `switch-dispatch`
-
-a state machine written as a switch, with deliberate fall through between cases
-
-- `c4`, R0, not measured
-- `coremark`, R0, not measured
-- `heatshrink`, R0, not measured
-- `picohttpparser`, R0, not measured
-- `brotli`, R2, not measured
-- `libexpat`, R2, not measured
-- `libyaml`, R2, not measured
-- `pcre2`, R2, not measured
-- `chibi-scheme`, R3, not measured
-- `tcc`, R3, not measured
-- `flex`, R4, not measured
-
 ### `deep-macros`
 
 macros expanding through several layers, including __VA_ARGS__ forwarding
@@ -133,6 +136,21 @@ macros expanding through several layers, including __VA_ARGS__ forwarding
 - `micropython`, R3, not measured
 - `gzip`, R4, not measured
 - `pdpmake`, R4, not measured
+
+### `integer-conversion`
+
+the integer types are the widths the standard says they are, and conversions between them keep their values
+
+- `coremark`, R0, not measured
+- `blake2`, R1, not measured
+- `lmdb`, R1, not measured
+- `monocypher`, R1, not measured
+- `xxhash`, R1, not measured
+- `libgmp`, R2, not measured
+- `libjpeg`, R2, not measured
+- `libmpfr`, R2, not measured
+- `libtommath`, R2, not measured
+- `diffutils`, R4, not measured
 
 ### `struct-layout`
 
@@ -162,20 +180,6 @@ calls through a pointer, including pointers to library functions
 - `libuv`, R2, not measured
 - `oniguruma`, R2, not measured
 - `wren`, R3, not measured
-
-### `integer-conversion`
-
-the integer types are the widths the standard says they are, and conversions between them keep their values
-
-- `coremark`, R0, not measured
-- `blake2`, R1, not measured
-- `lmdb`, R1, not measured
-- `monocypher`, R1, not measured
-- `xxhash`, R1, not measured
-- `libgmp`, R2, not measured
-- `libjpeg`, R2, not measured
-- `libmpfr`, R2, not measured
-- `libtommath`, R2, not measured
 
 ### `large-switch`
 
@@ -266,6 +270,14 @@ the compiler answers cmake's compiler identification and abi detection the way c
 - `cjson`, R2, not measured
 - `cmocka`, R2, not measured
 
+### `feature-test-macros`
+
+_GNU_SOURCE and the __STDC_WANT_ family, set by the program before it includes anything, and undefined first
+
+- `diffutils`, R4, not measured
+- `grep`, R4, not measured
+- `gzip`, R4, not measured
+
 ### `float-arithmetic`
 
 float and double arithmetic in volume, without contraction changing the answer
@@ -354,12 +366,6 @@ __attribute__((cleanup(f))) runs f at every exit from the enclosing block, in re
 
 - `libjansson`, R2, not measured
 
-### `feature-test-macros`
-
-_GNU_SOURCE and the __STDC_WANT_ family, set by the program before it includes anything, and undefined first
-
-- `gzip`, R4, not measured
-
 ### `flexible-array-member`
 
 a struct ending in an incomplete array, allocated with the header in front of it
@@ -410,7 +416,7 @@ This is the number RC2 turns on. The residue is the demands with nothing below t
 | `bit-builtins` | 10 | `rpmalloc` | R1 | not measured |
 | `overflow-builtins` | 3 | `jtckdint` | R0 | not measured |
 | `atomic-builtins` | 2 | `rpmalloc` | R1 | not measured |
-| `feature-test-macros` | 1 | `gzip` | R4 | not measured |
+| `feature-test-macros` | 1 | `diffutils` | R4 | not measured |
 
 ### The residue
 

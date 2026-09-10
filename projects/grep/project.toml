@@ -1,0 +1,97 @@
+[project]
+name = "grep"
+rung = 4
+upstream = "https://www.gnu.org/software/grep/"
+licence = "GPL-3.0-or-later"
+licence-file = "COPYING"
+description = "GNU grep and the deterministic finite automaton behind it, graded by its own hundred and twenty eight cases and by gnulib's suite underneath them"
+# grep is on the list for lib/dfa.c, which is four thousand four hundred and fifty nine lines and is
+# the largest single piece of bit level code in the corpus. A character class in it is not a boolean
+# array. It is an array of `charclass_word`, declared `uint_least64_t` when the machine has one and
+# `unsigned long` otherwise, and every membership question is a shift and a mask against the right
+# word of it. The file goes as far as undefining the system's own `setbit` and `clrbit` macros at
+# lines 96 through 100 so that its own can have the names. A compiler that gets a shift width or a
+# word boundary wrong here does not crash, it matches the wrong characters, and the suite notices
+# because it greps real text and compares the output.
+#
+# switch-dispatch is the second half of the same file. The lexer at line 1228 is a thirty three case
+# switch and the parser at 685 is another twenty three, and across the file there are a hundred and
+# twenty six cases, most of them in state machines that fall through on purpose. That is what the tag
+# names and dfa.c is the reason it is in the vocabulary.
+#
+# feature-test-macros is the measured blocker rather than a property of grep. `AC_USE_SYSTEM_
+# EXTENSIONS` puts an `#undef __STDC_WANT_LIB_EXT1__` and then a `#define` of it at the top of
+# config.h, and rucc rejects the undef of a macro that is not currently defined, which the standard
+# says has no effect. tamnd/rucc#757, and it stands in front of every gnulib row here.
+#
+# Left off: deep-macros, autoconf-probes and integer-conversion, all three true and all three already
+# carried by more rows than either of the first two above, and there are only three slots.
+demands = ["feature-test-macros", "bit-manipulation", "switch-dispatch"]
+
+[source]
+url = "https://ftp.gnu.org/gnu/grep/grep-3.12.tar.xz"
+sha256 = "2649b27c0e90e632eadcd757be06c6e9a4f48d941de51e7c0f83ff76408a07b9"
+strip-components = 1
+
+# A3, ordinary autoconf and automake. configure takes CFLAGS out of the environment and automake puts
+# it on every compile and on the link, so the level and `-flto` need no carrier.
+#
+# The GNU C line is the autoconf 2.72 spelling, which is what grep 3.12 ships. flex needs the older
+# one, and both manifests say so, because a manifest is pinned to the configure inside its own
+# tarball.
+#
+# The restrict line is the one that does work. gcc answers `__restrict__`; a compiler without the
+# keyword makes configure define restrict away to nothing, and then the build succeeds, the suite
+# passes and the only thing measured is that the fallback compiles. Refusing that build is what
+# expect-configure is for.
+[build]
+system = "configure"
+expect-configure = [
+    "checking whether the compiler supports GNU C... yes",
+    "checking for C/C++ restrict keyword... __restrict__",
+]
+# src/egrep and src/fgrep are 104 byte shell scripts that exec this one with a flag, so there is only
+# one binary here to measure. Through the harness at -O2 it is 199328 bytes with 162146 of text. A
+# hand build of the same tree gives 771184, because configure defaults CFLAGS to `-g -O2` when the
+# environment is silent and the harness says `-O2`, so the difference is debug information rather
+# than code.
+binary = "src/grep"
+
+# Two automake harnesses, the project's own tests directory and gnulib-tests, each printing its own
+# `# PASS:` block, and the automake parser sums them.
+#
+# gcc 16.2.0 on the reference machine: 128 cases in grep's own suite, 107 passing, 19 skipped and 2
+# expected failures, then 315 in gnulib-tests with 257 passing and 58 skipped. An expected failure
+# counts as a pass, so the harness sees 443 run and 366 passing. Nothing fails.
+#
+# 77 skips is the same problem diffutils has and grep's version of it is worse, because the skips
+# come from two directions rather than one. Some are locale, the multibyte cases that want a locale
+# the host has not generated. The rest are resource tests: 100k-entries, big-hole, big-match and
+# long-line-vs-2GiB-read all want disk or memory the machine may not have, and a bigger machine runs
+# them and scores above this baseline rather than below it.
+#
+# So 366 is what the reference machine measured, not a floor every host reaches. A machine with more
+# locales or more disk comes in higher and passes. One with fewer comes in lower and fails, for a
+# reason that has nothing to do with the compiler, and that is tamnd/rucc-real-corpus#105. Recorded
+# here rather than worked around, because the alternative choices are worse: declaring a guessed
+# lower number would be a guess dressed as a measurement, and running only grep's own suite would
+# throw away three hundred and fifteen cases without fixing anything, since the skips are in both
+# halves.
+#
+# perl is required rather than optional. tests/Makefile.am line 19 says that without perl the perl
+# cases run through a `no-perl` script that skips them, and a skip is one fewer passing case, so a
+# host without perl comes in under the baseline. Requiring it makes such a host skip the project
+# instead, which is the honest answer and is what gzip already does.
+[test]
+command = ["make", "check"]
+oracle = "suite"
+parser = "automake"
+baseline-tests = 366
+requires = ["sh", "perl"]
+
+# Configure dominates the build for the same reason it does on every gnulib row: a few hundred
+# compiles of ten line programs, where the cost is process startup rather than compilation. The suite
+# is longer than diffutils' because the resource tests that do run move real data.
+[limits]
+build-seconds = 1800
+test-seconds = 1200
