@@ -452,6 +452,14 @@ licence-sha256 = "bb0d0d505009fdf584b0f44dbb62562eebada497d53d726cd2e940ada512dc
 verified = "2026-09-08"
 
 [[project]]
+name = "sed"
+url = "https://ftp.gnu.org/gnu/sed/sed-4.9.tar.xz"
+sha256 = "6e226b732e1cd739464ad6862bd1a1aba42d7982922da7a53519631d24975181"
+bytes = 1397092
+licence-sha256 = "3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986"
+verified = "2026-09-10"
+
+[[project]]
 name = "sqlite-shell"
 url = "https://sqlite.org/2026/sqlite-src-3530400.zip"
 sha256 = "d18fa15aec74d8c17e1463f861095adc01b5ad190256acb4f91d22f0368d232b"
