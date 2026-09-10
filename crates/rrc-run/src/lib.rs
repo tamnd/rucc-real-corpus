@@ -30,6 +30,9 @@
 //! - [`cache`] keeps the record a cell produced, so an unchanged cell is not built again.
 //! - [`bisect`] builds the tree with the reference except for a subset built with the compiler
 //!   under test, and searches over the subset until the failure has a file name on it.
+//! - [`mixed`] is the other half of the same section: the same split build run as a standing mode
+//!   at R4 rather than as a rescue, which is what separates a code generation failure from a build
+//!   integration one before anybody has to go looking.
 //! - [`reduce`] takes the file a bisection named and cuts it down to something small enough to
 //!   keep in rucc-corpus, which is what stops a finding having to be found twice.
 //! - [`interrogate`] runs configure twice, once with each compiler, and compares what the two
@@ -53,6 +56,7 @@ pub mod exec;
 pub mod input;
 pub mod interrogate;
 pub mod memory;
+pub mod mixed;
 pub mod parse;
 pub mod record;
 pub mod reduce;

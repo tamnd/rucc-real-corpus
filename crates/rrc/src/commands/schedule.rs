@@ -934,6 +934,10 @@ pub fn run(loaded: &Loaded, options: &Options, plan: &RunPlan) -> Result<Done, S
     // the first run's records produces a report that counts some cells twice.
     std::fs::remove_file(&records_at).ok();
     std::fs::remove_file(&baseline_at).ok();
+    // The same reasoning for the mixed pass, and one more besides: it only writes a file when it
+    // ran, so a run without `--mixed` into a directory that kept the last run's `mixed.jsonl` would
+    // leave a report and a record file disagreeing about whether the pass happened.
+    std::fs::remove_file(out.join("mixed.jsonl")).ok();
     let log = RecordLog::append(&records_at)
         .map_err(|why| format!("opening {}: {why}", records_at.display()))?;
 
@@ -967,11 +971,23 @@ pub fn run(loaded: &Loaded, options: &Options, plan: &RunPlan) -> Result<Done, S
     } = collector.sorted();
     write_abi(&out, &crossed)?;
 
+    // After every ordinary cell rather than alongside them, because the level it runs at is chosen
+    // from what those cells did and because it wants a workspace nobody else is deleting out from
+    // under it. Section 8.6's standing mode, behind `--mixed` and off by default for the cost.
+    let mixed = if plan.mixed {
+        let found = crate::commands::mixed::pass(&setup, loaded, &chosen, &records)?;
+        crate::commands::mixed::write(&out, &found)?;
+        found
+    } else {
+        Vec::new()
+    };
+
     let stale = staleness::check(&records, &loaded.corpus.exclusions);
     let report = rrc_report::Report::of(&records, &reference);
     let mut markdown = report.markdown();
     markdown.push_str(&register(&stale));
     markdown.push_str(&crossings(&crossed));
+    markdown.push_str(&crate::commands::mixed::section(&mixed));
     if plan.twice {
         markdown.push_str(&determinism(&differences));
     }
@@ -999,12 +1015,23 @@ pub fn run(loaded: &Loaded, options: &Options, plan: &RunPlan) -> Result<Done, S
     if !crossed.is_empty() {
         let _ = writeln!(said, "{}", abi_line(&crossed));
     }
+    if !mixed.is_empty() {
+        let _ = writeln!(said, "{}", crate::commands::mixed::line(&mixed));
+    }
     if plan.twice {
         let _ = writeln!(said, "{}", determinism_line(&differences));
     }
 
     let crossings_failed = crossed.iter().any(|one| one.outcome.is_failure());
-    let failed = records.iter().any(|record| record.outcome.is_failure()) || crossings_failed;
+    // A mixed finding on its own can sink a run that was otherwise green, and only one of the two
+    // kinds ever does: `mixed-passed` needs the whole tree ours to have failed, which has already
+    // failed the run. `mixed-only-failed` is the one that is news, and it is news worth stopping
+    // for, because it means either the suite is not deterministic or an object one compiler made
+    // cannot be linked against one the other made.
+    let mixed_failed = mixed.iter().any(|one| one.status.is_finding());
+    let failed = records.iter().any(|record| record.outcome.is_failure())
+        || crossings_failed
+        || mixed_failed;
     // A cell that differed only in the linker's build identity is reported and does not fail the
     // run. The compiler produced the same bytes twice, and failing on it would make the check
     // unusable on macOS for a reason that has nothing to do with the compiler.

@@ -121,6 +121,15 @@ pub struct RunPlan {
     pub out: PathBuf,
     /// Whether a cell that has been run before under identical conditions is built again.
     pub reuse: Reuse,
+    /// Whether to also build each R4 and R5 project with a fixed tenth of its files ours.
+    ///
+    /// Off by default and on in the nightly, which is where `spec/12-ci-and-cost.md` puts the four
+    /// hours this needs. It is a flag rather than something the rung turns on by itself because the
+    /// cost is not small: two more builds and one more suite run per project, since the share has
+    /// to be enumerated from a reference build before it can be picked. What it buys is in
+    /// `spec/08-oracles.md` section 8.6 and it is the one thing an ordinary cell cannot say, which
+    /// is whether a failing project failed in code generation or in build integration.
+    pub mixed: bool,
 }
 
 /// What a run does about the record cache.
@@ -177,6 +186,7 @@ impl Default for RunPlan {
             baseline: Baseline::Measure,
             out: PathBuf::from("runs/latest"),
             reuse: Reuse::Allow,
+            mixed: false,
         }
     }
 }
@@ -431,6 +441,7 @@ fn run(args: &[String]) -> Result<RunPlan, String> {
             "--project" => plan.projects.push(value(args, &mut index, "--project")?),
             "--out" => plan.out = value(args, &mut index, "--out")?.into(),
             "--twice" => plan.twice = true,
+            "--mixed" => plan.mixed = true,
             "--no-baseline" => plan.baseline = Baseline::Skip,
             "--no-cache" => plan.reuse = Reuse::Off,
             "--refresh" => plan.reuse = Reuse::Refresh,
@@ -825,6 +836,8 @@ Options for run:
 
   --project NAME  one project by name, repeatable, and it walks every rung
   --twice         build everything twice into two roots and compare the bytes
+  --mixed         also build each R4 and R5 project with a fixed tenth of its files ours and the
+                  rest gcc's, which says whether a failure is in code generation or in the build
   --jobs N        run N cells at once, or auto for one per core, defaulting to 1
   --no-baseline   skip the gcc half of every cell, which halves the run and empties every
                   column that compares one compiler against the other
@@ -1095,6 +1108,23 @@ mod tests {
 
         let after = parse(&args("run --twice --corpus /tmp/c")).unwrap();
         assert_eq!(after.options.corpus, PathBuf::from("/tmp/c"));
+    }
+
+    #[test]
+    fn the_standing_mixed_build_is_off_unless_it_is_asked_for() {
+        // Off by default is the load bearing half of this. It is two extra builds and a suite run
+        // per R4 project, and a per commit job that quietly started paying for that would blow the
+        // fifteen minute budget of spec/12-ci-and-cost.md section 12.1 with nobody having asked.
+        let plan = |line: &str| {
+            let Command::Run(plan) = parse(&args(line)).unwrap().command else {
+                panic!("not a run");
+            };
+            plan.mixed
+        };
+        assert!(!plan("run"));
+        assert!(!plan("run --rung 4"));
+        assert!(plan("run --rung 4 --mixed"));
+        assert!(plan("run --mixed --twice"));
     }
 
     #[test]

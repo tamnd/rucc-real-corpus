@@ -142,6 +142,16 @@ jobs:
       # not deterministic is not deterministic anywhere and paying for the answer three times buys
       # nothing.
       #
+      # The reference host also runs section 8.6's standing mixed build, which builds each R4 and R5
+      # project a second time with a fixed tenth of its files given to the compiler under test and
+      # the rest to gcc. With one compiler on both sides of this workflow it has to come back
+      # `both-passed` every time, and that is the point of running it here: a dispatcher that split
+      # the build wrongly, dropped a flag or sent a link to the wrong side would fail a project that
+      # two identical compilers cannot fail, so this is the check that the machinery still works
+      # before somebody relies on it to attribute a real failure. It costs nothing on a run of rungs
+      # 0 through 2, which have no R4 projects in them, and the hours it costs on rung 4 are hours
+      # the nightly has and the per commit job does not.
+      #
       # `--refresh` builds every cell even when the record cache has an answer for it. The whole
       # value of a nightly is that it is the one run whose numbers were all measured on the same
       # machine in the same hour, and a nightly that reused a fortnight old timing could not see a
@@ -154,7 +164,7 @@ jobs:
           cargo run --release -p rrc -- \
             --rucc ${{ steps.cc.outputs.name }} --gcc ${{ steps.cc.outputs.name }} \
             run --rung ${{ inputs.rungs || '0,1,2' }} --jobs ${{ inputs.jobs || '1' }} \
-            --refresh ${{ matrix.reference && '--twice' || '' }}
+            --refresh ${{ matrix.reference && '--twice --mixed' || '' }}
           echo "status=$?" >> "$GITHUB_OUTPUT"
 
       # Configure twice and compare what the two decided, per section 8.8. With one compiler on
