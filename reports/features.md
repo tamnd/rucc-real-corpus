@@ -13,13 +13,13 @@ Weight is what to do next. It is the sum over the held up projects of six minus 
 | feature | kind | demanded by | held up | weight | issue |
 |---|---|---|---|---|---|
 | `pointer-arithmetic` | standard | 15 | 0 | 0 | none open |
-| `bit-manipulation` | standard | 12 | 0 | 0 | none open |
+| `bit-manipulation` | standard | 13 | 0 | 0 | none open |
 | `autoconf-probes` | driver | 11 | 0 | 0 | none open |
 | `deep-macros` | preprocessor | 10 | 0 | 0 | none open |
+| `struct-layout` | abi | 10 | 0 | 0 | none open |
 | `switch-dispatch` | standard | 10 | 0 | 0 | none open |
 | `function-pointers` | standard | 9 | 0 | 0 | none open |
 | `integer-conversion` | standard | 9 | 0 | 0 | none open |
-| `struct-layout` | abi | 9 | 0 | 0 | none open |
 | `large-switch` | standard | 8 | 0 | 0 | none open |
 | `computed-goto` | gnu-extension | 6 | 0 | 0 | [open](https://github.com/tamnd/rucc/issues/353) |
 | `setjmp-longjmp` | standard | 6 | 0 | 0 | none open |
@@ -29,13 +29,13 @@ Weight is what to do next. It is the sum over the held up projects of six minus 
 | `atomic-builtins` | gnu-builtin | 3 | 0 | 0 | [open](https://github.com/tamnd/rucc/issues/311) |
 | `cmake-probes` | driver | 3 | 0 | 0 | none open |
 | `float-arithmetic` | standard | 3 | 0 | 0 | none open |
+| `k-and-r-idioms` | standard | 3 | 0 | 0 | none open |
 | `libm-builtins` | gnu-builtin | 3 | 0 | 0 | [open](https://github.com/tamnd/rucc/issues/226) |
 | `memcpy-idioms` | gnu-builtin | 3 | 0 | 0 | none open |
 | `thread-local` | standard | 3 | 0 | 0 | none open |
 | `unaligned-access` | standard | 3 | 0 | 0 | none open |
 | `constant-time` | standard | 2 | 0 | 0 | none open |
 | `inline-asm` | gnu-extension | 2 | 0 | 0 | none open |
-| `k-and-r-idioms` | standard | 2 | 0 | 0 | none open |
 | `nan-boxing` | standard | 2 | 0 | 0 | none open |
 | `overflow-builtins` | gnu-builtin | 2 | 0 | 0 | none open |
 | `recursion-depth` | standard | 2 | 0 | 0 | none open |
@@ -84,6 +84,7 @@ shifts, masks and bit level packing across byte boundaries
 - `zstd`, R2, not measured
 - `chibi-scheme`, R3, not measured
 - `femtolisp`, R3, not measured
+- `byacc`, R4, not measured
 - `gzip`, R4, not measured
 
 ### `autoconf-probes`
@@ -116,6 +117,21 @@ macros expanding through several layers, including __VA_ARGS__ forwarding
 - `micropython`, R3, not measured
 - `gzip`, R4, not measured
 - `pdpmake`, R4, not measured
+
+### `struct-layout`
+
+struct offsets, padding and alignment as the ABI states them
+
+- `sds`, R0, not measured
+- `linenoise`, R1, not measured
+- `lmdb`, R1, not measured
+- `gdbm`, R2, not measured
+- `libpsl`, R2, not measured
+- `libuv`, R2, not measured
+- `oniguruma`, R2, not measured
+- `tcc`, R3, not measured
+- `byacc`, R4, not measured
+- `xz`, R4, not measured
 
 ### `switch-dispatch`
 
@@ -159,20 +175,6 @@ the integer types are the widths the standard says they are, and conversions bet
 - `libjpeg`, R2, not measured
 - `libmpfr`, R2, not measured
 - `libtommath`, R2, not measured
-
-### `struct-layout`
-
-struct offsets, padding and alignment as the ABI states them
-
-- `sds`, R0, not measured
-- `linenoise`, R1, not measured
-- `lmdb`, R1, not measured
-- `gdbm`, R2, not measured
-- `libpsl`, R2, not measured
-- `libuv`, R2, not measured
-- `oniguruma`, R2, not measured
-- `tcc`, R3, not measured
-- `xz`, R4, not measured
 
 ### `large-switch`
 
@@ -261,6 +263,14 @@ float and double arithmetic in volume, without contraction changing the answer
 - `minunit`, R1, not measured
 - `libmpfr`, R2, not measured
 
+### `k-and-r-idioms`
+
+declarations and calls in the shape C had before it was standardised, which a compiler defaulting to C23 rejects
+
+- `ncompress`, R1, not measured
+- `libjpeg`, R2, not measured
+- `byacc`, R4, not measured
+
 ### `libm-builtins`
 
 __builtin_ceil, __builtin_floor and the rest of the libm shaped builtins
@@ -306,13 +316,6 @@ __asm__ at file scope, including .incbin and hand written section directives
 
 - `incbin`, R0, not measured
 - `libgmp`, R2, not measured
-
-### `k-and-r-idioms`
-
-declarations and calls in the shape C had before it was standardised, which a compiler defaulting to C23 rejects
-
-- `ncompress`, R1, not measured
-- `libjpeg`, R2, not measured
 
 ### `nan-boxing`
 
