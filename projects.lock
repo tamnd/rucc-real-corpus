@@ -18,6 +18,14 @@ licence-sha256 = "3d180008e36922a4e8daec11c34c7af264fed5962d07924aea928c38e8663c
 verified = "2026-09-08"
 
 [[project]]
+name = "byacc"
+url = "https://invisible-island.net/archives/byacc/byacc-20260126.tgz"
+sha256 = "b618c5fb44c2f5f048843db90f7d1b24f78f47b07913c8c7ba8c942d3eb24b00"
+bytes = 914130
+licence-sha256 = "654a231fe9cd4d36e580214962fa777a1df0771d6889cfc74d19a3d414f14711"
+verified = "2026-09-10"
+
+[[project]]
 name = "bzip2"
 url = "https://sourceware.org/pub/bzip2/bzip2-1.0.8.tar.gz"
 sha256 = "ab5a03176ee106d3f0fa90e381da478ddae405918153cca248e682cd0c4a2269"
