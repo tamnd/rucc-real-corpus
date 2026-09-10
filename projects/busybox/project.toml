@@ -13,24 +13,28 @@ description = "the other four hundred command line tools in one binary, built fr
 # implementation, written with explicit registers and the carry flag, and a compiler that assembles
 # them wrongly produces a TLS client that computes wrong numbers rather than one that fails to link.
 #
-# `char-signedness` because Makefile.flags asks for -funsigned-char through cc-option, and cc-option
-# is the interesting half. toybox puts the same flag on the command line and a compiler that will
-# not take it cannot build a single file, which is loud. busybox probes for it, so a compiler that
-# rejects the flag has it silently dropped and then builds every one of these tools with a signed
-# plain char. The tools read bytes out of files and index tables with them. That is the same demand
-# reached the other way round, and it is the way round where nothing says anything.
+# `driver-stdin-input` because scripts/gcc-version.sh line 11 pipes the two tokens `__GNUC__` and
+# `__GNUC_MINOR__` into `$(CC) -E -xc -` and reads the compiler's version out of what comes back.
+# That is the only place in the corpus so far where a build asks the driver a question through a pipe
+# rather than through a file, and it is the demand cc-option rests on as well, because every one of
+# the twenty flags Makefile.flags probes is tested by compiling `-xc /dev/null`.
 #
 # `driver-passthrough` because kbuild writes `-Wp,-MD,<depfile>` at the front of every compile line
 # it generates, in scripts/Makefile.lib line 111 for the target files and scripts/Makefile.host line
 # 101 for the host tools. No other row on the list asks for that flag and every project that
 # borrowed kbuild asks for it on every file, so this is the row that finds it. It is also the
-# blocker, tamnd/rucc#863: rucc refuses the flag, so the build stops in scripts/basic before a line
-# of busybox is read.
+# blocker, tamnd/rucc#863: the generated headers and the two host tools are made, and then the build
+# stops on the first object it compiles out of busybox's own source.
 #
-# Left off: stack-allocation, which shell/math.c:687 sizes two stacks with and which bash and git
+# Left off, and the first of these was on the list until the row was measured. char-signedness,
+# because Makefile.flags line 60 asks for -funsigned-char through cc-option and the probe never gets
+# far enough to ask: it fails on `-xc /dev/null` like the other nineteen, so what this row measures
+# there is driver-stdin-input a second time rather than the flag, and toybox already carries the
+# demand in the loud form, on the command line where a compiler that will not take it cannot build a
+# single file. stack-allocation, which shell/math.c:687 sizes two stacks with and which bash and git
 # already carry. unaligned-access, which BB_UNALIGNED_MEMACCESS_OK turns on and which xorbuf_3 uses
 # to copy a long at a time out of any pointer it is handed. deep-macros, which the applet table is.
-demands = ["driver-passthrough", "inline-asm", "char-signedness"]
+demands = ["driver-passthrough", "driver-stdin-input", "inline-asm"]
 
 # 1.38.0 is the current release. The bzip2 tarball is what upstream publishes first and it is 2.6 MB
 # against 5.4 for the same tree gzipped, which is the project demonstrating its own subject matter.
@@ -97,7 +101,30 @@ command = [
 oracle = "suite"
 parser = "custom-regex"
 regex = "busybox: (\\d+) of (\\d+) tests passed"
-baseline-tests = 0
+# Nine cases fail under GCC 16.2.0 on the reference machine, at every level, and the failing set is
+# byte identical at all six, so the pair of numbers below is what a green row looks like here and
+# `baseline-total` is what says so. The nine are four different things and none of them is a
+# compiler.
+#
+# Four are bugs busybox knows about and wraps in its own `SKIP_KNOWN_BUGS` guard, with the
+# incompatibility written out in a comment above each: `sed embedded NUL`, `sed NUL in command`,
+# `sed nonexistent label` and `cpio lists hardlinks`. The guard is deliberately not set here. Setting
+# it would hide the same four cases from both compilers, and a case upstream expects to fail is still
+# a case that has to fail the same way on both sides of a differential.
+#
+# Three are the host shell. ls.tests builds a filename out of `printf "\x01\x02..."`, and /bin/sh on
+# this machine is dash, whose printf leaves `\x41` as five characters. The bytes the three `ls -q`,
+# `ls -Q` and `ls -qQ` cases are about are never created, so the cases fail before busybox is asked
+# anything. A host whose /bin/sh expands them scores three higher, which grades green, because the
+# rule is `run` equal to the total and `passed` at or above the baseline.
+#
+# One is the harness. `tar writing into read-only dir` extracts into a directory it has just made
+# mode `dr-xr-x---`, which works when the suite runs as root and does not when it runs as anybody
+# else, and section 7.12 has this one running as an unprivileged user on purpose.
+#
+# One says its own reason in its own name: `taskset (set_aff, needs CAP_SYS_NICE)`.
+baseline-tests = 1011
+baseline-total = 1020
 # `zip` is required rather than optional for the reason gzip's `perl` is. unzip.tests line 23 builds
 # its own archive with the host `zip` and then asks busybox to extract it, and a host without the
 # tool does not skip that case, it fails it. The reference machine did not have zip when this row was
@@ -105,6 +132,13 @@ baseline-tests = 0
 # read. Naming it here turns a wrong number into a refusal to start.
 requires = ["sh", "awk", "zip"]
 
+# Both sized from the lto cell and both about three times it, which is the rule git's row settled on.
+# The reference builds busybox in 115 seconds at -O0 and 569 at lto, and the second number is the one
+# the budget is for. The test budget is the surprise: the phase takes 120 to 140 seconds at the
+# ordinary levels and 564 at lto, and most of that is not the suite. `make test` depends on the
+# binary, the applet table is regenerated on the way in, seven objects follow it, and then busybox
+# links itself five times over to find out which libraries it can do without. Five link time
+# optimized links of four hundred applets is most of nine minutes.
 [limits]
-build-seconds = 900
-test-seconds = 900
+build-seconds = 1800
+test-seconds = 1800
