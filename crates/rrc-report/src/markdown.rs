@@ -7,7 +7,7 @@
 use crate::cluster::{Cluster, clusters};
 use crate::cost::{Cost, costs, worst_memory};
 use crate::summary::Summary;
-use rrc_run::record::RunRecord;
+use rrc_run::record::{Outcome, RunRecord};
 use std::fmt::Write as _;
 
 /// Everything a rendered report is made of.
@@ -21,6 +21,8 @@ pub struct Report {
     pub costs: Vec<Cost>,
     /// The ten worst for memory, as project and bytes.
     pub memory: Vec<(String, u64)>,
+    /// Cells the reference compiler itself did not pass, as project, level and outcome.
+    pub reference_failures: Vec<(String, String, Outcome)>,
 }
 
 impl Report {
@@ -39,6 +41,7 @@ impl Report {
                 .into_iter()
                 .map(|r| (r.project.clone(), r.peak_rss.unwrap_or(0)))
                 .collect(),
+            reference_failures: reference_failures(reference),
         }
     }
 
@@ -70,6 +73,15 @@ impl Report {
             out.push('\n');
         }
 
+        if !self.reference_failures.is_empty() {
+            out.push_str("## Rows the reference could not pass\n\n");
+            out.push_str("These cells were built by GCC 16 and still did not come out green, so they are saying something about the manifest or about the machine rather than about the compiler under test. A row like this cannot report a regression, because there is nothing above it to regress from. Fix the manifest or exclude the row.\n\n");
+            for (project, level, outcome) in &self.reference_failures {
+                let _ = writeln!(out, "- {project} at {level}: {outcome}");
+            }
+            out.push('\n');
+        }
+
         out.push_str("## Cost\n\n");
         out.push_str("Both numbers are cheap proxies against a GCC 16 build of the same pin on the same machine, and only their trend means anything. They are per project and never averaged, because a mean across projects of different shapes is a number with no referent.\n\n");
         out.push_str(&crate::cost::render(&self.costs));
@@ -87,6 +99,35 @@ impl Report {
 
         out
     }
+}
+
+/// The cells where GCC 16 itself did not come out green.
+///
+/// This exists because a manifest can be wrong in a way no lint can see. `bash` was admitted with
+/// a baseline of 77 passes out of 86 cases and no `baseline-total`, and the suite oracle asks for
+/// both a floor under the passing count and a clean sweep of everything that reached a verdict
+/// unless a total is given, so the reference graded wrong answer and the row measured nothing.
+/// The lint cannot catch that, because whether nine failures are expected is a fact about the
+/// machine rather than about the file. A run can catch it, because a run has the reference in
+/// front of it, so this is where it gets caught.
+///
+/// Skipped and excluded are left out. Skipped means a tool the manifest declared is not on this
+/// host, which the summary already says, and excluded means somebody wrote the row down in the
+/// register with an issue number. Neither is a surprise, and this list is only worth reading if
+/// everything on it is one.
+fn reference_failures(reference: &[RunRecord]) -> Vec<(String, String, Outcome)> {
+    let mut failures: Vec<(String, String, Outcome)> = reference
+        .iter()
+        .filter(|r| {
+            !matches!(
+                r.outcome,
+                Outcome::Passed | Outcome::Skipped | Outcome::Excluded
+            )
+        })
+        .map(|r| (r.project.clone(), r.level.name().to_string(), r.outcome))
+        .collect();
+    failures.sort();
+    failures
 }
 
 /// What to make of the seconds when some of them were not measured during this run.
@@ -156,6 +197,50 @@ mod tests {
         }
         let rendered = Report::of(&records, &[]).markdown();
         assert!(rendered.contains("__builtin_clz: coremark, jsmn"));
+    }
+
+    #[test]
+    fn a_reference_cell_that_did_not_pass_is_named_rather_than_averaged_away() {
+        let reference = [
+            record("bash", Outcome::WrongAnswer),
+            record("tar", Outcome::Passed),
+        ];
+        let rendered = Report::of(&[record("bash", Outcome::WrongAnswer)], &reference).markdown();
+        assert!(
+            rendered.contains("Rows the reference could not pass"),
+            "{rendered}"
+        );
+        assert!(rendered.contains("bash at"), "{rendered}");
+        assert!(
+            !rendered.contains("tar at"),
+            "a green reference cell has nothing to say here: {rendered}"
+        );
+    }
+
+    #[test]
+    fn a_reference_that_passed_everything_gets_no_section_at_all() {
+        let rendered = Report::of(
+            &[record("a", Outcome::DidNotBuild)],
+            &[record("a", Outcome::Passed)],
+        )
+        .markdown();
+        assert!(
+            !rendered.contains("Rows the reference could not pass"),
+            "the usual case is a clean reference, and a heading that is always there is a heading nobody reads: {rendered}"
+        );
+    }
+
+    #[test]
+    fn a_reference_cell_that_was_skipped_or_excluded_is_not_a_surprise() {
+        let reference = [
+            record("a", Outcome::Skipped),
+            record("b", Outcome::Excluded),
+        ];
+        let rendered = Report::of(&[record("a", Outcome::Passed)], &reference).markdown();
+        assert!(
+            !rendered.contains("Rows the reference could not pass"),
+            "{rendered}"
+        );
     }
 
     #[test]

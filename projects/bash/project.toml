@@ -112,8 +112,18 @@ binary = "bash"
 # the harness comes in at 78 rather than 77, which is worth knowing before anybody reports it as a
 # regression.
 #
-# All nine fail in the direction that makes the baseline a floor. A host with those locales
-# generated, or one that gives the suite a terminal, comes in above 77, which passes.
+# Nine failures under the reference compiler is what baseline-total is for, and without it this row
+# would be red on both sides. `baseline-tests` on its own is a floor under the passing count, and
+# the suite oracle also insists that everything which reached a verdict passed unless a total is
+# given. 77 of 86 does not satisfy that, so gcc would grade wrong-answer and the row would say
+# nothing about rucc at all. With the total here, the standard is what gcc actually scored, both
+# numbers of it, which is the same standard byacc and libgmp are held to.
+#
+# Both numbers have to match, so this is stricter than a floor rather than looser. A run that gets
+# 78 of 86 fails, and that is the right answer even though 78 sounds better: this suite is only
+# comparable between two compilers on one machine, and a machine that scores 78 scores it for both
+# of them. If the reference starts coming in at 78 here, because somebody generated the locales or
+# because the harness stopped setting LC_ALL, then this number moves in a commit that says so.
 #
 # One more thing worth knowing before running this by hand: globstar2.sub builds a directory at
 # $TMPDIR/empty and gives up if something is already there. The harness gives every sandbox its own
@@ -130,6 +140,7 @@ oracle = "suite"
 parser = "custom-regex"
 regex = "bash: (\\d+) of (\\d+) tests passed"
 baseline-tests = 77
+baseline-total = 86
 requires = ["sh", "awk"]
 
 # The build is the expensive half here and for once it is the compiling rather than the configuring.
