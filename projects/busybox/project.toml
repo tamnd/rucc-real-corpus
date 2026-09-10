@@ -20,15 +20,17 @@ description = "the other four hundred command line tools in one binary, built fr
 # plain char. The tools read bytes out of files and index tables with them. That is the same demand
 # reached the other way round, and it is the way round where nothing says anything.
 #
-# `stack-allocation` because shell/math.c:687 and 695 size two stacks with alloca from the length of
-# the expression being parsed, and hush and ash do the same in their own files. This is tamnd/rucc#631
-# for the third time, after bash and git, and having it three times is the point: bash reaches it
-# through __builtin_alloca, git through a macro called xalloca, and busybox through a plain call.
+# `driver-passthrough` because kbuild writes `-Wp,-MD,<depfile>` at the front of every compile line
+# it generates, in scripts/Makefile.lib line 111 for the target files and scripts/Makefile.host line
+# 101 for the host tools. No other row on the list asks for that flag and every project that
+# borrowed kbuild asks for it on every file, so this is the row that finds it. It is also the
+# blocker, tamnd/rucc#863: rucc refuses the flag, so the build stops in scripts/basic before a line
+# of busybox is read.
 #
-# Left off: unaligned-access, which BB_UNALIGNED_MEMACCESS_OK turns on and which xorbuf_3 uses to
-# copy a long at a time out of any pointer it is handed. deep-macros, which the applet table is.
-# function-pointers, which is how one binary gets four hundred entry points.
-demands = ["inline-asm", "char-signedness", "stack-allocation"]
+# Left off: stack-allocation, which shell/math.c:687 sizes two stacks with and which bash and git
+# already carry. unaligned-access, which BB_UNALIGNED_MEMACCESS_OK turns on and which xorbuf_3 uses
+# to copy a long at a time out of any pointer it is handed. deep-macros, which the applet table is.
+demands = ["driver-passthrough", "inline-asm", "char-signedness"]
 
 # 1.38.0 is the current release. The bzip2 tarball is what upstream publishes first and it is 2.6 MB
 # against 5.4 for the same tree gzipped, which is the project demonstrating its own subject matter.
@@ -96,7 +98,12 @@ oracle = "suite"
 parser = "custom-regex"
 regex = "busybox: (\\d+) of (\\d+) tests passed"
 baseline-tests = 0
-requires = ["sh", "awk"]
+# `zip` is required rather than optional for the reason gzip's `perl` is. unzip.tests line 23 builds
+# its own archive with the host `zip` and then asks busybox to extract it, and a host without the
+# tool does not skip that case, it fails it. The reference machine did not have zip when this row was
+# first measured and came in one case short, which is exactly the shape of a baseline nobody can
+# read. Naming it here turns a wrong number into a refusal to start.
+requires = ["sh", "awk", "zip"]
 
 [limits]
 build-seconds = 900
