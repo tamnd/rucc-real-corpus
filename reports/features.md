@@ -20,22 +20,22 @@ Weight is what to do next. It is the sum over the held up projects of six minus 
 | `function-pointers` | standard | 9 | 0 | 0 | none open |
 | `integer-conversion` | standard | 9 | 0 | 0 | none open |
 | `struct-layout` | abi | 8 | 0 | 0 | none open |
+| `large-switch` | standard | 7 | 0 | 0 | none open |
 | `computed-goto` | gnu-extension | 6 | 0 | 0 | none open |
-| `large-switch` | standard | 6 | 0 | 0 | none open |
 | `setjmp-longjmp` | standard | 5 | 0 | 0 | none open |
 | `double-formatting` | standard | 4 | 0 | 0 | none open |
 | `varargs-depth` | standard | 4 | 0 | 0 | none open |
+| `atomic-builtins` | gnu-builtin | 3 | 0 | 0 | [open](https://github.com/tamnd/rucc/issues/311) |
 | `bit-builtins` | gnu-builtin | 3 | 0 | 0 | [open](https://github.com/tamnd/rucc/issues/310) |
 | `cmake-probes` | driver | 3 | 0 | 0 | none open |
 | `float-arithmetic` | standard | 3 | 0 | 0 | none open |
+| `libm-builtins` | gnu-builtin | 3 | 0 | 0 | [open](https://github.com/tamnd/rucc/issues/226) |
 | `memcpy-idioms` | gnu-builtin | 3 | 0 | 0 | none open |
 | `thread-local` | standard | 3 | 0 | 0 | none open |
 | `unaligned-access` | standard | 3 | 0 | 0 | none open |
-| `atomic-builtins` | gnu-builtin | 2 | 0 | 0 | [open](https://github.com/tamnd/rucc/issues/311) |
 | `constant-time` | standard | 2 | 0 | 0 | none open |
 | `inline-asm` | gnu-extension | 2 | 0 | 0 | none open |
 | `k-and-r-idioms` | standard | 2 | 0 | 0 | none open |
-| `libm-builtins` | gnu-builtin | 2 | 0 | 0 | [open](https://github.com/tamnd/rucc/issues/226) |
 | `nan-boxing` | standard | 2 | 0 | 0 | none open |
 | `overflow-builtins` | gnu-builtin | 2 | 0 | 0 | none open |
 | `recursion-depth` | standard | 2 | 0 | 0 | none open |
@@ -169,17 +169,6 @@ struct offsets, padding and alignment as the ABI states them
 - `oniguruma`, R2, not measured
 - `tcc`, R3, not measured
 
-### `computed-goto`
-
-labels as values, goto *
-
-- `femtolisp`, R3, not measured
-- `janet`, R3, not measured
-- `lua`, R3, not measured
-- `micropython`, R3, not measured
-- `quickjs`, R3, not measured
-- `wren`, R3, not measured
-
 ### `large-switch`
 
 a switch with hundreds of cases, where the jump table decision is the compiler's
@@ -190,6 +179,18 @@ a switch with hundreds of cases, where the jump table decision is the compiler's
 - `lua`, R3, not measured
 - `lua-nojumptable`, R3, not measured
 - `quickjs`, R3, not measured
+- `sqlite-shell`, R4, not measured
+
+### `computed-goto`
+
+labels as values, goto *
+
+- `femtolisp`, R3, not measured
+- `janet`, R3, not measured
+- `lua`, R3, not measured
+- `micropython`, R3, not measured
+- `quickjs`, R3, not measured
+- `wren`, R3, not measured
 
 ### `setjmp-longjmp`
 
@@ -219,6 +220,14 @@ varargs forwarded through several layers of function
 - `libcheck`, R2, not measured
 - `pdpmake`, R4, not measured
 
+### `atomic-builtins`
+
+__atomic_load_n and __atomic_store_n at relaxed ordering
+
+- `rpmalloc`, R1, not measured
+- `libjansson`, R2, not measured
+- `sqlite-shell`, R4, not measured
+
 ### `bit-builtins`
 
 __builtin_clz, __builtin_ctz, __builtin_popcount and their l and ll forms
@@ -242,6 +251,14 @@ float and double arithmetic in volume, without contraction changing the answer
 - `llama2.c`, R0, not measured
 - `minunit`, R1, not measured
 - `libmpfr`, R2, not measured
+
+### `libm-builtins`
+
+__builtin_ceil, __builtin_floor and the rest of the libm shaped builtins
+
+- `llama2.c`, R0, not measured
+- `tinyexpr`, R0, not measured
+- `sqlite-shell`, R4, not measured
 
 ### `memcpy-idioms`
 
@@ -267,13 +284,6 @@ loads and stores through pointers the compiler cannot prove are aligned
 - `zstd`, R2, not measured
 - `tcc`, R3, not measured
 
-### `atomic-builtins`
-
-__atomic_load_n and __atomic_store_n at relaxed ordering
-
-- `rpmalloc`, R1, not measured
-- `libjansson`, R2, not measured
-
 ### `constant-time`
 
 arithmetic written to take the same time whatever the secret is, which the optimizer must not turn back into a branch
@@ -294,13 +304,6 @@ declarations and calls in the shape C had before it was standardised, which a co
 
 - `ncompress`, R1, not measured
 - `libjpeg`, R2, not measured
-
-### `libm-builtins`
-
-__builtin_ceil, __builtin_floor and the rest of the libm shaped builtins
-
-- `llama2.c`, R0, not measured
-- `tinyexpr`, R0, not measured
 
 ### `nan-boxing`
 
