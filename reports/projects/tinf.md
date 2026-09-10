@@ -30,11 +30,11 @@ The pinned archive is 10 files, 4,002 lines, 133.9 KiB, counted before anything 
 
 | level | compile | gcc 16 | vs gcc | suite | gcc 16 | vs gcc | build memory | gcc 16 | vs gcc |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| O0 [^cached] | 0.26s | 1.23s | 0.21x | 0.06s | 0.06s | 0.89x | 11.3 MiB | 40.7 MiB | 0.28x |
-| O1 [^cached] | 0.38s | 1.56s | 0.24x | 0.03s | 0.04s | not measured | 10.6 MiB | 44.9 MiB | 0.24x |
-| O2 [^cached] | 0.27s | 1.43s | 0.19x | 0.05s | 0.03s | not measured | 11.4 MiB | 49.7 MiB | 0.23x |
-| Os [^cached] | 0.29s | 1.58s | 0.18x | 0.03s | 0.04s | not measured | 11.4 MiB | 47.5 MiB | 0.24x |
-| O3 [^cached] | 0.28s | 1.86s | 0.15x | 0.04s | 0.01s | not measured | 11.4 MiB | 50.4 MiB | 0.23x |
+| O0 | 0.15s | 0.58s | 0.26x | 0.06s | 0.03s | not measured | 11.5 MiB | 39.5 MiB | 0.29x |
+| O1 | 0.36s | 1.04s | 0.35x | 0.03s | 0.00s | not measured | 11.4 MiB | 44.5 MiB | 0.26x |
+| O2 | 0.32s | 1.63s | 0.20x | 0.00s | 0.03s | not measured | 11.4 MiB | 50.3 MiB | 0.23x |
+| Os | 0.28s | 1.23s | 0.23x | 0.03s | 0.03s | not measured | 11.4 MiB | 46.9 MiB | 0.24x |
+| O3 | 0.35s | 1.76s | 0.20x | 0.04s | 0.05s | not measured | 10.9 MiB | 50.5 MiB | 0.22x |
 
 ## Size
 
@@ -42,6 +42,6 @@ The pinned archive is 10 files, 4,002 lines, 133.9 KiB, counted before anything 
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
 | O0 | 41.9 KiB | 31.4 KiB | 1.33x | 63.8 KiB | 46.1 KiB | 1.38x |
 | O1 | 38.8 KiB | 26.3 KiB | 1.47x | 59.8 KiB | 44.0 KiB | 1.36x |
-| O2 | 39.6 KiB | 27.0 KiB | 1.47x | 59.8 KiB | 44.1 KiB | 1.36x |
+| O2 | 39.8 KiB | 27.0 KiB | 1.48x | 59.8 KiB | 44.1 KiB | 1.36x |
 | Os | 38.4 KiB | 21.7 KiB | 1.77x | 59.8 KiB | 31.9 KiB | 1.87x |
-| O3 | 39.6 KiB | 31.4 KiB | 1.26x | 59.8 KiB | 48.0 KiB | 1.25x |
+| O3 | 39.8 KiB | 31.4 KiB | 1.27x | 59.8 KiB | 48.0 KiB | 1.25x |

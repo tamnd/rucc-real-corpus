@@ -10,31 +10,31 @@ The pinned archive is 74 files, 18,978 lines, 512.6 KiB, counted before anything
 
 | level | outcome | reached | graded by |
 | --- | --- | --- | --- |
-| O0 | did not build | configured | suite count |
-| O1 | did not build | configured | suite count |
-| O2 | did not build | configured | suite count |
-| Os | did not build | configured | suite count |
-| O3 | did not build | configured | suite count |
+| O0 | passed | tested | suite count |
+| O1 | passed | tested | suite count |
+| O2 | passed | tested | suite count |
+| Os | passed | tested | suite count |
+| O3 | passed | tested | suite count |
 
 ## The project's own tests
 
 | level | passed | of | gcc 16 passed | behind gcc |
 | --- | ---: | ---: | ---: | ---: |
-| O0 | not counted | not counted | 10 | not comparable |
-| O1 | not counted | not counted | 10 | not comparable |
-| O2 | not counted | not counted | 10 | not comparable |
-| Os | not counted | not counted | 10 | not comparable |
-| O3 | not counted | not counted | 10 | not comparable |
+| O0 | 10 | 10 | 10 | same |
+| O1 | 10 | 10 | 10 | same |
+| O2 | 10 | 10 | 10 | same |
+| Os | 10 | 10 | 10 | same |
+| O3 | 10 | 10 | 10 | same |
 
 ## Time and memory
 
 | level | compile | gcc 16 | vs gcc | suite | gcc 16 | vs gcc | build memory | gcc 16 | vs gcc |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| O0 [^cached] | 55.16s | 94s | 0.59x | 0.00s | 376s | 0.00x | 47.1 MiB | 65.2 MiB | 0.72x |
-| O1 [^cached] | 54.49s | 102s | 0.53x | 0.00s | 373s | 0.00x | 51.1 MiB | 63.1 MiB | 0.81x |
-| O2 [^cached] | 55.31s | 112s | 0.49x | 0.00s | 376s | 0.00x | 27.6 MiB | 70.4 MiB | 0.39x |
-| Os [^cached] | 53.86s | 110s | 0.49x | 0.00s | 376s | 0.00x | 53.8 MiB | 69.2 MiB | 0.78x |
-| O3 [^cached] | 63s | 102s | 0.62x | 0.00s | 377s | 0.00x | 28.4 MiB | 69.8 MiB | 0.41x |
+| O0 | 30.74s | 36.15s | 0.85x | 381s | 363s | 1.05x | 49.2 MiB | 62.3 MiB | 0.79x |
+| O1 | 30.99s | 39.94s | 0.78x | 381s | 362s | 1.05x | 54.0 MiB | 62.9 MiB | 0.86x |
+| O2 | 30.33s | 43.90s | 0.69x | 381s | 362s | 1.05x | 30.7 MiB | 70.3 MiB | 0.44x |
+| Os | 28.92s | 42.01s | 0.69x | 382s | 364s | 1.05x | 49.7 MiB | 67.1 MiB | 0.74x |
+| O3 | 29.27s | 42.93s | 0.68x | 381s | 364s | 1.05x | 51.0 MiB | 70.2 MiB | 0.73x |
 
 ## Size
 

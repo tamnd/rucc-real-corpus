@@ -10,41 +10,31 @@ The pinned archive is 51 files, 9,613 lines, 285.6 KiB, counted before anything 
 
 | level | outcome | reached | graded by |
 | --- | --- | --- | --- |
-| O0 | did not build | fetched | suite count |
-| O1 | did not build | fetched | suite count |
-| O2 | did not build | fetched | suite count |
-| Os | did not build | fetched | suite count |
-| O3 | did not build | fetched | suite count |
-
-## What the compiler said
-
-The first diagnostic only, normalized, which is the one the failure clustering groups on.
-
-- `O0`: `rucc: error: unknown option `-fPIE``
-- `O1`: `rucc: error: unknown option `-fPIE``
-- `O2`: `rucc: error: unknown option `-fPIE``
-- `O3`: `rucc: error: unknown option `-fPIE``
-- `Os`: `rucc: error: unknown option `-fPIE``
+| O0 | passed | tested | suite count |
+| O1 | passed | tested | suite count |
+| O2 | passed | tested | suite count |
+| Os | passed | tested | suite count |
+| O3 | passed | tested | suite count |
 
 ## The project's own tests
 
 | level | passed | of | gcc 16 passed | behind gcc |
 | --- | ---: | ---: | ---: | ---: |
-| O0 | not counted | not counted | 48 | not comparable |
-| O1 | not counted | not counted | 48 | not comparable |
-| O2 | not counted | not counted | 48 | not comparable |
-| Os | not counted | not counted | 48 | not comparable |
-| O3 | not counted | not counted | 48 | not comparable |
+| O0 | 48 | 48 | 48 | same |
+| O1 | 48 | 48 | 48 | same |
+| O2 | 48 | 48 | 48 | same |
+| Os | 48 | 48 | 48 | same |
+| O3 | 48 | 48 | 48 | same |
 
 ## Time and memory
 
 | level | compile | gcc 16 | vs gcc | suite | gcc 16 | vs gcc | build memory | gcc 16 | vs gcc |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| O0 [^cached] | 0.84s | 64s | 0.01x | 0.00s | 1.34s | 0.00x | 21.0 MiB | 44.3 MiB | 0.47x |
-| O1 [^cached] | 0.78s | 68s | 0.01x | 0.00s | 1.20s | 0.00x | 20.7 MiB | 49.6 MiB | 0.42x |
-| O2 [^cached] | 2.79s | 68s | 0.04x | 0.00s | 0.71s | 0.00x | 20.9 MiB | 58.2 MiB | 0.36x |
-| Os [^cached] | 0.51s | 62s | 0.01x | 0.00s | 0.54s | 0.00x | 20.9 MiB | 53.2 MiB | 0.39x |
-| O3 [^cached] | 0.83s | 64s | 0.01x | 0.00s | 1.34s | 0.00x | 20.7 MiB | 61.4 MiB | 0.34x |
+| O0 | 25.17s | 29.37s | 0.86x | 0.31s | 0.38s | 0.81x | 24.6 MiB | 43.8 MiB | 0.56x |
+| O1 | 23.99s | 31.44s | 0.76x | 0.27s | 0.31s | 0.85x | 24.4 MiB | 49.5 MiB | 0.49x |
+| O2 | 23.91s | 33.41s | 0.72x | 0.39s | 0.36s | 1.07x | 24.7 MiB | 58.5 MiB | 0.42x |
+| Os | 23.31s | 31.46s | 0.74x | 0.40s | 0.33s | 1.20x | 24.5 MiB | 53.4 MiB | 0.46x |
+| O3 | 23.71s | 34.82s | 0.68x | 0.21s | 0.21s | 1.02x | 24.7 MiB | 61.0 MiB | 0.41x |
 
 ## Size
 

@@ -20,11 +20,11 @@ The pinned archive is 277 files, 137,191 lines, 5.1 MiB, counted before anything
 
 The first diagnostic only, normalized, which is the one the failure clustering groups on.
 
-- `O0`: `rucc: error: unknown option `-MMD``
-- `O1`: `rucc: error: unknown option `-MMD``
-- `O2`: `rucc: error: unknown option `-MMD``
-- `O3`: `rucc: error: unknown option `-MMD``
-- `Os`: `rucc: error: unknown option `-MMD``
+- `O0`: `src/lib//common/compiler.h:226:1: error: `emmintrin.h` file not found [E0341]`
+- `O1`: `src/lib//common/compiler.h:226:1: error: `emmintrin.h` file not found [E0341]`
+- `O2`: `src/lib//common/compiler.h:226:1: error: `emmintrin.h` file not found [E0341]`
+- `O3`: `src/lib//common/compiler.h:226:1: error: `emmintrin.h` file not found [E0341]`
+- `Os`: `src/lib//common/compiler.h:226:1: error: `emmintrin.h` file not found [E0341]`
 
 ## The project's own tests
 
@@ -40,11 +40,11 @@ The first diagnostic only, normalized, which is the one the failure clustering g
 
 | level | compile | gcc 16 | vs gcc | suite | gcc 16 | vs gcc | build memory | gcc 16 | vs gcc |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| O0 [^cached] | 0.56s | 61s | 0.01x | 0.00s | 162s | 0.00x | 2.4 MiB | 149.5 MiB | 0.02x |
-| O1 [^cached] | 0.45s | 132s | 0.00x | 0.00s | 127s | 0.00x | 2.4 MiB | 168.2 MiB | 0.01x |
-| O2 [^cached] | 0.29s | 227s | 0.00x | 0.00s | 160s | 0.00x | 2.4 MiB | 210.6 MiB | 0.01x |
-| Os [^cached] | 0.40s | 154s | 0.00x | 0.00s | 143s | 0.00x | 2.4 MiB | 163.4 MiB | 0.01x |
-| O3 [^cached] | 0.48s | 287s | 0.00x | 0.00s | 186s | 0.00x | 2.4 MiB | 274.9 MiB | 0.01x |
+| O0 | 0.31s | 50.61s | 0.01x | 0.00s | 133s | 0.00x | 2.4 MiB | 148.7 MiB | 0.02x |
+| O1 | 0.29s | 116s | 0.00x | 0.00s | 120s | 0.00x | 7.5 MiB | 168.1 MiB | 0.04x |
+| O2 | 0.29s | 216s | 0.00x | 0.00s | 157s | 0.00x | 2.3 MiB | 210.6 MiB | 0.01x |
+| Os | 0.37s | 146s | 0.00x | 0.00s | 129s | 0.00x | 7.5 MiB | 163.5 MiB | 0.05x |
+| O3 | 0.28s | 266s | 0.00x | 0.00s | 175s | 0.00x | 7.0 MiB | 274.8 MiB | 0.03x |
 
 ## Size
 

@@ -10,41 +10,41 @@ The pinned archive is 14 files, 4,236 lines, 116.7 KiB, counted before anything 
 
 | level | outcome | reached | graded by |
 | --- | --- | --- | --- |
-| O0 | did not build | built | suite count |
-| O1 | did not build | built | suite count |
-| O2 | did not build | built | suite count |
-| Os | did not build | built | suite count |
-| O3 | did not build | built | suite count |
+| O0 | wrong answer | tested | suite count |
+| O1 | wrong answer | tested | suite count |
+| O2 | wrong answer | tested | suite count |
+| Os | wrong answer | tested | suite count |
+| O3 | wrong answer | tested | suite count |
 
 ## What the compiler said
 
 The first diagnostic only, normalized, which is the one the failure clustering groups on.
 
-- `O0`: `(.text+<addr>): undefined reference to `psl_latest'`
-- `O1`: `(.text+<addr>): undefined reference to `psl_latest'`
-- `O2`: `(.text+<addr>): undefined reference to `psl_latest'`
-- `O3`: `(.text+<addr>): undefined reference to `psl_latest'`
-- `Os`: `(.text+<addr>): undefined reference to `psl_latest'`
+- `O0`: `test-is-public.c:199:16: error: `__builtin_alloca` is not implemented yet [E0686]`
+- `O1`: `test-is-public.c:199:16: error: `__builtin_alloca` is not implemented yet [E0686]`
+- `O2`: `test-is-public.c:199:16: error: `__builtin_alloca` is not implemented yet [E0686]`
+- `O3`: `test-is-public.c:199:16: error: `__builtin_alloca` is not implemented yet [E0686]`
+- `Os`: `test-is-public.c:199:16: error: `__builtin_alloca` is not implemented yet [E0686]`
 
 ## The project's own tests
 
 | level | passed | of | gcc 16 passed | behind gcc |
 | --- | ---: | ---: | ---: | ---: |
-| O0 | not counted | not counted | 8 | not comparable |
-| O1 | not counted | not counted | 8 | not comparable |
-| O2 | not counted | not counted | 8 | not comparable |
-| Os | not counted | not counted | 8 | not comparable |
-| O3 | not counted | not counted | 8 | not comparable |
+| O0 | 3 | 3 | 8 | 5 fewer |
+| O1 | 3 | 3 | 8 | 5 fewer |
+| O2 | 3 | 3 | 8 | 5 fewer |
+| Os | 3 | 3 | 8 | 5 fewer |
+| O3 | 3 | 3 | 8 | 5 fewer |
 
 ## Time and memory
 
 | level | compile | gcc 16 | vs gcc | suite | gcc 16 | vs gcc | build memory | gcc 16 | vs gcc |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| O0 [^cached] | 20.91s | 29.16s | 0.72x | 0.00s | 9.68s | 0.00x | 89.4 MiB | 89.3 MiB | 1.00x |
-| O1 [^cached] | 16.07s | 28.20s | 0.57x | 0.00s | 9.85s | 0.00x | 89.4 MiB | 89.4 MiB | 1.00x |
-| O2 [^cached] | 18.88s | 31.04s | 0.61x | 0.00s | 8.98s | 0.00x | 89.1 MiB | 89.2 MiB | 1.00x |
-| Os [^cached] | 17.90s | 28.87s | 0.62x | 0.00s | 9.05s | 0.00x | 89.1 MiB | 89.2 MiB | 1.00x |
-| O3 [^cached] | 16.70s | 32.65s | 0.51x | 0.00s | 9.08s | 0.00x | 89.4 MiB | 89.2 MiB | 1.00x |
+| O0 | 21.12s | 23.58s | 0.90x | 9.21s | 7.41s | 1.24x | 89.2 MiB | 89.4 MiB | 1.00x |
+| O1 | 23.30s | 26.48s | 0.88x | 9.95s | 10.74s | 0.93x | 89.4 MiB | 89.3 MiB | 1.00x |
+| O2 | 24.55s | 34.21s | 0.72x | 8.87s | 8.43s | 1.05x | 89.1 MiB | 89.2 MiB | 1.00x |
+| Os | 27.89s | 25.87s | 1.08x | 13.79s | 8.22s | 1.68x | 89.2 MiB | 89.2 MiB | 1.00x |
+| O3 | 27.60s | 27.61s | 1.00x | 9.37s | 6.76s | 1.39x | 89.4 MiB | 89.2 MiB | 1.00x |
 
 ## Size
 

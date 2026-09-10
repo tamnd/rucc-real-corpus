@@ -40,11 +40,11 @@ The first diagnostic only, normalized, which is the one the failure clustering g
 
 | level | compile | gcc 16 | vs gcc | suite | gcc 16 | vs gcc | build memory | gcc 16 | vs gcc |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| O0 [^cached] | 6.20s | 48.21s | 0.13x | 0.00s | 66s | 0.00x | 46.6 MiB | 65.3 MiB | 0.71x |
-| O1 [^cached] | 7.30s | 65s | 0.11x | 0.00s | 49.94s | 0.00x | 6.7 MiB | 81.3 MiB | 0.08x |
-| O2 [^cached] | 12.15s | 84s | 0.14x | 0.00s | 47.30s | 0.00x | 50.8 MiB | 107.8 MiB | 0.47x |
-| Os [^cached] | 9.04s | 74s | 0.12x | 0.00s | 46.11s | 0.00x | 51.6 MiB | 98.6 MiB | 0.52x |
-| O3 [^cached] | 4.26s | 86s | 0.05x | 0.00s | 46.65s | 0.00x | 28.4 MiB | 120.9 MiB | 0.23x |
+| O0 | 3.62s | 25.59s | 0.14x | 0.00s | 48.09s | 0.00x | 15.1 MiB | 64.9 MiB | 0.23x |
+| O1 | 4.01s | 34.46s | 0.12x | 0.00s | 33.56s | 0.00x | 53.9 MiB | 80.9 MiB | 0.67x |
+| O2 | 3.88s | 51.02s | 0.08x | 0.00s | 35.62s | 0.00x | 11.6 MiB | 106.8 MiB | 0.11x |
+| Os | 3.28s | 45.49s | 0.07x | 0.00s | 39.52s | 0.00x | 51.2 MiB | 98.0 MiB | 0.52x |
+| O3 | 3.91s | 63s | 0.06x | 0.00s | 39.64s | 0.00x | 15.8 MiB | 121.2 MiB | 0.13x |
 
 ## Size
 

@@ -12,8 +12,8 @@ The pinned archive is 18,879 files, 15,320,395 lines, 718.6 MiB, counted before 
 | --- | --- | --- | --- |
 | O0 | did not build | fetched | suite count |
 | O1 | did not build | fetched | suite count |
-| O2 | did not build | fetched | suite count |
 | Os | did not build | fetched | suite count |
+| O2 | did not build | fetched | suite count |
 | O3 | did not build | fetched | suite count |
 
 ## What the compiler said
@@ -21,8 +21,8 @@ The pinned archive is 18,879 files, 15,320,395 lines, 718.6 MiB, counted before 
 The first diagnostic only, normalized, which is the one the failure clustering groups on.
 
 - `O0`: `rucc: error: unknown option `-fdata-sections``
-- `O1`: `rucc: error: rucc: error: unknown option `-fdata-sections``
-- `O2`: `rucc: error: rucc: error: unknown option `-fdata-sections``
+- `O1`: `rucc: error: unknown option `-fdata-sections``
+- `O2`: `rucc: error: unknown option `-fdata-sections``
 - `O3`: `rucc: error: unknown option `-fdata-sections``
 - `Os`: `rucc: error: unknown option `-fdata-sections``
 
@@ -32,19 +32,19 @@ The first diagnostic only, normalized, which is the one the failure clustering g
 | --- | ---: | ---: | ---: | ---: |
 | O0 | not counted | not counted | 988 | not comparable |
 | O1 | not counted | not counted | 988 | not comparable |
-| O2 | not counted | not counted | 988 | not comparable |
 | Os | not counted | not counted | 988 | not comparable |
-| O3 | not counted | not counted | 987 | not comparable |
+| O2 | not counted | not counted | 988 | not comparable |
+| O3 | not counted | not counted | 988 | not comparable |
 
 ## Time and memory
 
 | level | compile | gcc 16 | vs gcc | suite | gcc 16 | vs gcc | build memory | gcc 16 | vs gcc |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| O0 [^cached] | 0.95s | 138s | 0.01x | 0.00s | 40.39s | 0.00x | 12.4 MiB | 95.0 MiB | 0.13x |
-| O1 [^cached] | 0.75s | 167s | 0.00x | 0.00s | 39.67s | 0.00x | 14.9 MiB | 74.6 MiB | 0.20x |
-| O2 [^cached] | 0.57s | 218s | 0.00x | 0.00s | 39.20s | 0.00x | 14.6 MiB | 87.5 MiB | 0.17x |
-| Os [^cached] | 0.87s | 191s | 0.00x | 0.00s | 39.34s | 0.00x | 15.0 MiB | 79.0 MiB | 0.19x |
-| O3 [^cached] | 0.88s | 261s | 0.00x | 0.00s | 41.96s | 0.00x | 14.9 MiB | 101.3 MiB | 0.15x |
+| O0 | 0.83s | 110s | 0.01x | 0.00s | 36.91s | 0.00x | 14.8 MiB | 94.8 MiB | 0.16x |
+| O1 | 0.84s | 142s | 0.01x | 0.00s | 35.60s | 0.00x | 15.6 MiB | 73.9 MiB | 0.21x |
+| Os | 0.84s | 164s | 0.01x | 0.00s | 35.20s | 0.00x | 15.4 MiB | 79.1 MiB | 0.20x |
+| O2 | 0.85s | 189s | 0.00x | 0.00s | 34.10s | 0.00x | 14.9 MiB | 89.0 MiB | 0.17x |
+| O3 | 0.84s | 222s | 0.00x | 0.00s | 35.00s | 0.00x | 14.8 MiB | 100.7 MiB | 0.15x |
 
 ## Size
 
@@ -52,6 +52,6 @@ The first diagnostic only, normalized, which is the one the failure clustering g
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
 | O0 | not measured | not measured | not measured | not measured | not measured | not measured |
 | O1 | not measured | not measured | not measured | not measured | not measured | not measured |
-| O2 | not measured | not measured | not measured | not measured | not measured | not measured |
 | Os | not measured | not measured | not measured | not measured | not measured | not measured |
+| O2 | not measured | not measured | not measured | not measured | not measured | not measured |
 | O3 | not measured | not measured | not measured | not measured | not measured | not measured |
