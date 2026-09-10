@@ -1,0 +1,102 @@
+[project]
+name = "byacc"
+rung = 4
+upstream = "https://invisible-island.net/byacc/"
+licence = "Public domain"
+licence-file = "LICENSE"
+description = "a parser generator whose generated parser we then compile, which makes the oracle two stage"
+# The first is what a parser generator is for. lalr.c, lr0.c and closure.c build the item sets as
+# bitmaps and walk them a word at a time, so the state machine that comes out the far end is decided
+# by shifts and masks rather than by anything a test could reach directly.
+#
+# The second is what makes this row different from every other one on the rung. The suite does not
+# run byacc and check what it prints. It runs byacc, compiles the parser byacc wrote, and compares
+# that against a recorded copy, so a miscompilation of the generator shows up as a wrong parser
+# rather than as a crash. That is a second stage the other fourteen rows do not have and it is the
+# reason spec/05-the-projects.md put this project on the list.
+#
+# The third is the usage message, and it is here because it is what the compiler under test actually
+# fails on today. main.c builds it as a two dimensional char array of fixed width rows, one braced
+# string per row, with a comment saying the width is fixed so the message needs no relocatable
+# pointers. That is a deliberate layout decision written into the source.
+#
+# Left off: pointer-arithmetic and large-switch, both true here and both already carried by ten
+# projects or more, and there are only three slots.
+demands = ["bit-manipulation", "struct-layout", "k-and-r-idioms"]
+
+# Thomas Dickey releases byacc under one version number with the date as the real identifier, the
+# same as mawk. spec/05-the-projects.md pins `t20260126` and this is that tarball. A pin that said
+# `1.9` or `2.0` would name twenty years of archives and none of them in particular.
+[source]
+url = "https://invisible-island.net/archives/byacc/byacc-20260126.tgz"
+sha256 = "b618c5fb44c2f5f048843db90f7d1b24f78f47b07913c8c7ba8c942d3eb24b00"
+strip-components = 1
+
+# A3, ordinary autoconf, and the level needs no carrier. makefile.in line 22 is
+# `CFLAGS = @CFLAGS@ $(CPPFLAGS) $(EXTRA_CFLAGS)`, configure takes CFLAGS out of the environment,
+# and line 129 puts $(CFLAGS) on the link as well as line 117 putting it on every compile. That
+# second half is the one that matters for lto and it was read out of the makefile rather than hoped
+# for, because a project that carried the level on compiles only would report a pass for a link that
+# never saw the flag.
+#
+# The six gcc builds come out at six different sizes, 197,656 bytes at -O0 down to 142,408 at -Os,
+# which is the check that the level is reaching the compiler at all rather than being dropped.
+[build]
+system = "configure"
+expect-configure = ["checking whether we are using the GNU C compiler... yes"]
+# One program out of this tree and it is the one the suite runs.
+binary = "yacc"
+
+# run_test.sh prints one line per comparison, `...ok <file>` when the generated file matches the
+# recorded one and `...diff <file>` followed by the diff when it does not, and it prints no total of
+# any kind. So the count is assembled here, the same shape mawk, janet, tcc, micropython, pdpmake
+# and sqlite-shell use. The anchors are on the line start because the word ok appears inside plenty
+# of the diffs themselves.
+#
+# baseline-tests is 335 of a baseline-total of 344, which needs explaining, because a row admitted
+# red is the one thing section 3.5 asks for a reason.
+#
+# Nine of the 344 comparisons are the `no_*` cases and every one of them fails on both compilers on
+# both reference machines. run_test.sh sets them up with `touch $MYFILE.c` then `chmod 444 $MYFILE.*`
+# under a comment that says "Test attempts to write to readonly file", and then checks that byacc
+# reports it could not open the file. Root ignores mode 444, so byacc opens it, writes it, and gets
+# far enough to report a different error about the input instead. The recorded output says
+# `cannot open "nosuchfile.c"` and the run produces `unexpected end-of-file`.
+#
+# That is the gzip situation again and it is handled the other way round, because these nine do not
+# skip themselves the way gzip's write-error does. They fail, make check exits 1, and a suite oracle
+# reading the exit status would grade gcc as failing its own suite. baseline-total is the field for
+# exactly this and grade_suite does not consult the exit status when it is set, so the standard here
+# is what the reference actually scored, both numbers of it. A run that comes back 335 of 343 is
+# still a wrong answer, which is the point of carrying the total rather than only the passing count.
+#
+# An ordinary user gets 344 of 344 on this tarball. The number written down is the one every host
+# this corpus runs on reaches, and both reference machines run it as root.
+#
+# Measured on the reference machine with gcc 16.2.0: 335 of 344 at -O0, -O1, -O2, -Os, -O3 and lto,
+# identical at all six.
+[test]
+command = [
+    "sh",
+    "-c",
+    "make check > rrc-suite-output.log 2>&1; cat rrc-suite-output.log; awk '/^\\.\\.\\.ok/ { passed++ } /^\\.\\.\\.diff/ { failed++ } END { printf \"byacc: %d of %d tests passed\\n\", passed, passed + failed }' rrc-suite-output.log",
+]
+oracle = "suite"
+parser = "custom-regex"
+regex = "byacc: (\\d+) of (\\d+) tests passed"
+baseline-tests = 335
+baseline-total = 344
+requires = ["sh", "awk"]
+
+# Fifteen translation units and about thirteen thousand lines, and gcc goes from tarball to binary
+# in between six and ten seconds, most of it the configure script. 900 is the same head room every
+# other autoconf row on this rung carries.
+#
+# The suite is between eight and twelve seconds under gcc and it is not a compile bound number: each
+# of the ninety cases forks the byacc that was just built and then diffs several generated files, so
+# a binary that is slow because the level could not do its work drags the whole thing out with
+# nothing actually wrong. 180 leaves room for that without letting a hang sit for the full build
+# limit.
+[limits]
+build-seconds = 900
+test-seconds = 180
