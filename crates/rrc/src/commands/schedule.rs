@@ -29,6 +29,7 @@ use rrc_run::cache;
 use rrc_run::driver::{self, Baseline, Compiler, Job, Prepared};
 use rrc_run::env;
 use rrc_run::interrogate::{self, Divergence, Names, Where};
+use rrc_run::privilege::{self, Privilege};
 use rrc_run::record::{Outcome, Provenance, RecordLog, RunRecord};
 use rrc_run::sandbox::Slot;
 use rrc_run::shim::{self, Toolchain};
@@ -66,6 +67,12 @@ pub struct Setup {
     pub downloader: Box<dyn Downloader>,
     /// The prefixes holding tools the base system does not carry, such as cmake or tclsh.
     pub extra_path: Vec<PathBuf>,
+    /// Who builds and suites run as, decided once for the whole run.
+    ///
+    /// Here rather than per project because a corpus where two rows ran as two different users is
+    /// a corpus whose numbers cannot be read against each other, and because the decision is about
+    /// the machine rather than about any manifest.
+    pub privilege: Privilege,
 }
 
 impl Setup {
@@ -93,11 +100,26 @@ impl Setup {
         // loudly, because the eleven R2 projects before this one need only tools a bare macos and
         // a bare ubuntu both have.
         let extra_path = env::discover_extra_path();
+        // Decided before anything is fetched or built, because the answer changes what every
+        // suite on the list is going to count and because the usual way it goes wrong is a path
+        // the chosen user cannot see, which is worth hearing about now rather than an hour in.
+        let privilege = privilege::decide(options.as_user.as_deref(), options.as_root)?;
+        privilege::reachable(
+            &privilege,
+            &[
+                options.corpus.clone(),
+                toolchain.under_test.clone(),
+                toolchain.reference.clone(),
+            ],
+        )?;
         let mut provenance = driver::provenance(&toolchain);
         provenance.tool_prefixes = extra_path
             .iter()
             .map(|dir| dir.to_string_lossy().into_owned())
             .collect();
+        provenance.as_user = privilege
+            .user()
+            .map_or_else(String::new, |user| user.name.clone());
         let under_test = cache::Compiler::of(&toolchain.under_test, &provenance.rucc_version);
         let reference = cache::Compiler::of(&toolchain.reference, &provenance.gcc_version);
         Ok(Self {
@@ -109,6 +131,7 @@ impl Setup {
             reference,
             downloader: fetch::downloader(),
             extra_path,
+            privilege,
         })
     }
 }
@@ -157,6 +180,13 @@ fn cache_key(
     let mut extra = vec![
         format!("baseline={baseline:?}"),
         format!("excluded-by={}", excluded_by.unwrap_or("")),
+        // The user the build ran as, because it decides what several suites count. A cached
+        // record from a root run answering a question asked by a dropped run would be the exact
+        // failure this whole mechanism exists to remove, arriving through the cache instead.
+        format!(
+            "as-user={}",
+            setup.privilege.user().map_or("root", |user| &user.name)
+        ),
     ];
     // In the order the manifest names them, which is the order they are built in, so two projects
     // that need the same two libraries in different orders do not share a key.
@@ -410,6 +440,7 @@ pub fn job_for<'a>(
         extra_path: &setup.extra_path,
         needs,
         pin_sha256: &manifest.source.sha256,
+        privilege: &setup.privilege,
     }
 }
 
@@ -950,6 +981,11 @@ pub fn run(loaded: &Loaded, options: &Options, plan: &RunPlan) -> Result<Done, S
                 .map_err(|why| format!("opening {}: {why}", baseline_at.display()))?,
         ),
     };
+    // Said once, at the top, because two runs of the same corpus on the same machine can now come
+    // back with different counts and this decision is the only thing separating them.
+    if let Some(said) = setup.privilege.line() {
+        eprintln!("{said}\n");
+    }
     let collector = Collector::around(log, baseline);
     if plan.jobs > 1 {
         eprintln!(
@@ -1765,6 +1801,7 @@ command = ["./sample"]
                 rucc_version: String::new(),
                 rucc_commit: String::new(),
                 tool_prefixes: Vec::new(),
+                as_user: String::new(),
             },
             outcome,
             phase_reached: Phase::Tested,

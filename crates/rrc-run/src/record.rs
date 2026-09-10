@@ -161,6 +161,15 @@ pub struct Provenance {
     /// the build got nothing but `/usr/bin`, `/bin`, `/usr/sbin` and `/sbin`.
     #[serde(default)]
     pub tool_prefixes: Vec<String>,
+    /// The user builds and suites ran as, empty when the run stayed as whoever started it.
+    ///
+    /// On the record for the same reason `tool_prefixes` is, only more so. That one is a host
+    /// difference the environment allows in. This one changes what several suites count: gzip,
+    /// sed, tar, toybox and busybox all decide differently depending on whether the process can
+    /// ignore a permission bit. Two records that disagree about a project and agree about
+    /// everything else in here would otherwise look like a compiler difference.
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub as_user: String,
 }
 
 impl Provenance {
@@ -403,6 +412,7 @@ mod tests {
                 rucc_version: "0.5.0".into(),
                 rucc_commit: "deadbeef".into(),
                 tool_prefixes: Vec::new(),
+                as_user: String::new(),
             },
             outcome: Outcome::Passed,
             phase_reached: Phase::Tested,

@@ -237,10 +237,20 @@ const fn meaning(outcome: Outcome) -> &'static str {
 }
 
 /// Who the run was against, for the line under the headline.
+///
+/// The user is named only when the run dropped to one, and a run that stayed as it was says
+/// nothing, because on the machines that are not root there is nothing to say. On the ones that
+/// are, several suites count differently depending on this and a report that left it out would be
+/// two different measurements wearing the same headline.
 fn against(summary: &Summary) -> String {
     summary.provenance.as_ref().map_or_else(String::new, |p| {
+        let user = if p.as_user.is_empty() {
+            String::new()
+        } else {
+            format!(", as {}", p.as_user)
+        };
         format!(
-            " Run on {}, with {} against {}.",
+            " Run on {}{user}, with {} against {}.",
             p.host,
             p.rucc_version.trim(),
             p.gcc_version.trim()

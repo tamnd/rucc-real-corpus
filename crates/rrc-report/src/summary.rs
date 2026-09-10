@@ -104,9 +104,16 @@ impl Summary {
     pub fn render(&self) -> String {
         let mut out = String::new();
         if let Some(provenance) = &self.provenance {
+            // The user goes on the end and only when there is one, so the line a person has been
+            // reading for months does not move on the machines where nothing changed.
+            let user = if provenance.as_user.is_empty() {
+                String::new()
+            } else {
+                format!("  as {}", provenance.as_user)
+            };
             let _ = writeln!(
                 out,
-                "rucc-real-corpus  rucc {}+g{}  gcc {}  {}",
+                "rucc-real-corpus  rucc {}+g{}  gcc {}  {}{user}",
                 provenance.rucc_version,
                 provenance.rucc_commit,
                 provenance.gcc_version,

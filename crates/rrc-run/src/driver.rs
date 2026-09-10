@@ -21,6 +21,7 @@ use crate::env::{EnvPlan, environment};
 use crate::exec::{self, Completed, Ending, Invocation};
 use crate::input::{self, Input};
 use crate::parse::{self, Counts};
+use crate::privilege::{self, Privilege};
 use crate::record::{BuiltAgainst, Outcome, Phase, Provenance, RunRecord};
 use crate::sandbox::{Sandbox, Slot};
 use crate::shim::{Shim, Split, Toolchain};
@@ -92,6 +93,10 @@ pub struct Job<'a> {
     /// The pin's hash, copied onto the record so a result can never be read against the wrong
     /// version of the source.
     pub pin_sha256: &'a str,
+    /// Who the build and the suite run as. Decided once for the whole run rather than per project,
+    /// because a corpus where two rows ran as two different users is a corpus whose numbers cannot
+    /// be compared with each other.
+    pub privilege: &'a Privilege,
 }
 
 /// One corpus dependency, with its manifest and its extracted pin.
@@ -302,6 +307,25 @@ fn shim_for(
     }
 }
 
+/// Make the last of the directories the harness owes the build, then give the tree to its user.
+///
+/// Everything the harness makes for itself is made by the time this returns, and everything the
+/// project runs happens after it, so this is the one place the tree can change hands. A run that
+/// has dropped to another user writes into all of it, and a directory still owned by root turns up
+/// as a permission error from inside somebody's generated makefile rather than as anything a
+/// person can act on.
+///
+/// The two `create_dir_all` calls are here rather than where they used to be, later, for that
+/// reason alone: a directory made after the handover would be the one thing in the sandbox the
+/// build cannot write to.
+fn hand_over(job: &Job<'_>, sandbox: &Sandbox, prefix: Option<&Path>) -> std::io::Result<()> {
+    if let Some(prefix) = prefix {
+        std::fs::create_dir_all(prefix)?;
+    }
+    make_output_dirs(job.manifest, &build_dir(sandbox, job.manifest))?;
+    privilege::hand_over(job.privilege, sandbox.root())
+}
+
 /// Build and test with the compilers handed out however the caller asked.
 pub fn attempt_with(job: &Job<'_>, slot: Slot, dispatch: Dispatch<'_>) -> std::io::Result<Trial> {
     attempt_upto(job, slot, dispatch, Extent::Everything)
@@ -325,6 +349,8 @@ fn attempt_upto(
     let toolchain = toolchain_for(job.toolchain, compiler);
     let shim = shim_for(job, &sandbox, dispatch, &toolchain)?;
     let prefix = (!job.needs.is_empty()).then(|| needs_prefix(&sandbox));
+
+    hand_over(job, &sandbox, prefix.as_deref())?;
     // A direct build never reads CFLAGS, because the harness writes that command line itself and
     // puts the same flags on it. Passing them here anyway keeps the two paths saying the same
     // thing, and costs a variable nobody looks at.
@@ -382,7 +408,6 @@ fn attempt_upto(
     }
 
     let workdir = build_dir(&trial.sandbox, job.manifest);
-    make_output_dirs(job.manifest, &workdir)?;
     let normalizer = Normalizer::rooted_at(trial.sandbox.root());
     for step in steps_upto(build_steps(job, &env, &workdir), extent) {
         let completed = exec::run(&step.invocation)?;
@@ -516,7 +541,7 @@ fn install_needs(
         });
 
         let normalizer = Normalizer::rooted_at(trial.sandbox.root());
-        for step in need_steps(need, &env, &workdir, prefix) {
+        for step in need_steps(need, &env, &workdir, prefix, job.privilege.ids()) {
             let completed = exec::run(&step.invocation)?;
             trial.build_seconds += completed.seconds;
             trial.peak_rss = trial.peak_rss.max(completed.peak_rss);
@@ -554,6 +579,7 @@ fn need_steps(
     env: &BTreeMap<String, String>,
     workdir: &Path,
     prefix: &Path,
+    as_user: Option<(u32, u32)>,
 ) -> Vec<Step> {
     let limit = Duration::from_secs(need.manifest.limits.build_seconds);
     let at = |name: &str, program: &str, args: Vec<String>| Step {
@@ -565,6 +591,7 @@ fn need_steps(
             cwd: workdir.to_path_buf(),
             env: env.clone(),
             timeout: limit,
+            as_user,
         },
     };
     let mut configure = vec![format!("--prefix={}", prefix.display())];
@@ -663,6 +690,7 @@ fn build_steps(job: &Job<'_>, env: &BTreeMap<String, String>, workdir: &Path) ->
             cwd: workdir.to_path_buf(),
             env: env.clone(),
             timeout: limit,
+            as_user: job.privilege.ids(),
         },
     };
 
@@ -797,6 +825,7 @@ fn test_invocation(
         cwd: workdir.to_path_buf(),
         env: env.clone(),
         timeout: Duration::from_secs(job.manifest.limits.test_seconds),
+        as_user: job.privilege.ids(),
     })
 }
 
@@ -1099,6 +1128,7 @@ pub fn provenance(toolchain: &Toolchain) -> Provenance {
         rucc_version: first_line(&toolchain.under_test),
         rucc_commit: String::new(),
         tool_prefixes: Vec::new(),
+        as_user: String::new(),
     }
 }
 
@@ -1204,6 +1234,7 @@ oracle = "self-checking"
                 rucc_version: "test".to_string(),
                 rucc_commit: "test".to_string(),
                 tool_prefixes: Vec::new(),
+                as_user: String::new(),
             },
             pin: "0".repeat(64),
         })
@@ -1220,6 +1251,7 @@ oracle = "self-checking"
             extra_path: &[],
             needs: &[],
             pin_sha256: &fixture.pin,
+            privilege: &Privilege::AsIs,
         }
     }
 

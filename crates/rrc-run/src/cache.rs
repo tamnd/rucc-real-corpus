@@ -349,6 +349,7 @@ mod tests {
                 rucc_version: "0.7.8".into(),
                 rucc_commit: "f45adca".into(),
                 tool_prefixes: Vec::new(),
+                as_user: String::new(),
             },
             outcome: Outcome::Passed,
             phase_reached: Phase::Tested,

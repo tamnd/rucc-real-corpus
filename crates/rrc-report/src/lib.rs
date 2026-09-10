@@ -59,6 +59,7 @@ mod tests {
                 rucc_version: "0.5.1".to_string(),
                 rucc_commit: "8f2a1c".to_string(),
                 tool_prefixes: Vec::new(),
+                as_user: String::new(),
             },
             outcome,
             phase_reached: Phase::Tested,

@@ -124,6 +124,10 @@ fn preprocess(toolchain: &Toolchain, compile: &Compile) -> std::io::Result<Strin
         cwd: PathBuf::from(&compile.directory),
         env: inherited(),
         timeout: PATIENCE,
+        // The reducer is the harness talking to a compiler in scratch it owns, rather than a
+        // project's build system talking to one, so there is no permission check here for a user
+        // to change the answer of and nothing to hand over to one first.
+        as_user: None,
     })?;
 
     if !done.ending.is_success() {
@@ -291,6 +295,10 @@ pub fn complaint(toolchain: &Toolchain, compile: &Compile) -> std::io::Result<Op
         cwd: PathBuf::from(&compile.directory),
         env: inherited(),
         timeout: PATIENCE,
+        // The reducer is the harness talking to a compiler in scratch it owns, rather than a
+        // project's build system talking to one, so there is no permission check here for a user
+        // to change the answer of and nothing to hand over to one first.
+        as_user: None,
     })?;
     if done.ending.is_success() {
         return Ok(None);
@@ -393,6 +401,10 @@ fn interesting(kit: &Kit, checks: &mut usize) -> std::io::Result<bool> {
         cwd: kit.dir.clone(),
         env: inherited(),
         timeout: PATIENCE,
+        // The reducer is the harness talking to a compiler in scratch it owns, rather than a
+        // project's build system talking to one, so there is no permission check here for a user
+        // to change the answer of and nothing to hand over to one first.
+        as_user: None,
     })?;
     Ok(done.ending == Ending::Exited(0))
 }

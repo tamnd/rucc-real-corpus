@@ -157,6 +157,7 @@ mod tests {
                 rucc_version: "16".into(),
                 rucc_commit: String::new(),
                 tool_prefixes: Vec::new(),
+                as_user: String::new(),
             },
             outcome: Outcome::Excluded,
             phase_reached: Phase::Tested,
