@@ -1,0 +1,117 @@
+[project]
+name = "git"
+rung = 4
+upstream = "https://git-scm.com/"
+licence = "GPL-2.0"
+licence-file = "COPYING"
+description = "the version control system, graded by the thirty two thousand assertions of its own test suite"
+# git is here for a reason that is the opposite of bash's. bash was admitted because it stops early
+# and stops on something new. git was admitted because it very nearly does not stop at all: rucc
+# compiles 548 of its objects and fails in exactly eight files, across exactly two features, both of
+# which were already on the list before git arrived. A project that gets that far is worth more than
+# a project that gets nowhere, because the distance is the measurement. When stack-allocation and
+# transparent-union land, this row says whether they landed properly, on a program with a real test
+# suite behind it rather than on a reduced case.
+#
+# stack-allocation is three of the eight errors and they are all one macro. git-compat-util.h
+# defines `xalloca` as `alloca` when the platform has alloca.h, and tree-diff.c:39 uses it to build
+# a path buffer sized from the tree entry it is looking at. That is the same missing feature bash
+# found, tamnd/rucc#631, reached through a different spelling.
+#
+# transparent-union is the other five files and nine errors, and it is glibc rather than git.
+# `connect`, `accept` and `bind` all take their address argument as a transparent union, rucc drops
+# the attribute, and every call that passes a plain `struct sockaddr *` becomes a type error.
+# builtin/credential-cache--daemon.c, compat/simple-ipc/ipc-unix-socket.c, connect.c, daemon.c,
+# imap-send.c, trace2/tr2_dst.c and unix-socket.c are the seven files that open a socket.
+# tamnd/rucc#829. sed carries this tag too, and it is worth having twice, because sed reaches it
+# through gnulib's SIGNATURE_CHECK and git reaches it through an ordinary call, and those are the
+# two directions the attribute is used in.
+#
+# rotate-idioms is the third and it is not a blocker, it is what the row is for once the blockers
+# clear. sha1dc/sha1.c:133 and 134 define `rotate_right` and `rotate_left` as a shift pair or-ed
+# together, and DC_SHA1 is git's default hash, so every object git writes goes through them. A
+# compiler that does not turn that pair back into one instruction is slower at the thing git does
+# most.
+#
+# Left off: function-pointers, which the whole command dispatch table is, and which nine rows carry.
+# deep-macros, true of git-compat-util.h and of most of this list. large-switch, which the option
+# parser earns.
+demands = ["stack-allocation", "transparent-union", "rotate-idioms"]
+
+[source]
+url = "https://mirrors.edge.kernel.org/pub/software/scm/git/git-2.55.0.tar.xz"
+sha256 = "457fdb04dc8728e007d4688695e6912e6f680727920f2a40bf11eacc17505357"
+strip-components = 1
+
+# A2, a hand written Makefile with no configure step in front of it. git ships a configure, and it
+# is generated, and the Makefile works without it, so the plain make is the shorter path and the one
+# upstream documents first.
+[build]
+system = "make"
+binary = "git"
+
+# Four things turned off, and each one is a dependency of git rather than a part of it.
+#
+# NO_CURL, because the reference machine has no libcurl headers and the http transport is the only
+# thing that wants them. Without it the build stops at `curl/curl.h: No such file or directory`,
+# which is a missing package and not a compiler result.
+#
+# NO_RUST, because git 2.55 builds target/release/libgitcore.a with cargo as part of the default
+# target. That means a green row would be measuring rustc as much as it measures the C compiler,
+# which is not what this corpus is for, and in the sandbox it does not even get that far: cargo runs
+# with no toolchain selected and says it could not choose a version of cargo to run.
+#
+# NO_GETTEXT, because msgfmt is not on the reference machine and the message catalogues are not code.
+# The suite notices, and says so: GETTEXT is one of the prerequisites it reports as missing, and the
+# cases behind it are counted as skipped rather than failed on both sides.
+#
+# NO_TCLTK, because git-gui and gitk are Tcl programs and there is no compiler in them at all.
+[build.env]
+NO_CURL = "1"
+NO_RUST = "1"
+NO_GETTEXT = "1"
+NO_TCLTK = "1"
+
+# The level cannot come through the environment here and the Makefile says so in one line. Line 967
+# is `CFLAGS = -g -O2 -Wall`, a plain assignment, which make resolves in favour of the Makefile and
+# not the environment, so a level exported as CFLAGS is discarded and all six cells build at -O2.
+# Line 1592 is `ALL_CFLAGS = $(DEVELOPER_CFLAGS) $(CPPFLAGS) $(CFLAGS) $(CFLAGS_APPEND)`, so
+# CFLAGS_APPEND is both assignable from the command line and last on the line, which is what makes
+# it the carrier. It is the variable git's own release engineering uses for the same purpose.
+[build.level-flags]
+variable = "CFLAGS_APPEND"
+why = "Makefile line 967 is `CFLAGS = -g -O2 -Wall`, which a plain assignment makes immune to the environment, and line 1592 puts $(CFLAGS_APPEND) after $(CFLAGS) in ALL_CFLAGS"
+
+# The suite is git's own, which is TAP underneath and aggregated on top, and it is the aggregate
+# that is worth reading rather than the TAP. `make test` runs about a thousand t*.sh scripts, each
+# of which prints its own `ok` and `not ok` lines, and then t/aggregate-results.sh reads every
+# counts file and prints five totals at the end: fixed, success, failed, broken and total.
+#
+# The awk below takes three of those five. `success` is the assertions that passed and `fixed` is
+# the ones that were marked known broken and passed anyway, so both are passes. `failed` is the
+# only failure. `broken` is a known breakage that stayed broken, which is upstream's own accounting
+# and not ours, and `total` counts the skipped cases as well, which is why neither of them is the
+# denominator here. So the denominator is passes plus failures, which is the number of assertions
+# that actually ran and were expected to have an answer.
+#
+# This is the one project on the list whose suite runs with -j. `make test` serially is about
+# forty five minutes of mostly process startup on the reference machine and ten minutes with the
+# cores it has. The build stays serial, because the first diagnostic out of a build is the product
+# and a parallel build makes it a race, but the product of a suite is a count and a count does not
+# care what order it was arrived at. git's harness was written for this: every script writes its own
+# counts file and the aggregation happens after all of them have finished.
+[test]
+command = [
+    "sh",
+    "-c",
+    "jobs=$(nproc 2>/dev/null || echo 4); make test -j\"$jobs\" > rrc-suite-output.log 2>&1; status=$?; cat rrc-suite-output.log; awk '/^fixed[ \\t]/ { fixed = $2 } /^success[ \\t]/ { success = $2 } /^failed[ \\t]/ { failed = $2 } END { printf \"git: %d of %d tests passed\\n\", success + fixed, success + fixed + failed }' rrc-suite-output.log; exit $status",
+]
+oracle = "suite"
+parser = "custom-regex"
+regex = "git: (\\d+) of (\\d+) tests passed"
+baseline-tests = 31942
+requires = ["sh", "awk", "perl"]
+
+[limits]
+build-seconds = 5400
+test-seconds = 2400
