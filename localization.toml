@@ -102,6 +102,26 @@ issue = "https://github.com/tamnd/rucc/issues/631"
 note = "`__builtin_alloca` is not implemented and bash is built on it, so the front end stopped at the top of the read eval print loop, which is the first of seven sites. Two more blockers are behind this one, `__builtin_add_overflow` with mixed signedness in braces.c and the transparent union again in lib/sh/netconn.c, and neither is reached until this one moves."
 
 [[failure]]
+project = "git"
+level = "O0,O1,O2,Os,O3"
+went-red = "2026-09-11"
+named-file = "2026-09-11"
+file = "daemon.c"
+how = "diagnostic"
+issue = "https://github.com/tamnd/rucc/issues/829"
+note = "The transparent union for the third time and the shortest road to it yet. git's Makefile compiles daemon.o first, daemon.c:1020 passes a `struct sockaddr *` to `bind`, and all five cells stop there in the same 2.3 seconds with the same error. A hand build with `make -k` gets 548 objects out of the tree and fails in eight files across this issue and tamnd/rucc#631, but the serial build the harness runs reaches one of them, which is the file the record names."
+
+[[failure]]
+project = "git"
+level = "lto"
+went-red = "2026-09-11"
+named-file = "2026-09-11"
+file = "Makefile"
+how = "diagnostic"
+issue = "https://github.com/tamnd/rucc/issues/658"
+note = "`rucc: error: unknown option -flto` and nothing else, before a single line of git was read. The file named here is where the flag arrives rather than a file rucc could not parse: Makefile line 1592 puts CFLAGS_APPEND last in ALL_CFLAGS, which is how the level reaches the driver at all. mawk reaches the same wall through a configure probe and says nothing useful, so this one is the easier half of the same issue."
+
+[[failure]]
 project = "mawk"
 level = "lto"
 went-red = "2026-09-10"

@@ -34,6 +34,7 @@ Weight is what to do next. It is the sum over the held up projects of six minus 
 | `libm-builtins` | gnu-builtin | 3 | 0 | 0 | [open](https://github.com/tamnd/rucc/issues/226) |
 | `memcpy-idioms` | gnu-builtin | 3 | 0 | 0 | none open |
 | `overflow-builtins` | gnu-builtin | 3 | 0 | 0 | [open](https://github.com/tamnd/rucc/issues/836) |
+| `rotate-idioms` | standard | 3 | 0 | 0 | none open |
 | `thread-local` | standard | 3 | 0 | 0 | none open |
 | `unaligned-access` | standard | 3 | 0 | 0 | none open |
 | `constant-time` | standard | 2 | 0 | 0 | none open |
@@ -41,15 +42,14 @@ Weight is what to do next. It is the sum over the held up projects of six minus 
 | `inline-asm` | gnu-extension | 2 | 0 | 0 | none open |
 | `nan-boxing` | standard | 2 | 0 | 0 | none open |
 | `recursion-depth` | standard | 2 | 0 | 0 | none open |
-| `rotate-idioms` | standard | 2 | 0 | 0 | none open |
+| `stack-allocation` | standard | 2 | 0 | 0 | [open](https://github.com/tamnd/rucc/issues/631) |
+| `transparent-union` | gnu-extension | 2 | 0 | 0 | [open](https://github.com/tamnd/rucc/issues/829) |
 | `char-signedness` | abi | 1 | 0 | 0 | [open](https://github.com/tamnd/rucc/issues/489) |
 | `cleanup-attribute` | gnu-extension | 1 | 0 | 0 | [open](https://github.com/tamnd/rucc/issues/786) |
 | `driver-stdin-input` | driver | 1 | 0 | 0 | [open](https://github.com/tamnd/rucc/issues/812) |
 | `flexible-array-member` | standard | 1 | 0 | 0 | none open |
 | `long-double` | standard | 1 | 0 | 0 | none open |
-| `stack-allocation` | standard | 1 | 0 | 0 | [open](https://github.com/tamnd/rucc/issues/631) |
 | `stdckdint` | standard | 1 | 0 | 0 | none open |
-| `transparent-union` | gnu-extension | 1 | 0 | 0 | [open](https://github.com/tamnd/rucc/issues/829) |
 | `visibility-attributes` | gnu-extension | 1 | 0 | 0 | none open |
 
 ## The projects behind each row
@@ -320,6 +320,14 @@ __builtin_add_overflow, __builtin_sub_overflow and __builtin_mul_overflow, inclu
 - `libtommath`, R2, not measured
 - `bash`, R4, not measured
 
+### `rotate-idioms`
+
+a shift left or-ed with a shift right recognised as one rotate instruction
+
+- `blake2`, R1, not measured
+- `xxhash`, R1, not measured
+- `git`, R4, not measured
+
 ### `thread-local`
 
 _Thread_local and __thread
@@ -371,12 +379,19 @@ recursion deep enough that the frame layout and the tail call decision both matt
 - `parson`, R0, not measured
 - `lua-nojumptable`, R3, not measured
 
-### `rotate-idioms`
+### `stack-allocation`
 
-a shift left or-ed with a shift right recognised as one rotate instruction
+an array whose size is a runtime value, spelled either as a C99 variable length array or as a call to alloca, and a frame that grows and shrinks to hold it
 
-- `blake2`, R1, not measured
-- `xxhash`, R1, not measured
+- `bash`, R4, not measured
+- `git`, R4, not measured
+
+### `transparent-union`
+
+__attribute__((transparent_union)) on a parameter, which glibc's sockaddr argument is declared with
+
+- `git`, R4, not measured
+- `sed`, R4, not measured
 
 ### `char-signedness`
 
@@ -408,23 +423,11 @@ long double at the 80 bit x86-64 format
 
 - `libmpfr`, R2, not measured
 
-### `stack-allocation`
-
-an array whose size is a runtime value, spelled either as a C99 variable length array or as a call to alloca, and a frame that grows and shrinks to hold it
-
-- `bash`, R4, not measured
-
 ### `stdckdint`
 
 <stdckdint.h> and ckd_add, ckd_sub and ckd_mul
 
 - `jtckdint`, R0, not measured
-
-### `transparent-union`
-
-__attribute__((transparent_union)) on a parameter, which glibc's sockaddr argument is declared with
-
-- `sed`, R4, not measured
 
 ### `visibility-attributes`
 

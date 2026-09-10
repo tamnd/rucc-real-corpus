@@ -122,6 +122,14 @@ licence-sha256 = "690d762f2e8e149ab1e2d6a409a3853b6151a2533b2382fae549a176d6bede
 verified = "2026-09-08"
 
 [[project]]
+name = "git"
+url = "https://mirrors.edge.kernel.org/pub/software/scm/git/git-2.55.0.tar.xz"
+sha256 = "457fdb04dc8728e007d4688695e6912e6f680727920f2a40bf11eacc17505357"
+bytes = 8177180
+licence-sha256 = "5b2198d1645f767585e8a88ac0499b04472164c0d2da22e75ecf97ef443ab32e"
+verified = "2026-09-10"
+
+[[project]]
 name = "grep"
 url = "https://ftp.gnu.org/gnu/grep/grep-3.12.tar.xz"
 sha256 = "2649b27c0e90e632eadcd757be06c6e9a4f48d941de51e7c0f83ff76408a07b9"
