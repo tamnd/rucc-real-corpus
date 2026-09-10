@@ -10,41 +10,28 @@ The pinned archive is 73 files, 19,927 lines, 627.4 KiB, counted before anything
 
 | level | outcome | reached | graded by |
 | --- | --- | --- | --- |
-| O0 | did not build | fetched | suite count |
-| O1 | did not build | fetched | suite count |
-| O2 | did not build | fetched | suite count |
-| Os | did not build | fetched | suite count |
-| O3 | did not build | fetched | suite count |
-
-## What the compiler said
-
-The first diagnostic only, normalized, which is the one the failure clustering groups on.
-
-- `O0`: `rucc: error: '_sir_te' is thread-local, which this compiler does not build yet [E0653]`
-- `O1`: `rucc: error: '_sir_te' is thread-local, which this compiler does not build yet [E0653]`
-- `O2`: `rucc: error: '_sir_te' is thread-local, which this compiler does not build yet [E0653]`
-- `O3`: `rucc: error: '_sir_te' is thread-local, which this compiler does not build yet [E0653]`
-- `Os`: `rucc: error: '_sir_te' is thread-local, which this compiler does not build yet [E0653]`
+| O0 | passed | tested | suite count |
+| O1 | passed | tested | suite count |
+| O2 | passed | tested | suite count |
+| Os | passed | tested | suite count |
 
 ## The project's own tests
 
 | level | passed | of | gcc 16 passed | behind gcc |
 | --- | ---: | ---: | ---: | ---: |
-| O0 | not counted | not counted | not counted | not comparable |
-| O1 | not counted | not counted | not counted | not comparable |
-| O2 | not counted | not counted | not counted | not comparable |
-| Os | not counted | not counted | not counted | not comparable |
-| O3 | not counted | not counted | not counted | not comparable |
+| O0 | 36 | 36 | not counted | not comparable |
+| O1 | 36 | 36 | not counted | not comparable |
+| O2 | 36 | 36 | not counted | not comparable |
+| Os | 36 | 36 | not counted | not comparable |
 
 ## Time and memory
 
 | level | compile | gcc 16 | vs gcc | suite | gcc 16 | vs gcc | build memory | gcc 16 | vs gcc |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| O0 | 0.52s | 5.54s | 0.09x | 0.00s | 0.04s | not measured | 9.6 MiB | 52.3 MiB | 0.18x |
-| O1 | 0.43s | 8.76s | 0.05x | 0.00s | 0.04s | not measured | 10.6 MiB | 54.9 MiB | 0.19x |
-| O2 | 0.41s | 9.42s | 0.04x | 0.00s | 0.00s | not measured | 11.8 MiB | 61.4 MiB | 0.19x |
-| Os | 0.44s | 8.53s | 0.05x | 0.00s | 0.01s | not measured | 10.9 MiB | 58.2 MiB | 0.19x |
-| O3 | 0.38s | 9.25s | 0.04x | 0.00s | 0.03s | not measured | 9.0 MiB | 61.6 MiB | 0.15x |
+| O0 | 1.79s | not measured | not measured | 2.16s | not measured | not measured | 64.1 MiB | not measured | not measured |
+| O1 | 2.56s | not measured | not measured | 3.15s | not measured | not measured | 49.8 MiB | not measured | not measured |
+| O2 | 3.27s | not measured | not measured | 3.15s | not measured | not measured | 55.8 MiB | not measured | not measured |
+| Os | 3.05s | not measured | not measured | 3.15s | not measured | not measured | 53.5 MiB | not measured | not measured |
 
 ## Size
 
@@ -54,4 +41,3 @@ The first diagnostic only, normalized, which is the one the failure clustering g
 | O1 | not measured | not measured | not measured | not measured | not measured | not measured |
 | O2 | not measured | not measured | not measured | not measured | not measured | not measured |
 | Os | not measured | not measured | not measured | not measured | not measured | not measured |
-| O3 | not measured | not measured | not measured | not measured | not measured | not measured |

@@ -10,48 +10,34 @@ The pinned archive is 11 files, 4,458 lines, 159.6 KiB, counted before anything 
 
 | level | outcome | reached | graded by |
 | --- | --- | --- | --- |
-| O0 | excluded | fetched | suite count |
-| O1 | did not build | fetched | suite count |
-| O2 | did not build | fetched | suite count |
-| Os | did not build | fetched | suite count |
-| O3 | did not build | fetched | suite count |
-
-## What the compiler said
-
-The first diagnostic only, normalized, which is the one the failure clustering groups on.
-
-- `O0`: `test_heatshrink_dynamic.c:882:13: error: cannot generate code for 'pseudorandom_data_should_match': no rule lowers a `stacksave` producing a `ptr` [E0653]`
-- `O1`: `test_heatshrink_dynamic.c:882:13: error: cannot generate code for 'pseudorandom_data_should_match': no rule lowers a `stacksave` producing a `ptr` [E0653]`
-- `O2`: `test_heatshrink_dynamic.c:882:13: error: cannot generate code for 'pseudorandom_data_should_match': no rule lowers a `stacksave` producing a `ptr` [E0653]`
-- `O3`: `test_heatshrink_dynamic.c:882:13: error: cannot generate code for 'pseudorandom_data_should_match': no rule lowers a `stacksave` producing a `ptr` [E0653]`
-- `Os`: `test_heatshrink_dynamic.c:882:13: error: cannot generate code for 'pseudorandom_data_should_match': no rule lowers a `stacksave` producing a `ptr` [E0653]`
+| O0 | excluded | tested | suite count |
+| O1 | passed | tested | suite count |
+| O2 | passed | tested | suite count |
+| Os | passed | tested | suite count |
 
 ## The project's own tests
 
 | level | passed | of | gcc 16 passed | behind gcc |
 | --- | ---: | ---: | ---: | ---: |
 | O0 | not counted | not counted | not counted | not comparable |
-| O1 | not counted | not counted | 12282 | not comparable |
-| O2 | not counted | not counted | 12282 | not comparable |
-| Os | not counted | not counted | 12282 | not comparable |
-| O3 | not counted | not counted | 12282 | not comparable |
+| O1 | 12282 | 12282 | not counted | not comparable |
+| O2 | 12282 | 12282 | not counted | not comparable |
+| Os | 12282 | 12282 | not counted | not comparable |
 
 ## Time and memory
 
 | level | compile | gcc 16 | vs gcc | suite | gcc 16 | vs gcc | build memory | gcc 16 | vs gcc |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| O0 | 0.20s | 0.59s | 0.33x | 0.00s | 0.49s | 0.00x | 12.8 MiB | 42.1 MiB | 0.30x |
-| O1 | 0.28s | 1.07s | 0.26x | 0.00s | 7.41s | 0.00x | 12.4 MiB | 49.3 MiB | 0.25x |
-| O2 | 0.33s | 1.75s | 0.19x | 0.00s | 6.96s | 0.00x | 12.9 MiB | 54.8 MiB | 0.24x |
-| Os | 0.23s | 1.59s | 0.14x | 0.00s | 9.44s | 0.00x | 12.5 MiB | 52.8 MiB | 0.24x |
-| O3 | 0.31s | 1.86s | 0.16x | 0.00s | 6.13s | 0.00x | 13.0 MiB | 55.0 MiB | 0.24x |
+| O0 | 0.21s | not measured | not measured | 0.08s | not measured | not measured | 39.8 MiB | not measured | not measured |
+| O1 | 0.44s | not measured | not measured | 5.09s | not measured | not measured | 42.9 MiB | not measured | not measured |
+| O2 | 0.68s | not measured | not measured | 4.34s | not measured | not measured | 50.4 MiB | not measured | not measured |
+| Os | 0.62s | not measured | not measured | 5.37s | not measured | not measured | 48.4 MiB | not measured | not measured |
 
 ## Size
 
 | level | text and data | gcc 16 | vs gcc | on disk | gcc 16 | vs gcc |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| O0 | not measured | 46.4 KiB | not measured | not measured | 62.1 KiB | not measured |
-| O1 | not measured | 39.1 KiB | not measured | not measured | 50.9 KiB | not measured |
-| O2 | not measured | 40.2 KiB | not measured | not measured | 54.9 KiB | not measured |
-| Os | not measured | 32.7 KiB | not measured | not measured | 46.8 KiB | not measured |
-| O3 | not measured | 43.6 KiB | not measured | not measured | 54.8 KiB | not measured |
+| O0 | 52.6 KiB | not measured | not measured | 66.3 KiB | not measured | not measured |
+| O1 | 43.6 KiB | not measured | not measured | 55.2 KiB | not measured | not measured |
+| O2 | 44.5 KiB | not measured | not measured | 59.1 KiB | not measured | not measured |
+| Os | 36.7 KiB | not measured | not measured | 51.0 KiB | not measured | not measured |

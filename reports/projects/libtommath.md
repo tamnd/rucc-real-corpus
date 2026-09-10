@@ -10,41 +10,28 @@ The pinned archive is 177 files, 30,479 lines, 792.9 KiB, counted before anythin
 
 | level | outcome | reached | graded by |
 | --- | --- | --- | --- |
-| O0 | did not build | fetched | suite count |
-| O1 | did not build | fetched | suite count |
-| O2 | did not build | fetched | suite count |
-| Os | did not build | fetched | suite count |
-| O3 | did not build | fetched | suite count |
-
-## What the compiler said
-
-The first diagnostic only, normalized, which is the one the failure clustering groups on.
-
-- `O0`: `rucc: error: unknown option `-funroll-loops``
-- `O1`: `rucc: error: unknown option `-funroll-loops``
-- `O2`: `rucc: error: unknown option `-funroll-loops``
-- `O3`: `rucc: error: unknown option `-funroll-loops``
-- `Os`: `rucc: error: unknown option `-funroll-loops``
+| O0 | passed | tested | suite count |
+| O1 | passed | tested | suite count |
+| O2 | passed | tested | suite count |
+| Os | passed | tested | suite count |
 
 ## The project's own tests
 
 | level | passed | of | gcc 16 passed | behind gcc |
 | --- | ---: | ---: | ---: | ---: |
-| O0 | not counted | not counted | 42 | not comparable |
-| O1 | not counted | not counted | 42 | not comparable |
-| O2 | not counted | not counted | 42 | not comparable |
-| Os | not counted | not counted | 42 | not comparable |
-| O3 | not counted | not counted | 42 | not comparable |
+| O0 | 42 | 42 | not counted | not comparable |
+| O1 | 42 | 42 | not counted | not comparable |
+| O2 | 42 | 42 | not counted | not comparable |
+| Os | 42 | 42 | not counted | not comparable |
 
 ## Time and memory
 
 | level | compile | gcc 16 | vs gcc | suite | gcc 16 | vs gcc | build memory | gcc 16 | vs gcc |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| O0 | 0.03s | 15.68s | 0.00x | 0.00s | 31.04s | 0.00x | 2.2 MiB | 55.3 MiB | 0.04x |
-| O1 | 0.06s | 24.26s | 0.00x | 0.00s | 14.41s | 0.00x | not measured | 55.3 MiB | not measured |
-| O2 | 0.05s | 23.65s | 0.00x | 0.00s | 12.89s | 0.00x | 2.2 MiB | 59.7 MiB | 0.04x |
-| Os | 0.15s | 21.81s | 0.01x | 0.00s | 15.48s | 0.00x | 2.3 MiB | 55.2 MiB | 0.04x |
-| O3 | 0.03s | 23.97s | 0.00x | 0.00s | 11.03s | 0.00x | 2.2 MiB | 59.7 MiB | 0.04x |
+| O0 | 4.03s | not measured | not measured | 14.79s | not measured | not measured | 40.2 MiB | not measured | not measured |
+| O1 | 6.05s | not measured | not measured | 6.00s | not measured | not measured | 135.9 MiB | not measured | not measured |
+| O2 | 7.12s | not measured | not measured | 5.72s | not measured | not measured | 53.0 MiB | not measured | not measured |
+| Os | 6.51s | not measured | not measured | 7.41s | not measured | not measured | 49.4 MiB | not measured | not measured |
 
 ## Size
 
@@ -54,4 +41,3 @@ The first diagnostic only, normalized, which is the one the failure clustering g
 | O1 | not measured | not measured | not measured | not measured | not measured | not measured |
 | O2 | not measured | not measured | not measured | not measured | not measured | not measured |
 | Os | not measured | not measured | not measured | not measured | not measured | not measured |
-| O3 | not measured | not measured | not measured | not measured | not measured | not measured |

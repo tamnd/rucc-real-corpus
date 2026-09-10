@@ -10,31 +10,28 @@ The pinned archive is 42 files, 15,493 lines, 442.4 KiB, counted before anything
 
 | level | outcome | reached | graded by |
 | --- | --- | --- | --- |
-| O0 | did not build | configured | suite count |
-| O1 | did not build | configured | suite count |
-| O2 | did not build | configured | suite count |
-| Os | did not build | configured | suite count |
-| O3 | did not build | configured | suite count |
+| O0 | passed | tested | suite count |
+| O1 | passed | tested | suite count |
+| O2 | passed | tested | suite count |
+| Os | passed | tested | suite count |
 
 ## The project's own tests
 
 | level | passed | of | gcc 16 passed | behind gcc |
 | --- | ---: | ---: | ---: | ---: |
-| O0 | not counted | not counted | 5 | not comparable |
-| O1 | not counted | not counted | 5 | not comparable |
-| O2 | not counted | not counted | 5 | not comparable |
-| Os | not counted | not counted | 5 | not comparable |
-| O3 | not counted | not counted | 5 | not comparable |
+| O0 | 5 | 5 | not counted | not comparable |
+| O1 | 5 | 5 | not counted | not comparable |
+| O2 | 5 | 5 | not counted | not comparable |
+| Os | 5 | 5 | not counted | not comparable |
 
 ## Time and memory
 
 | level | compile | gcc 16 | vs gcc | suite | gcc 16 | vs gcc | build memory | gcc 16 | vs gcc |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| O0 | 61s | 20.89s | 2.91x | 0.00s | 0.85s | 0.00x | 5939.7 MiB | 50.2 MiB | 118.41x |
-| O1 | 75s | 23.27s | 3.23x | 0.00s | 0.81s | 0.00x | 7843.8 MiB | 46.0 MiB | 170.52x |
-| O2 | 74s | 25.92s | 2.86x | 0.00s | 0.85s | 0.00x | 7858.6 MiB | 53.6 MiB | 146.69x |
-| Os | 75s | 25.13s | 2.99x | 0.00s | 1.00s | 0.00x | 7837.9 MiB | 48.3 MiB | 162.26x |
-| O3 | 76s | 26.70s | 2.85x | 0.00s | 0.70s | 0.00x | 7870.1 MiB | 54.0 MiB | 145.71x |
+| O0 | 7.92s | not measured | not measured | 0.21s | not measured | not measured | 134.6 MiB | not measured | not measured |
+| O1 | 8.66s | not measured | not measured | 0.21s | not measured | not measured | 138.5 MiB | not measured | not measured |
+| O2 | 9.64s | not measured | not measured | 0.21s | not measured | not measured | 90.8 MiB | not measured | not measured |
+| Os | 9.41s | not measured | not measured | 0.21s | not measured | not measured | 75.5 MiB | not measured | not measured |
 
 ## Size
 
@@ -44,4 +41,3 @@ The pinned archive is 42 files, 15,493 lines, 442.4 KiB, counted before anything
 | O1 | not measured | not measured | not measured | not measured | not measured | not measured |
 | O2 | not measured | not measured | not measured | not measured | not measured | not measured |
 | Os | not measured | not measured | not measured | not measured | not measured | not measured |
-| O3 | not measured | not measured | not measured | not measured | not measured | not measured |

@@ -10,41 +10,28 @@ The pinned archive is 360 files, 109,292 lines, 3.0 MiB, counted before anything
 
 | level | outcome | reached | graded by |
 | --- | --- | --- | --- |
-| O0 | did not build | configured | suite count |
-| O1 | did not build | configured | suite count |
-| Os | did not build | configured | suite count |
-| O2 | did not build | configured | suite count |
-| O3 | did not build | configured | suite count |
-
-## What the compiler said
-
-The first diagnostic only, normalized, which is the one the failure clustering groups on.
-
-- `O0`: `src/src/unix/async.c:410:3: error: cannot generate code for 'uv__cpu_relax': this `asm` has instructions in its template, which nothing here assembles [E0653]`
-- `O1`: `src/src/unix/async.c:410:3: error: cannot generate code for 'uv__cpu_relax': this `asm` has instructions in its template, which nothing here assembles [E0653]`
-- `O2`: `src/src/unix/async.c:410:3: error: cannot generate code for 'uv__cpu_relax': this `asm` has instructions in its template, which nothing here assembles [E0653]`
-- `O3`: `src/src/unix/async.c:410:3: error: cannot generate code for 'uv__cpu_relax': this `asm` has instructions in its template, which nothing here assembles [E0653]`
-- `Os`: `src/src/unix/async.c:410:3: error: cannot generate code for 'uv__cpu_relax': this `asm` has instructions in its template, which nothing here assembles [E0653]`
+| O0 | passed | tested | suite count |
+| O1 | passed | tested | suite count |
+| O2 | passed | tested | suite count |
+| Os | passed | tested | suite count |
 
 ## The project's own tests
 
 | level | passed | of | gcc 16 passed | behind gcc |
 | --- | ---: | ---: | ---: | ---: |
-| O0 | not counted | not counted | not counted | not comparable |
-| O1 | not counted | not counted | not counted | not comparable |
-| Os | not counted | not counted | not counted | not comparable |
-| O2 | not counted | not counted | not counted | not comparable |
-| O3 | not counted | not counted | not counted | not comparable |
+| O0 | 446 | 446 | not counted | not comparable |
+| O1 | 446 | 446 | not counted | not comparable |
+| O2 | 446 | 446 | not counted | not comparable |
+| Os | 446 | 446 | not counted | not comparable |
 
 ## Time and memory
 
 | level | compile | gcc 16 | vs gcc | suite | gcc 16 | vs gcc | build memory | gcc 16 | vs gcc |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| O0 | 8.17s | 123s | 0.07x | 0.00s | 0.04s | not measured | 21.7 MiB | 70.8 MiB | 0.31x |
-| O1 | 7.76s | 150s | 0.05x | 0.00s | 0.05s | not measured | 22.1 MiB | 76.2 MiB | 0.29x |
-| Os | 6.85s | 177s | 0.04x | 0.00s | 0.03s | not measured | 22.5 MiB | 84.6 MiB | 0.27x |
-| O2 | 6.66s | 183s | 0.04x | 0.00s | 0.03s | not measured | 22.4 MiB | 86.8 MiB | 0.26x |
-| O3 | 8.15s | 185s | 0.04x | 0.00s | 0.03s | not measured | 22.3 MiB | 86.9 MiB | 0.26x |
+| O0 | 35.06s | not measured | not measured | 38.74s | not measured | not measured | 85.4 MiB | not measured | not measured |
+| O1 | 48.95s | not measured | not measured | 38.61s | not measured | not measured | 134.8 MiB | not measured | not measured |
+| O2 | 63s | not measured | not measured | 38.62s | not measured | not measured | 93.1 MiB | not measured | not measured |
+| Os | 62s | not measured | not measured | 38.72s | not measured | not measured | 134.8 MiB | not measured | not measured |
 
 ## Size
 
@@ -52,6 +39,5 @@ The first diagnostic only, normalized, which is the one the failure clustering g
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
 | O0 | not measured | not measured | not measured | not measured | not measured | not measured |
 | O1 | not measured | not measured | not measured | not measured | not measured | not measured |
-| Os | not measured | not measured | not measured | not measured | not measured | not measured |
 | O2 | not measured | not measured | not measured | not measured | not measured | not measured |
-| O3 | not measured | not measured | not measured | not measured | not measured | not measured |
+| Os | not measured | not measured | not measured | not measured | not measured | not measured |
