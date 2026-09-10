@@ -19,8 +19,8 @@ Weight is what to do next. It is the sum over the held up projects of six minus 
 | `deep-macros` | preprocessor | 11 | 0 | 0 | none open |
 | `struct-layout` | abi | 11 | 0 | 0 | none open |
 | `integer-conversion` | standard | 10 | 0 | 0 | none open |
-| `large-switch` | standard | 10 | 0 | 0 | none open |
 | `function-pointers` | standard | 9 | 0 | 0 | none open |
+| `large-switch` | standard | 9 | 0 | 0 | none open |
 | `computed-goto` | gnu-extension | 6 | 0 | 0 | [open](https://github.com/tamnd/rucc/issues/353) |
 | `setjmp-longjmp` | standard | 6 | 0 | 0 | none open |
 | `double-formatting` | standard | 5 | 0 | 0 | none open |
@@ -48,6 +48,7 @@ Weight is what to do next. It is the sum over the held up projects of six minus 
 | `fortify-builtins` | gnu-builtin | 1 | 0 | 0 | [open](https://github.com/tamnd/rucc/issues/825) |
 | `long-double` | standard | 1 | 0 | 0 | none open |
 | `stdckdint` | standard | 1 | 0 | 0 | none open |
+| `transparent-union` | gnu-extension | 1 | 0 | 0 | [open](https://github.com/tamnd/rucc/issues/829) |
 | `visibility-attributes` | gnu-extension | 1 | 0 | 0 | none open |
 
 ## The projects behind each row
@@ -172,21 +173,6 @@ the integer types are the widths the standard says they are, and conversions bet
 - `libtommath`, R2, not measured
 - `diffutils`, R4, not measured
 
-### `large-switch`
-
-a switch with hundreds of cases, where the jump table decision is the compiler's
-
-- `libconfig`, R2, not measured
-- `pcre2`, R2, not measured
-- `duktape`, R3, not measured
-- `lua`, R3, not measured
-- `lua-nojumptable`, R3, not measured
-- `quickjs`, R3, not measured
-- `flex`, R4, not measured
-- `mawk`, R4, not measured
-- `sed`, R4, not measured
-- `sqlite-shell`, R4, not measured
-
 ### `function-pointers`
 
 calls through a pointer, including pointers to library functions
@@ -200,6 +186,20 @@ calls through a pointer, including pointers to library functions
 - `libuv`, R2, not measured
 - `oniguruma`, R2, not measured
 - `wren`, R3, not measured
+
+### `large-switch`
+
+a switch with hundreds of cases, where the jump table decision is the compiler's
+
+- `libconfig`, R2, not measured
+- `pcre2`, R2, not measured
+- `duktape`, R3, not measured
+- `lua`, R3, not measured
+- `lua-nojumptable`, R3, not measured
+- `quickjs`, R3, not measured
+- `flex`, R4, not measured
+- `mawk`, R4, not measured
+- `sqlite-shell`, R4, not measured
 
 ### `computed-goto`
 
@@ -408,6 +408,12 @@ long double at the 80 bit x86-64 format
 
 - `jtckdint`, R0, not measured
 
+### `transparent-union`
+
+__attribute__((transparent_union)) on a parameter, which glibc's sockaddr argument is declared with
+
+- `sed`, R4, not measured
+
 ### `visibility-attributes`
 
 __attribute__((visibility)) on functions and on objects
@@ -472,6 +478,7 @@ These rows are why the residue above can be believed. A list that only records w
 - `setjmp-longjmp`: no setjmp and no longjmp, since errors are returned as codes all the way up
 - `stdckdint`: the checked arithmetic goes through the GNU overflow builtins rather than the C23 header
 - `thread-local`: no _Thread_local and no __thread, because thread state is passed in the connection handle rather than kept in the compiler's storage
+- `transparent-union`: the amalgamation opens no sockets and declares no union of its own with the attribute, so the one place glibc uses it, the sockaddr argument of bind and its relatives, is never reached from sqlite3.c
 - `visibility-attributes`: the amalgamation controls its exports with SQLITE_API and static rather than with a visibility attribute
 
 ## Features nothing on the list demands

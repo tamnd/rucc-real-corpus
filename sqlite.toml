@@ -217,6 +217,11 @@ sites = 0
 evidence = "sqlite3.c spells the signedness it wants rather than asking for a flag, 392 uses of unsigned char and an explicit signed char on the operand fields of the VDBE opcode struct and on INT8_TYPE, so a build that changed the sign of a plain char would not change what the amalgamation means"
 
 [[measured]]
+tag = "transparent-union"
+sites = 0
+evidence = "the amalgamation opens no sockets and declares no union of its own with the attribute, so the one place glibc uses it, the sockaddr argument of bind and its relatives, is never reached from sqlite3.c"
+
+[[measured]]
 tag = "fortify-builtins"
 sites = 0
 evidence = "no _FORTIFY_SOURCE anywhere in sqlite3.c, no __builtin___ name of any kind and no __builtin_object_size, so the fortified headers are only reached if the machine's compiler turns them on rather than because the amalgamation asked"

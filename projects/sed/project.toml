@@ -32,12 +32,22 @@ description = "the stream editor, an interpreter for a small language, graded by
 # `__builtin___*_chk` family. rucc runs the whole of sed's configure and answers every probe, then
 # stops on the first of those. tamnd/rucc#825.
 #
-# Left off: feature-test-macros, which is true of every other gnulib row here and is not what stops
-# this one. pointer-arithmetic, which `resize_line` earns fairly, since it saves `active - text`
-# across the realloc and rebuilds the pointer from the offset afterwards, and which sixteen rows
-# already carry. And bit-manipulation and switch-dispatch, both true of lib/dfa.c, which sed
-# compiles as well, and both of which grep is already on the list for with the same file.
-demands = ["fortify-builtins", "struct-layout", "large-switch"]
+# transparent-union is the second blocker and it is the one that shows up at -O0, where fortify is
+# off because `__OPTIMIZE__` is not defined. At that level rucc builds sed and passes all 58 cases
+# of sed's own suite, which is every one gcc passes. What it does not build is the gnulib test
+# directory, where three socket tests assign `accept`, `bind` and `connect` to function pointers
+# declared with `struct sockaddr *`, and glibc declares those functions with `__SOCKADDR_ARG`, which
+# is a transparent union of eleven pointer types. rucc parses the attribute and drops it, so the
+# assignment is a type error. tamnd/rucc#829. That is why this row records a wrong answer at -O0
+# rather than a green cell: the program is right and the suite is short.
+#
+# Left off: large-switch, which the dispatch above earns and which nine rows already carry.
+# feature-test-macros, which is true of every other gnulib row here and is not what stops this one.
+# pointer-arithmetic, which `resize_line` earns fairly, since it saves `active - text` across the
+# realloc and rebuilds the pointer from the offset afterwards, and which sixteen rows already carry.
+# And bit-manipulation and switch-dispatch, both true of lib/dfa.c, which sed compiles as well, and
+# both of which grep is already on the list for with the same file.
+demands = ["fortify-builtins", "transparent-union", "struct-layout"]
 
 [source]
 url = "https://ftp.gnu.org/gnu/sed/sed-4.9.tar.xz"
@@ -63,6 +73,9 @@ expect-configure = [
 # -O2 it is 144576 bytes with 114445 of text. A hand build comes out larger because configure
 # defaults CFLAGS to `-g -O2` when the environment is silent and the harness says `-O2`, which is
 # the same gap diffutils records.
+#
+# The six levels give six sizes, so the level reaches the compiler with nothing added: 169488 bytes
+# at -O0, 136232 at -O1, 144576 at -O2, 112280 at -Os, 180896 at -O3 and 127176 with -flto.
 binary = "sed/sed"
 
 # make check runs two automake harnesses, the project's own testsuite and gnulib-tests, and each
@@ -70,7 +83,8 @@ binary = "sed/sed"
 #
 # gcc 16.2.0 on the reference machine gives 68 cases in the project's own suite, 58 passing and 10
 # skipped, and 192 in gnulib-tests, 155 passing and 37 skipped, so the harness sees 260 run and 213
-# passing, with no failures and no expected failures on either side.
+# passing, with no failures and no expected failures on either side. That is the same at all six
+# levels including -flto, so the baseline is a property of the machine and not of the level.
 #
 # 47 skips is a large fraction and they are the same kind diffutils has, which is to say they are
 # properties of the machine rather than of the compiler. Nineteen of them are multibyte and locale

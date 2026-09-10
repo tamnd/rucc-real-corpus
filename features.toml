@@ -201,6 +201,19 @@ kind = "standard"
 summary = "_Thread_local and __thread"
 kind = "standard"
 
+# The attribute is used in two directions and only one of them can be classified from the log. An
+# assignment between a pointer to the union taking function and a pointer to the member taking one,
+# which is what gnulib's SIGNATURE_CHECK does, prints both types and the word union is in the
+# printed one, so the needle below is safe. A call that passes a member where the union is declared
+# is refused with `incompatible type for argument 1 of f`, which names no type at all and would
+# match every ordinary argument mismatch in the corpus, so it is deliberately not listed here.
+[transparent-union]
+summary = "__attribute__((transparent_union)) on a parameter, which glibc's sockaddr argument is declared with"
+kind = "gnu-extension"
+diagnostic = ["incompatible pointer type 'int (*)(int, union <anonymous>"]
+rucc-issue = "https://github.com/tamnd/rucc/issues/829"
+standard = "GNU extension with no portable spelling"
+
 [unaligned-access]
 summary = "loads and stores through pointers the compiler cannot prove are aligned"
 kind = "standard"
