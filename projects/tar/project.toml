@@ -1,0 +1,112 @@
+[project]
+name = "tar"
+rung = 4
+upstream = "https://www.gnu.org/software/tar/"
+licence = "GPL-3.0-or-later"
+licence-file = "COPYING"
+description = "GNU tar, graded by two hundred and forty four autotest cases that write archives and read them back"
+# tar is here for the header fields, which are the place where a compiler's arithmetic becomes a
+# file format other programs have to read. Every numeric field in a tar header is a fixed width
+# array of char holding an octal string, and when a value does not fit, GNU tar switches to base
+# 256 and writes the number a byte at a time. `to_base256` in src/create.c builds the sign
+# extension it needs with `((uintmax_t) - negative << (CHAR_BIT * sizeof v - LG_256))`, which is a
+# bool negated into an unsigned type and then shifted by a width computed from sizeof, and then
+# writes each digit as `v & ((1 << LG_256) - 1)` into a char. `to_chars` around it decides between
+# octal, base 256 and a modulo 2 to the field width fallback by comparing the value against
+# `MAX_VAL_WITH_DIGITS (size - 1, LG_8)`, all in uintmax_t. That is what integer-conversion names,
+# and getting it wrong produces an archive that this tar can read and another tar cannot.
+#
+# struct-layout is the other half of the same format. `union block` in src/tar.h overlays six header
+# structs on one 512 byte buffer, and the code reads a field out of whichever member the format
+# calls for. Nothing in the file asserts the size, so a compiler that pads `struct posix_header`
+# differently than the format says silently moves every field after the padding, and the archive it
+# writes is wrong in a way no diagnostic reports.
+#
+# fortify-builtins is the measured blocker, the one sed found, and tar reaches it by two different
+# roads. At -O1 and above it is the road sed takes: gnulib's config.h defines `_FORTIFY_SOURCE` as 2
+# whenever `__OPTIMIZE__` is set, and the fortified headers are written in builtins rucc does not
+# have, so the build stops in bits/strings_fortified.h on `__builtin___memmove_chk`.
+#
+# At -O0 there is no fortification and it still stops, one builtin further down the same list.
+# /usr/include/x86_64-linux-gnu/bits/error.h uses `__builtin_va_arg_pack` unconditionally, with no
+# fortify level involved, so `checking for error.h` answers no. gnulib then compiles its own error.h
+# without ever including the system one, which means the system declaration of `error` never arrives
+# and the macro gnulib defines for it is the only thing in scope. The first call, at argmatch.c:148,
+# is an implicit declaration and the build ends there. Same issue, tamnd/rucc#825, and worth writing
+# down because a failed configure probe moves the diagnostic a long way from its cause.
+#
+# Left off: pointer-arithmetic, true of the buffer code and carried by sixteen rows already, and
+# feature-test-macros, which is not what stops this one.
+demands = ["fortify-builtins", "integer-conversion", "struct-layout"]
+
+[source]
+url = "https://ftp.gnu.org/gnu/tar/tar-1.35.tar.xz"
+sha256 = "4d62ff37342ec7aed748535323930c7cf94acf71c3591882b26a7ea50f3edc16"
+strip-components = 1
+
+# A3, ordinary autoconf and automake, and the level needs no carrier: configure takes CFLAGS out of
+# the environment and automake puts it on every compile and on the link.
+#
+# There is one thing worth knowing about configuring tar and it is why section 7.12 matters here.
+# tar's configure refuses to run as root without `FORCE_UNSAFE_CONFIGURE=1`, because some of its
+# probes create files with owners and modes that are unsafe to make in a directory root can be
+# tricked about. The harness drops privilege before it configures, so nothing has to be set, and a
+# run forced back with `--as-root` fails at configure with that message rather than mysteriously.
+[build]
+system = "configure"
+expect-configure = [
+    "checking whether the compiler supports GNU C... yes",
+    "checking for C/C++ restrict keyword... __restrict__",
+]
+# The program the suite runs, and the only one worth measuring. Measured through the harness at -O2
+# it is 484624 bytes with 403658 of text, and at -O0 it is 579824 with 482028.
+binary = "src/tar"
+
+# tar's suite is autotest and not automake, so there are no `# PASS:` blocks to sum. What it prints
+# is one line per case, `NNN: name  ok` or `skipped (file.at:NN)` or `FAILED (file.at:NN)`, and then
+# a summary that changes shape depending on whether anything failed. Counting the case lines is the
+# stable thing to do, which is the same reason toybox, pdpmake, janet and tcc count their own.
+#
+# The run count is passes plus failures and leaves the skips out, as everywhere else here.
+#
+# gcc 16.2.0 on the reference machine gives 217 of 217 with 27 skipped, running as an ordinary user,
+# and the same at -O0 and -O2. The skips are the ones that need something the machine or the account
+# does not have: the access control list and extended attribute cases, the capabilities case, the
+# selinux cases, and the star compatibility cases that want archives too large to keep in the tree.
+#
+# The baseline is 217 rather than 218 and the missing case is worth naming, because it is the one
+# case here that answers differently on a busy machine. Case 121, listed03, starts with ckmtime,
+# which creates a file and checks that its mtime matches the clock to the nearest second, and skips
+# the case when it does not. Running the suite by hand on an idle machine it passes and the total is
+# 218. Running it through the harness with six cores busy it skipped both times. A skip is one fewer
+# passing case, so taking the higher number would make this row fail under load for a reason that
+# has nothing to do with the compiler, and a run that does reach 218 comes in above the baseline,
+# which passes.
+#
+# Root would change this, which is the other reason section 7.12 applies to this project. Several
+# cases check what tar does when it cannot read a file or cannot change an owner, and root can do
+# both, so the same suite grades a different program.
+[test]
+command = [
+    "sh",
+    "-c",
+    "make check > rrc-suite-output.log 2>&1; status=$?; cat rrc-suite-output.log; awk '/^ *[0-9]+: /{ if ($0 ~ / ok$/) passed++; else if ($0 ~ /FAILED/) failed++ } END { printf \"tar: %d of %d tests passed\\n\", passed, passed + failed }' rrc-suite-output.log; exit $status",
+]
+oracle = "suite"
+parser = "custom-regex"
+regex = "tar: (\\d+) of (\\d+) tests passed"
+baseline-tests = 217
+requires = ["sh", "awk"]
+
+# Configure is the expensive half of the build, the same shape as the other gnulib rows: a few
+# hundred compiles of ten line programs. Five hundred and forty seven files and a hundred and forty
+# five thousand lines, and gcc configures and builds all of it in 95 seconds at -O0 and 124 at -O2.
+#
+# The suite is the expensive half of the row, at six minutes, and it is slower than sed's because
+# most of its cases fork tar at least twice, once to write an archive and once to read it back, and
+# several of them build archives of a few megabytes first. The limit is twice that rather than four
+# times, because what the suite spends is mostly file system work that a slower compiler does not
+# make slower.
+[limits]
+build-seconds = 1800
+test-seconds = 1200

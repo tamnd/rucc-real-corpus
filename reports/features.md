@@ -14,11 +14,11 @@ Weight is what to do next. It is the sum over the held up projects of six minus 
 |---|---|---|---|---|---|
 | `pointer-arithmetic` | standard | 16 | 0 | 0 | none open |
 | `bit-manipulation` | standard | 14 | 0 | 0 | none open |
+| `struct-layout` | abi | 12 | 0 | 0 | none open |
 | `switch-dispatch` | standard | 12 | 0 | 0 | none open |
 | `autoconf-probes` | driver | 11 | 0 | 0 | none open |
 | `deep-macros` | preprocessor | 11 | 0 | 0 | none open |
-| `struct-layout` | abi | 11 | 0 | 0 | none open |
-| `integer-conversion` | standard | 10 | 0 | 0 | none open |
+| `integer-conversion` | standard | 11 | 0 | 0 | none open |
 | `function-pointers` | standard | 9 | 0 | 0 | none open |
 | `large-switch` | standard | 9 | 0 | 0 | none open |
 | `computed-goto` | gnu-extension | 6 | 0 | 0 | [open](https://github.com/tamnd/rucc/issues/353) |
@@ -36,6 +36,7 @@ Weight is what to do next. It is the sum over the held up projects of six minus 
 | `thread-local` | standard | 3 | 0 | 0 | none open |
 | `unaligned-access` | standard | 3 | 0 | 0 | none open |
 | `constant-time` | standard | 2 | 0 | 0 | none open |
+| `fortify-builtins` | gnu-builtin | 2 | 0 | 0 | [open](https://github.com/tamnd/rucc/issues/825) |
 | `inline-asm` | gnu-extension | 2 | 0 | 0 | none open |
 | `nan-boxing` | standard | 2 | 0 | 0 | none open |
 | `overflow-builtins` | gnu-builtin | 2 | 0 | 0 | none open |
@@ -45,7 +46,6 @@ Weight is what to do next. It is the sum over the held up projects of six minus 
 | `cleanup-attribute` | gnu-extension | 1 | 0 | 0 | [open](https://github.com/tamnd/rucc/issues/786) |
 | `driver-stdin-input` | driver | 1 | 0 | 0 | [open](https://github.com/tamnd/rucc/issues/812) |
 | `flexible-array-member` | standard | 1 | 0 | 0 | none open |
-| `fortify-builtins` | gnu-builtin | 1 | 0 | 0 | [open](https://github.com/tamnd/rucc/issues/825) |
 | `long-double` | standard | 1 | 0 | 0 | none open |
 | `stdckdint` | standard | 1 | 0 | 0 | none open |
 | `transparent-union` | gnu-extension | 1 | 0 | 0 | [open](https://github.com/tamnd/rucc/issues/829) |
@@ -92,6 +92,23 @@ shifts, masks and bit level packing across byte boundaries
 - `byacc`, R4, not measured
 - `grep`, R4, not measured
 - `gzip`, R4, not measured
+
+### `struct-layout`
+
+struct offsets, padding and alignment as the ABI states them
+
+- `sds`, R0, not measured
+- `linenoise`, R1, not measured
+- `lmdb`, R1, not measured
+- `gdbm`, R2, not measured
+- `libpsl`, R2, not measured
+- `libuv`, R2, not measured
+- `oniguruma`, R2, not measured
+- `tcc`, R3, not measured
+- `byacc`, R4, not measured
+- `sed`, R4, not measured
+- `tar`, R4, not measured
+- `xz`, R4, not measured
 
 ### `switch-dispatch`
 
@@ -142,22 +159,6 @@ macros expanding through several layers, including __VA_ARGS__ forwarding
 - `pdpmake`, R4, not measured
 - `toybox`, R4, not measured
 
-### `struct-layout`
-
-struct offsets, padding and alignment as the ABI states them
-
-- `sds`, R0, not measured
-- `linenoise`, R1, not measured
-- `lmdb`, R1, not measured
-- `gdbm`, R2, not measured
-- `libpsl`, R2, not measured
-- `libuv`, R2, not measured
-- `oniguruma`, R2, not measured
-- `tcc`, R3, not measured
-- `byacc`, R4, not measured
-- `sed`, R4, not measured
-- `xz`, R4, not measured
-
 ### `integer-conversion`
 
 the integer types are the widths the standard says they are, and conversions between them keep their values
@@ -172,6 +173,7 @@ the integer types are the widths the standard says they are, and conversions bet
 - `libmpfr`, R2, not measured
 - `libtommath`, R2, not measured
 - `diffutils`, R4, not measured
+- `tar`, R4, not measured
 
 ### `function-pointers`
 
@@ -331,6 +333,13 @@ arithmetic written to take the same time whatever the secret is, which the optim
 - `monocypher`, R1, not measured
 - `libsodium`, R2, not measured
 
+### `fortify-builtins`
+
+__builtin_object_size, the __builtin___*_chk family and __builtin_va_arg_pack, which glibc's fortified headers and its error.h are written in
+
+- `sed`, R4, not measured
+- `tar`, R4, not measured
+
 ### `inline-asm`
 
 __asm__ at file scope, including .incbin and hand written section directives
@@ -389,12 +398,6 @@ __attribute__((cleanup(f))) runs f at every exit from the enclosing block, in re
 a struct ending in an incomplete array, allocated with the header in front of it
 
 - `sds`, R0, not measured
-
-### `fortify-builtins`
-
-__builtin_object_size, the __builtin___*_chk family and __builtin_va_arg_pack, which glibc's fortified headers are written in
-
-- `sed`, R4, not measured
 
 ### `long-double`
 

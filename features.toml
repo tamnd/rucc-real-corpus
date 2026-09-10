@@ -107,8 +107,14 @@ kind = "standard"
 # this to fire: gnulib's config.h defines it as 2 whenever __OPTIMIZE__ is set, and config.h is the
 # first include of every translation unit in a gnulib project, so it happens at -O1 and above with
 # nothing on the command line.
+#
+# It is not only the fortified headers either. bits/error.h uses __builtin_va_arg_pack with no
+# fortify level involved, which is how tar stops on this at -O0 as well, and it stops a long way
+# from the cause: the probe for error.h answers no, gnulib compiles its own error.h without the
+# system declaration behind it, and what surfaces is an implicit declaration of error at the first
+# call site.
 [fortify-builtins]
-summary = "__builtin_object_size, the __builtin___*_chk family and __builtin_va_arg_pack, which glibc's fortified headers are written in"
+summary = "__builtin_object_size, the __builtin___*_chk family and __builtin_va_arg_pack, which glibc's fortified headers and its error.h are written in"
 kind = "gnu-builtin"
 diagnostic = [
     "implicit declaration of function '__builtin___",
