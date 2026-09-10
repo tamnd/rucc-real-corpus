@@ -25,7 +25,7 @@ A failure report from this corpus names one of: a file, a translation unit, a fu
 
 This is the claim that separates a corpus from a smoke test, and it is not free. It requires the mixed build of document 08.6, the per-file bisection of document 11.6, and the reduction pipeline of document 13.4. Without them, "PostgreSQL's regression suite fails" is a sentence nobody can act on.
 
-**Falsified by:** a median time-to-localization, measured from the CI run that first went red to the commit that names a file, of more than one day. Document 11 makes that a tracked number rather than an impression.
+**Falsified by:** a median time-to-localization, measured from the CI run that first went red to the commit that names a file, of more than one day. Document 11 section 11.9 makes that a tracked number rather than an impression: `localization.toml` holds the two dates for every failing cell and `reports/localization.md` prints the median, the entries that have no second date yet, and every red cell nobody wrote down.
 
 ## 2.3 Claim three: the ladder is monotone
 

@@ -9,9 +9,11 @@
 use crate::axes::{BuildSystem, Oracle, SuiteParser};
 use crate::exclusions::Exclusions;
 use crate::features::Features;
+use crate::localization::{Localization, day_number};
 use crate::lockfile::Lockfile;
 use crate::manifest::Manifest;
 use crate::sqlite::Sqlite;
+use std::collections::BTreeSet;
 use std::fmt;
 
 /// One thing wrong with the corpus.
@@ -40,6 +42,9 @@ pub struct Corpus {
     pub lockfile: Lockfile,
     /// The exclusion register.
     pub exclusions: Exclusions,
+    /// The localization register, which is the only file here that is about time rather than
+    /// about the corpus, and which `spec/11-reporting.md` section 11.9 explains.
+    pub localization: Localization,
     /// What the SQLite amalgamation was measured to demand.
     pub sqlite: Sqlite,
 }
@@ -57,6 +62,7 @@ pub fn check(corpus: &Corpus) -> Vec<Finding> {
     }
     check_names_are_unique(corpus, &mut findings);
     check_exclusions(corpus, &mut findings);
+    check_localization(corpus, &mut findings);
     check_sqlite(corpus, &mut findings);
     findings
 }
@@ -662,6 +668,105 @@ fn check_exclusions(corpus: &Corpus, findings: &mut Vec<Finding>) {
     }
 }
 
+/// `localization.toml`, which the number in `spec/02-the-goal.md` section 2.2 is computed from.
+///
+/// Every rule here exists to stop the median coming out flattering. An entry with the two dates
+/// the wrong way round is a negative number in the numerator. A closed entry with no file is a
+/// localization that did not localize anything. A duplicate project and level is one failure
+/// counted twice, which moves a median for free. And a date that does not parse would otherwise
+/// be silently dropped, which is the same as closing the entry at no cost.
+fn check_localization(corpus: &Corpus, findings: &mut Vec<Finding>) {
+    let known: Vec<&str> = corpus
+        .manifests
+        .iter()
+        .map(|manifest| manifest.project.name.as_str())
+        .collect();
+    let mut seen: BTreeSet<(&str, &str)> = BTreeSet::new();
+
+    for entry in &corpus.localization.entries {
+        let where_ = format!("localization.toml, {} at {}", entry.project, entry.level);
+        if !known.is_empty() && !known.contains(&entry.project.as_str()) {
+            findings.push(Finding {
+                where_: where_.clone(),
+                what: "names a project that is not on the list, so the entry is stale".into(),
+            });
+        }
+        if !seen.insert((entry.project.as_str(), entry.level.as_str())) {
+            findings.push(Finding {
+                where_: where_.clone(),
+                what: "appears twice, and one failure counted twice moves the median for free"
+                    .into(),
+            });
+        }
+        if entry.issue.trim().is_empty() {
+            findings.push(Finding {
+                where_: where_.clone(),
+                what: "has no issue, so there is nowhere the work went afterwards".into(),
+            });
+        }
+        if entry.note.trim().is_empty() {
+            findings.push(Finding {
+                where_: where_.clone(),
+                what: "has no note, which on an open entry is the field that says what has already been tried".into(),
+            });
+        }
+
+        let red = day_number(&entry.went_red);
+        if red.is_none() {
+            findings.push(Finding {
+                where_: where_.clone(),
+                what: format!(
+                    "says it went red on `{}`, which is not a date in the form 2026-09-07",
+                    entry.went_red
+                ),
+            });
+        }
+
+        let Some(named) = &entry.named_file else {
+            if entry.file.is_some() {
+                findings.push(Finding {
+                    where_,
+                    what: "names a file and no day, so either the day is missing or the entry is closed and nobody said when".into(),
+                });
+            }
+            continue;
+        };
+
+        let named_day = day_number(named);
+        if named_day.is_none() {
+            findings.push(Finding {
+                where_: where_.clone(),
+                what: format!(
+                    "named a file on `{named}`, which is not a date in the form 2026-09-07"
+                ),
+            });
+        }
+        if entry
+            .file
+            .as_ref()
+            .is_none_or(|file| file.trim().is_empty())
+        {
+            findings.push(Finding {
+                where_: where_.clone(),
+                what:
+                    "is closed with no file on it, and a localization that names nothing is not one"
+                        .into(),
+            });
+        }
+        if let (Some(red), Some(named_day)) = (red, named_day)
+            && named_day < red
+        {
+            findings.push(Finding {
+                where_,
+                what: format!(
+                    "was localized {} days before it went red, so one of the two dates is wrong",
+                    red - named_day
+                ),
+            });
+        }
+    }
+}
+
 /// `sqlite.toml`, which the SQLite column of section 10.7 is computed from.
 ///
 /// The rules are all about the column being readable. A tag outside the vocabulary produces a row
@@ -813,6 +918,7 @@ kind = "standard"
             manifests,
             features: toml::from_str(FEATURES).unwrap(),
             exclusions: Exclusions::default(),
+            localization: Localization::default(),
             sqlite: Sqlite::default(),
         }
     }
@@ -1420,6 +1526,99 @@ kind = "standard"
             check(&corpus)
                 .iter()
                 .any(|f| f.what.contains("nobody else can fetch"))
+        );
+    }
+
+    fn tracked(project: &str, went_red: &str, named_file: Option<&str>) -> crate::Failure {
+        crate::Failure {
+            project: project.into(),
+            level: "*".into(),
+            went_red: went_red.into(),
+            named_file: named_file.map(Into::into),
+            file: named_file.map(|_| "src/one.c".into()),
+            how: crate::How::Diagnostic,
+            issue: "https://github.com/tamnd/rucc/issues/1".into(),
+            note: "reasons".into(),
+        }
+    }
+
+    #[test]
+    fn a_localization_entry_naming_nothing_on_the_list_is_caught() {
+        let mut corpus = corpus_of(SAMPLE);
+        corpus
+            .localization
+            .entries
+            .push(tracked("not-here", "2026-09-06", None));
+        let findings = check(&corpus);
+        assert!(findings.iter().any(|f| f.what.contains("stale")));
+    }
+
+    #[test]
+    fn a_failure_localized_before_it_went_red_is_caught() {
+        // The dates the wrong way round put a negative number in the numerator, and one of those
+        // hides two ordinary ones.
+        let mut corpus = corpus_of(SAMPLE);
+        let name = corpus.manifests[0].project.name.clone();
+        corpus
+            .localization
+            .entries
+            .push(tracked(&name, "2026-09-06", Some("2026-09-01")));
+        let findings = check(&corpus);
+        assert!(
+            findings
+                .iter()
+                .any(|f| f.what.contains("before it went red")),
+            "{findings:?}"
+        );
+    }
+
+    #[test]
+    fn a_closed_entry_with_no_file_on_it_is_caught() {
+        let mut corpus = corpus_of(SAMPLE);
+        let name = corpus.manifests[0].project.name.clone();
+        let mut entry = tracked(&name, "2026-09-06", Some("2026-09-07"));
+        entry.file = None;
+        corpus.localization.entries.push(entry);
+        let findings = check(&corpus);
+        assert!(
+            findings.iter().any(|f| f.what.contains("names nothing")),
+            "{findings:?}"
+        );
+    }
+
+    #[test]
+    fn the_same_cell_tracked_twice_is_caught() {
+        let mut corpus = corpus_of(SAMPLE);
+        let name = corpus.manifests[0].project.name.clone();
+        corpus
+            .localization
+            .entries
+            .push(tracked(&name, "2026-09-06", Some("2026-09-06")));
+        corpus
+            .localization
+            .entries
+            .push(tracked(&name, "2026-09-08", Some("2026-09-20")));
+        let findings = check(&corpus);
+        assert!(
+            findings.iter().any(|f| f.what.contains("twice")),
+            "{findings:?}"
+        );
+    }
+
+    #[test]
+    fn a_date_that_is_not_a_date_is_caught_rather_than_dropped() {
+        // A dropped date is an entry that quietly stops counting, which is the same as closing it
+        // at no cost.
+        let mut corpus = corpus_of(SAMPLE);
+        let name = corpus.manifests[0].project.name.clone();
+        corpus
+            .localization
+            .entries
+            .push(tracked(&name, "last tuesday", None));
+        let findings = check(&corpus);
+        assert!(
+            findings.iter().any(|f| f.what.contains("not a date")),
+            "{findings:?}"
         );
     }
 

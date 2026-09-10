@@ -1,13 +1,14 @@
 //! The data model of the real corpus: what a project is, where its bytes come from, how it is
 //! graded, and what it is allowed to be excluded for.
 //!
-//! Nothing in this crate runs a compiler or touches the network. It reads six kinds of file and
+//! Nothing in this crate runs a compiler or touches the network. It reads seven kinds of file and
 //! it says whether they are consistent with each other:
 //!
 //! - `projects/<name>/project.toml`, one per project, the schema in [`manifest`].
 //! - `features.toml`, the closed vocabulary every `demands` entry draws from, in [`features`].
 //! - `projects.lock`, the resolved pins and their hashes, in [`lockfile`].
 //! - `exclusions.toml`, the register of everything not being counted, in [`exclusions`].
+//! - `localization.toml`, how long each failure took to name a file, in [`localization`].
 //! - `sqlite.toml`, what the amalgamation was measured to demand, in [`sqlite`].
 //! - the axes every one of those files grades a project on, in [`axes`].
 //!
@@ -21,6 +22,7 @@ pub mod axes;
 pub mod exclusions;
 pub mod features;
 pub mod lint;
+pub mod localization;
 pub mod lockfile;
 pub mod manifest;
 pub mod sqlite;
@@ -29,6 +31,7 @@ pub use axes::{BuildSystem, Level, Oracle, Requirement, Rung, SuiteParser};
 pub use exclusions::{Exclusion, Exclusions};
 pub use features::{Feature, FeatureKind, Features};
 pub use lint::{Corpus, Finding};
+pub use localization::{Failure, How, Localization};
 pub use lockfile::{LockEntry, Lockfile};
 pub use manifest::{
     Abi, Archive, Driver, LevelFlags, Manifest, ManifestError, Program, Project, Source, Test,

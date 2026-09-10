@@ -11,6 +11,7 @@
 //! reports/README.md             the hub: what passed, what it cost, links to everything
 //! reports/cost.md               every cell against the GCC 16 build of the same pin
 //! reports/failures.md           what failed, grouped by the diagnostic
+//! reports/localization.md       how long each failure took to name a file
 //! reports/projects/README.md    one row per project
 //! reports/projects/<name>.md    one project, all its levels, all five numbers
 //! ```
@@ -21,15 +22,19 @@
 //! reads. The pages are committed, the records are a workflow artifact, and section 11.7 is where
 //! that trade is argued.
 //!
-//! **Every page is a pure function of the records.** Nothing here reads the clock or the
+//! **Every page is a pure function of its inputs.** Nothing here reads the clock or the
 //! filesystem, so CI can regenerate the whole tree and diff it against what is committed, and a
-//! difference is a stale page rather than a timestamp.
+//! difference is a stale page rather than a timestamp. For every page but one the input is the
+//! records alone. `reports/localization.md` also takes `localization.toml`, which is a committed
+//! file and so is an input like any other, and the reason that register is hand written at all is
+//! this same rule: the records carry no timestamp, so the two dates it needs are not in them.
 
 use crate::cluster;
 use crate::cost::{self, Cost};
 use crate::source;
 use crate::summary::Summary;
 use rrc_manifest::axes::{Level, Oracle, Rung};
+use rrc_manifest::localization::Localization;
 use rrc_run::record::{Outcome, RunRecord};
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt::Write as _;
@@ -59,7 +64,11 @@ pub const END: &str = "<!-- rrc:end -->";
 /// The root `README.md` is not here, because it is a hand written file with a generated block in
 /// it rather than a generated file. [`splice`] does that part.
 #[must_use]
-pub fn generate(records: &[RunRecord], reference: &[RunRecord]) -> Vec<Page> {
+pub fn generate(
+    records: &[RunRecord],
+    reference: &[RunRecord],
+    register: &Localization,
+) -> Vec<Page> {
     let summary = Summary::of(records);
     let costs = cost::costs(records, reference);
     let projects = project_names(records);
@@ -76,6 +85,10 @@ pub fn generate(records: &[RunRecord], reference: &[RunRecord]) -> Vec<Page> {
         Page {
             path: "reports/failures.md".to_string(),
             text: failures_page(&summary, records),
+        },
+        Page {
+            path: "reports/localization.md".to_string(),
+            text: crate::localization::page(register, records),
         },
         Page {
             path: "reports/projects/README.md".to_string(),
@@ -148,6 +161,7 @@ fn hub(summary: &Summary, records: &[RunRecord], costs: &[Cost], projects: &[Str
     out.push_str("| page | what is on it |\n| --- | --- |\n");
     out.push_str("| [What it cost](cost.md) | compile time, suite time, build memory, binary size, every cell against GCC 16 |\n");
     out.push_str("| [What failed](failures.md) | the failures, grouped by the diagnostic rather than by the project |\n");
+    out.push_str("| [Time to localization](localization.md) | how long each failure took to get from red to a file name |\n");
     out.push_str(
         "| [Per project](projects/README.md) | one page each, with every level this run covered on it |\n",
     );
@@ -716,7 +730,7 @@ mod tests {
     fn a_run_that_built_every_cell_says_nothing_about_a_cache() {
         let (mine, theirs) = a_run();
         assert_eq!(reused_note(&mine), "");
-        let pages = generate(&mine, &theirs);
+        let pages = generate(&mine, &theirs, &Localization::default());
         let hub = &pages
             .iter()
             .find(|p| p.path.ends_with("README.md"))
@@ -769,7 +783,7 @@ mod tests {
     #[test]
     fn the_tree_has_a_hub_and_a_page_for_every_project() {
         let (mine, theirs) = a_run();
-        let pages = generate(&mine, &theirs);
+        let pages = generate(&mine, &theirs, &Localization::default());
         let paths: Vec<&str> = pages.iter().map(|p| p.path.as_str()).collect();
         assert!(paths.contains(&"reports/README.md"));
         assert!(paths.contains(&"reports/cost.md"));
@@ -784,7 +798,7 @@ mod tests {
         // The one failure mode of a generated tree that a reader notices immediately, and the one
         // that a single file report could not have.
         let (mine, theirs) = a_run();
-        let pages = generate(&mine, &theirs);
+        let pages = generate(&mine, &theirs, &Localization::default());
         let hub = &pages
             .iter()
             .find(|p| p.path == "reports/README.md")
@@ -801,7 +815,7 @@ mod tests {
     #[test]
     fn a_project_page_carries_all_five_numbers_and_both_sides_of_each() {
         let (mine, theirs) = a_run();
-        let pages = generate(&mine, &theirs);
+        let pages = generate(&mine, &theirs, &Localization::default());
         let page = &pages
             .iter()
             .find(|p| p.path == "reports/projects/jsmn.md")
@@ -826,7 +840,7 @@ mod tests {
         let block = headline(&mine, &theirs);
         assert!(block.contains("2,900 lines"), "{block}");
 
-        let pages = generate(&mine, &theirs);
+        let pages = generate(&mine, &theirs, &Localization::default());
         let index = &pages
             .iter()
             .find(|p| p.path == "reports/projects/README.md")
@@ -848,7 +862,7 @@ mod tests {
         // jsmn ran at two levels and tinf at one, so a total that counted records rather than
         // projects would report half again as much code as the corpus has.
         let (mine, theirs) = a_run();
-        let pages = generate(&mine, &theirs);
+        let pages = generate(&mine, &theirs, &Localization::default());
         let hub = &pages
             .iter()
             .find(|p| p.path == "reports/README.md")
@@ -862,7 +876,7 @@ mod tests {
     fn a_log_from_before_the_source_count_existed_leaves_the_section_out_rather_than_showing_zero()
     {
         let mine = vec![record("jsmn", Outcome::Passed)];
-        let pages = generate(&mine, &[]);
+        let pages = generate(&mine, &[], &Localization::default());
         let hub = &pages
             .iter()
             .find(|p| p.path == "reports/README.md")
@@ -882,8 +896,8 @@ mod tests {
         // This is the shape of a run given --no-baseline, and it has to produce a readable tree
         // rather than a panic or a page of zeroes.
         let (mine, _) = a_run();
-        let pages = generate(&mine, &[]);
-        assert_eq!(pages.len(), 6);
+        let pages = generate(&mine, &[], &Localization::default());
+        assert_eq!(pages.len(), 7);
         for page in &pages {
             assert!(!page.text.is_empty(), "{}", page.path);
             assert!(!page.text.contains("0.00x"), "{}", page.path);
@@ -929,13 +943,16 @@ mod tests {
         // Nothing here may read the clock. CI regenerates the tree and diffs it against what is
         // committed, and a timestamp anywhere would make that check fail every night.
         let (mine, theirs) = a_run();
-        assert_eq!(generate(&mine, &theirs), generate(&mine, &theirs));
+        assert_eq!(
+            generate(&mine, &theirs, &Localization::default()),
+            generate(&mine, &theirs, &Localization::default())
+        );
     }
 
     #[test]
     fn the_cost_page_names_the_project_on_every_row() {
         let (mine, theirs) = a_run();
-        let pages = generate(&mine, &theirs);
+        let pages = generate(&mine, &theirs, &Localization::default());
         let page = &pages
             .iter()
             .find(|p| p.path == "reports/cost.md")
@@ -948,7 +965,7 @@ mod tests {
     #[test]
     fn nothing_on_these_pages_averages_a_ratio_across_projects() {
         let (mine, theirs) = a_run();
-        for page in generate(&mine, &theirs) {
+        for page in generate(&mine, &theirs, &Localization::default()) {
             let text = page.text.to_lowercase();
             assert!(
                 !text.contains("geometric") && !text.contains("on average"),

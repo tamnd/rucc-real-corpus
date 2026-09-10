@@ -7,6 +7,7 @@
 use crate::cli::Format;
 use crate::commands::Done;
 use crate::corpus::Loaded;
+use rrc_manifest::localization::Localization;
 use rrc_report::Report;
 use rrc_report::features::{Column, Map, render};
 use rrc_run::record::RunRecord;
@@ -70,7 +71,12 @@ fn pages(
     root: &Path,
     check: bool,
 ) -> Result<Done, String> {
-    let mut wanted = rrc_report::pages::generate(records, reference);
+    // The one input to the tree that is not a record. It is read from the root rather than from
+    // beside the records because it is a committed file that outlives any single run, and a
+    // missing one is an empty register rather than an error, so a checkout with no failures in it
+    // still renders the page.
+    let register = Localization::from_path(&root.join("localization.toml"))?;
+    let mut wanted = rrc_report::pages::generate(records, reference, &register);
     // The front page is a hand written file with one generated block in it, so it is read, spliced
     // and put back rather than rendered from nothing. A repository with no front page gets no
     // block, because inventing one would be inventing the prose around it too.
