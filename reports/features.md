@@ -17,8 +17,8 @@ Weight is what to do next. It is the sum over the held up projects of six minus 
 | `switch-dispatch` | standard | 12 | 0 | 0 | none open |
 | `autoconf-probes` | driver | 11 | 0 | 0 | none open |
 | `deep-macros` | preprocessor | 11 | 0 | 0 | none open |
+| `struct-layout` | abi | 11 | 0 | 0 | none open |
 | `integer-conversion` | standard | 10 | 0 | 0 | none open |
-| `struct-layout` | abi | 10 | 0 | 0 | none open |
 | `function-pointers` | standard | 9 | 0 | 0 | none open |
 | `large-switch` | standard | 9 | 0 | 0 | none open |
 | `computed-goto` | gnu-extension | 6 | 0 | 0 | [open](https://github.com/tamnd/rucc/issues/353) |
@@ -45,8 +45,10 @@ Weight is what to do next. It is the sum over the held up projects of six minus 
 | `cleanup-attribute` | gnu-extension | 1 | 0 | 0 | [open](https://github.com/tamnd/rucc/issues/786) |
 | `driver-stdin-input` | driver | 1 | 0 | 0 | [open](https://github.com/tamnd/rucc/issues/812) |
 | `flexible-array-member` | standard | 1 | 0 | 0 | none open |
+| `fortify-builtins` | gnu-builtin | 1 | 0 | 0 | [open](https://github.com/tamnd/rucc/issues/825) |
 | `long-double` | standard | 1 | 0 | 0 | none open |
 | `stdckdint` | standard | 1 | 0 | 0 | none open |
+| `transparent-union` | gnu-extension | 1 | 0 | 0 | [open](https://github.com/tamnd/rucc/issues/829) |
 | `visibility-attributes` | gnu-extension | 1 | 0 | 0 | none open |
 
 ## The projects behind each row
@@ -140,6 +142,22 @@ macros expanding through several layers, including __VA_ARGS__ forwarding
 - `pdpmake`, R4, not measured
 - `toybox`, R4, not measured
 
+### `struct-layout`
+
+struct offsets, padding and alignment as the ABI states them
+
+- `sds`, R0, not measured
+- `linenoise`, R1, not measured
+- `lmdb`, R1, not measured
+- `gdbm`, R2, not measured
+- `libpsl`, R2, not measured
+- `libuv`, R2, not measured
+- `oniguruma`, R2, not measured
+- `tcc`, R3, not measured
+- `byacc`, R4, not measured
+- `sed`, R4, not measured
+- `xz`, R4, not measured
+
 ### `integer-conversion`
 
 the integer types are the widths the standard says they are, and conversions between them keep their values
@@ -154,21 +172,6 @@ the integer types are the widths the standard says they are, and conversions bet
 - `libmpfr`, R2, not measured
 - `libtommath`, R2, not measured
 - `diffutils`, R4, not measured
-
-### `struct-layout`
-
-struct offsets, padding and alignment as the ABI states them
-
-- `sds`, R0, not measured
-- `linenoise`, R1, not measured
-- `lmdb`, R1, not measured
-- `gdbm`, R2, not measured
-- `libpsl`, R2, not measured
-- `libuv`, R2, not measured
-- `oniguruma`, R2, not measured
-- `tcc`, R3, not measured
-- `byacc`, R4, not measured
-- `xz`, R4, not measured
 
 ### `function-pointers`
 
@@ -387,6 +390,12 @@ a struct ending in an incomplete array, allocated with the header in front of it
 
 - `sds`, R0, not measured
 
+### `fortify-builtins`
+
+__builtin_object_size, the __builtin___*_chk family and __builtin_va_arg_pack, which glibc's fortified headers are written in
+
+- `sed`, R4, not measured
+
 ### `long-double`
 
 long double at the 80 bit x86-64 format
@@ -398,6 +407,12 @@ long double at the 80 bit x86-64 format
 <stdckdint.h> and ckd_add, ckd_sub and ckd_mul
 
 - `jtckdint`, R0, not measured
+
+### `transparent-union`
+
+__attribute__((transparent_union)) on a parameter, which glibc's sockaddr argument is declared with
+
+- `sed`, R4, not measured
 
 ### `visibility-attributes`
 
@@ -452,6 +467,7 @@ These rows are why the residue above can be believed. A list that only records w
 - `driver-print-dirs`: the amalgamation is compiled directly and has no build system in front of it, so nothing asks the driver where it keeps anything
 - `driver-stdin-input`: the amalgamation is one file handed to the compiler by name, and there is no configure step in front of it piping programs into the compiler to find out what the machine has
 - `flexible-array-member`: the trailing empty brackets in the source are extern array declarations of unknown size rather than flexible members inside a structure
+- `fortify-builtins`: no _FORTIFY_SOURCE anywhere in sqlite3.c, no __builtin___ name of any kind and no __builtin_object_size, so the fortified headers are only reached if the machine's compiler turns them on rather than because the amalgamation asked
 - `inline-asm`: there is a __asm__ block for reading the cycle counter, but it is guarded on i386 and 32 bit x86 is not a target here, so on the machines this corpus runs on the count is nought
 - `k-and-r-idioms`: every definition is prototyped, and the lines that look like an identifier list are __declspec(dllexport) on the Windows exports
 - `libm-builtins`: none in the amalgamation, which is the split document 05.5 describes: the shell fails on __builtin_ceil and __builtin_floor while the library fails on atomics
@@ -462,6 +478,7 @@ These rows are why the residue above can be believed. A list that only records w
 - `setjmp-longjmp`: no setjmp and no longjmp, since errors are returned as codes all the way up
 - `stdckdint`: the checked arithmetic goes through the GNU overflow builtins rather than the C23 header
 - `thread-local`: no _Thread_local and no __thread, because thread state is passed in the connection handle rather than kept in the compiler's storage
+- `transparent-union`: the amalgamation opens no sockets and declares no union of its own with the attribute, so the one place glibc uses it, the sockaddr argument of bind and its relatives, is never reached from sqlite3.c
 - `visibility-attributes`: the amalgamation controls its exports with SQLITE_API and static rather than with a visibility attribute
 
 ## Features nothing on the list demands

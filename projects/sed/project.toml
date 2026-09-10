@@ -1,0 +1,116 @@
+[project]
+name = "sed"
+rung = 4
+upstream = "https://www.gnu.org/software/sed/"
+licence = "GPL-3.0-or-later"
+licence-file = "COPYING"
+description = "the stream editor, an interpreter for a small language, graded by its own hundred and thirty cases and by gnulib's suite underneath them"
+# sed is a compiler and an interpreter in five and a half thousand lines. compile.c reads a script
+# and builds a command list, execute.c walks that list once per input line, and the two of them are
+# almost nothing but dispatch: a hundred and eight cases in compile.c, sixty in execute.c, and the
+# command switch at execute.c:1295 alone has thirty four of them. That is what large-switch names,
+# and unlike a table driven interpreter there is no indirection to hide behind. Every sed command is
+# a case label, several of them fall through on purpose, and the compiler picks the shape of the
+# dispatch on its own.
+#
+# struct-layout is the sharper of the two, and it is one function. `line_exchange` implements the x
+# command, which swaps the pattern space with the hold space, and it does the swap with three
+# memcpys. When the multibyte state should travel with the text it copies `sizeof (struct line)`,
+# and when it should not it copies `SIZEOF_LINE`, which is `offsetof (struct line, mbstate)`, so it
+# moves the five members in front of the mbstate and leaves the mbstate where it was. That is a
+# program reading its own layout at compile time and depending on the answer. A compiler that pads
+# or orders the struct differently than it reports through offsetof swaps a prefix that ends in the
+# wrong place, and what comes out is a hold space with half a pointer in it rather than a diagnostic.
+#
+# fortify-builtins is the measured blocker, and sed is the row that found it. sed 4.9 ships an
+# older gnulib than diffutils and grep do, and its config.h has no `#undef __STDC_WANT_LIB_EXT1__`
+# in it, so this is the first gnulib row that gets past tamnd/rucc#757 and reaches a real compile.
+# What it reaches is glibc's fortified headers. config.h line 57 defines `_FORTIFY_SOURCE` as 2
+# whenever `__OPTIMIZE__` is set, with nothing on the command line asking for it, and config.h is
+# the first include of every file in the tree, so from -O1 upward every translation unit that
+# includes wchar.h, stdio.h or string.h lands in wrappers written in `__builtin_va_arg_pack` and the
+# `__builtin___*_chk` family. rucc runs the whole of sed's configure and answers every probe, then
+# stops on the first of those. tamnd/rucc#825.
+#
+# transparent-union is the second blocker and it is the one that shows up at -O0, where fortify is
+# off because `__OPTIMIZE__` is not defined. At that level rucc builds sed and passes all 58 cases
+# of sed's own suite, which is every one gcc passes. What it does not build is the gnulib test
+# directory, where three socket tests assign `accept`, `bind` and `connect` to function pointers
+# declared with `struct sockaddr *`, and glibc declares those functions with `__SOCKADDR_ARG`, which
+# is a transparent union of eleven pointer types. rucc parses the attribute and drops it, so the
+# assignment is a type error. tamnd/rucc#829. That is why this row records a wrong answer at -O0
+# rather than a green cell: the program is right and the suite is short.
+#
+# Left off: large-switch, which the dispatch above earns and which nine rows already carry.
+# feature-test-macros, which is true of every other gnulib row here and is not what stops this one.
+# pointer-arithmetic, which `resize_line` earns fairly, since it saves `active - text` across the
+# realloc and rebuilds the pointer from the offset afterwards, and which sixteen rows already carry.
+# And bit-manipulation and switch-dispatch, both true of lib/dfa.c, which sed compiles as well, and
+# both of which grep is already on the list for with the same file.
+demands = ["fortify-builtins", "transparent-union", "struct-layout"]
+
+[source]
+url = "https://ftp.gnu.org/gnu/sed/sed-4.9.tar.xz"
+sha256 = "6e226b732e1cd739464ad6862bd1a1aba42d7982922da7a53519631d24975181"
+strip-components = 1
+
+# A3, ordinary autoconf and automake, and the level needs no carrier: configure takes CFLAGS out of
+# the environment and automake puts it on every compile and on the link, so `-flto` reaches both
+# halves without anything added.
+#
+# The expect lines are the autoconf 2.71 spellings, which is what sed 4.9 ships, and they happen to
+# match the 2.72 ones diffutils and grep use. The restrict line is the one worth having, for the
+# reason diffutils writes down: a compiler without the keyword makes configure define restrict away
+# to nothing, and then the build succeeds and the suite passes without the keyword ever having been
+# compiled.
+[build]
+system = "configure"
+expect-configure = [
+    "checking whether the compiler supports GNU C... yes",
+    "checking for C/C++ restrict keyword... __restrict__",
+]
+# One program, and the gnulib library under it is most of the tree. Measured through the harness at
+# -O2 it is 144576 bytes with 114445 of text. A hand build comes out larger because configure
+# defaults CFLAGS to `-g -O2` when the environment is silent and the harness says `-O2`, which is
+# the same gap diffutils records.
+#
+# The six levels give six sizes, so the level reaches the compiler with nothing added: 169488 bytes
+# at -O0, 136232 at -O1, 144576 at -O2, 112280 at -Os, 180896 at -O3 and 127176 with -flto.
+binary = "sed/sed"
+
+# make check runs two automake harnesses, the project's own testsuite and gnulib-tests, and each
+# prints its own `# PASS:` block. The automake parser sums them.
+#
+# gcc 16.2.0 on the reference machine gives 68 cases in the project's own suite, 58 passing and 10
+# skipped, and 192 in gnulib-tests, 155 passing and 37 skipped, so the harness sees 260 run and 213
+# passing, with no failures and no expected failures on either side. That is the same at all six
+# levels including -flto, so the baseline is a property of the machine and not of the level.
+#
+# 47 skips is a large fraction and they are the same kind diffutils has, which is to say they are
+# properties of the machine rather than of the compiler. Nineteen of them are multibyte and locale
+# cases, test-mbrtowc and its relatives plus utf8-ru and title-case, which skip when the locale they
+# want has not been generated. Nine are access control list cases that skip on a file system without
+# them, seven are Windows cases that skip everywhere else, and the rest want valgrind or selinux or
+# a working cvs. A host with more locales generated runs more of them and comes in above 213, which
+# passes, and a host with fewer comes in below it and fails for a reason that has nothing to do with
+# the compiler. That is tamnd/rucc-real-corpus#105 and this row is another instance of it.
+#
+# perl is required rather than optional for the reason gzip and diffutils already write down.
+# help-version.sh and posix-mode-s.sh invoke it, a case that cannot find it skips instead of running,
+# and a skip is one fewer passing case, so a host without perl comes in under the baseline. Requiring
+# it means such a host skips the project, which is the honest answer.
+[test]
+command = ["make", "check"]
+oracle = "suite"
+parser = "automake"
+baseline-tests = 213
+requires = ["sh", "perl"]
+
+# Configure is the expensive half here, the same shape as diffutils and gzip: a few hundred compiles
+# of ten line programs, so the cost is process startup rather than compilation. The limit is head
+# room for a compiler an order of magnitude slower at both. Measured through the harness at -O2, gcc
+# takes 74 seconds to configure and build the four hundred and ninety eight files and hundred and
+# eight thousand lines this row compiles, and 86 seconds to run the suite.
+[limits]
+build-seconds = 1800
+test-seconds = 900
