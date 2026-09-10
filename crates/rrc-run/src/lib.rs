@@ -57,6 +57,7 @@ pub mod env;
 pub mod exec;
 pub mod input;
 pub mod interrogate;
+pub mod kconfig;
 pub mod memory;
 pub mod mixed;
 pub mod parse;

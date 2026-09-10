@@ -263,6 +263,7 @@ fn check_binary(manifest: &Manifest, say: &mut Vec<String>) {
 fn check_build(manifest: &Manifest, say: &mut Vec<String>) {
     check_programs(manifest, say);
     check_binary(manifest, say);
+    check_config(manifest, say);
     if !manifest.build.system.interrogates() && !manifest.build.expect_configure.is_empty() {
         say.push(
             "expects something from configure and has no configure step, so nothing would check it"
@@ -350,6 +351,61 @@ fn check_build(manifest: &Manifest, say: &mut Vec<String>) {
                 note.flag
             ));
         }
+    }
+}
+
+/// The configuration a project writes for itself, and the symbols we turn off in it.
+///
+/// The rules are all one rule: this field is the narrowest thing that solves busybox and it has to
+/// stay that way, because a field that can turn a symbol off is one bad afternoon away from being
+/// a field that can run a command. So it only exists on a build with a make in it, it has to name
+/// a target and a file and at least one symbol, and it has to say why in a sentence, which is the
+/// same standard `build.flags` is held to and for the same reason. A symbol turned off with no
+/// reason recorded is a patch that nobody registered.
+///
+/// The target also cannot appear in `targets`, which would run the configuration twice and
+/// undo the edit between the two runs, and the failure that produces is a build of the wrong thing
+/// rather than an error anybody would see.
+fn check_config(manifest: &Manifest, say: &mut Vec<String>) {
+    let Some(config) = &manifest.build.config else {
+        return;
+    };
+    if !matches!(
+        manifest.build.system,
+        BuildSystem::Make | BuildSystem::Recursive
+    ) {
+        say.push(
+            "configures itself with a make target and has no make in its build, so nothing would run it"
+                .into(),
+        );
+    }
+    if config.target.trim().is_empty() {
+        say.push("names an empty make target as the one that writes its configuration".into());
+    }
+    if config.file.trim().is_empty() {
+        say.push("names no file for its configuration, and the symbols go in a file".into());
+    }
+    if config.disable.is_empty() {
+        say.push(
+            "configures itself and turns nothing off, which is what plain `targets` is for".into(),
+        );
+    }
+    for symbol in &config.disable {
+        if symbol.trim().is_empty() {
+            say.push("turns off a symbol with no name".into());
+        }
+    }
+    if config.why.trim().is_empty() {
+        say.push(
+            "turns a symbol off with no reason, and a symbol turned off without one is a patch nobody registered"
+                .into(),
+        );
+    }
+    if manifest.build.targets.contains(&config.target) {
+        say.push(format!(
+            "runs `{}` as a build target as well as the step that writes its configuration, which would run it again and undo the symbols in between",
+            config.target
+        ));
     }
 }
 
@@ -847,6 +903,76 @@ kind = "standard"
             findings
                 .iter()
                 .any(|f| f.what.contains("both ways at once"))
+        );
+    }
+
+    /// The sample turned into a make build with a configuration step, which is busybox's shape.
+    fn with_config(config: &str) -> String {
+        SAMPLE.replace(
+            "system = \"direct\"\nsources = [\"jsmn_test.c\"]\noutput = \"jsmn_test\"\n",
+            &format!("system = \"make\"\nbinary = \"busybox\"\n{config}"),
+        )
+    }
+
+    #[test]
+    fn a_make_build_that_configures_itself_and_says_why_is_quiet() {
+        let text = with_config(
+            "\n[build.config]\ntarget = \"defconfig\"\nfile = \".config\"\ndisable = [\"CONFIG_TC\"]\nwhy = \"tc has not compiled against a current kernel header in years\"\n",
+        );
+        assert_eq!(check(&corpus_of(&text)), Vec::new());
+    }
+
+    #[test]
+    fn turning_a_symbol_off_with_no_reason_is_caught() {
+        let text = with_config(
+            "\n[build.config]\ntarget = \"defconfig\"\nfile = \".config\"\ndisable = [\"CONFIG_TC\"]\nwhy = \"  \"\n",
+        );
+        let findings = check(&corpus_of(&text));
+        assert!(
+            findings
+                .iter()
+                .any(|f| f.what.contains("patch nobody registered")),
+            "{findings:?}"
+        );
+    }
+
+    #[test]
+    fn configuring_a_build_with_no_make_in_it_is_caught() {
+        let text = format!(
+            "{SAMPLE}\n[build.config]\ntarget = \"defconfig\"\nfile = \".config\"\ndisable = [\"CONFIG_TC\"]\nwhy = \"a sentence somebody can check\"\n"
+        );
+        let findings = check(&corpus_of(&text));
+        assert!(
+            findings
+                .iter()
+                .any(|f| f.what.contains("no make in its build")),
+            "{findings:?}"
+        );
+    }
+
+    #[test]
+    fn running_the_configuration_target_again_as_a_build_target_is_caught() {
+        let text = with_config(
+            "targets = [\"defconfig\", \"busybox\"]\n\n[build.config]\ntarget = \"defconfig\"\nfile = \".config\"\ndisable = [\"CONFIG_TC\"]\nwhy = \"a sentence somebody can check\"\n",
+        );
+        let findings = check(&corpus_of(&text));
+        assert!(
+            findings.iter().any(|f| f.what.contains("undo the symbols")),
+            "the second defconfig would write the file again and the symbols would be back on: {findings:?}"
+        );
+    }
+
+    #[test]
+    fn a_configuration_that_turns_nothing_off_is_caught() {
+        let text = with_config(
+            "\n[build.config]\ntarget = \"defconfig\"\nfile = \".config\"\ndisable = []\nwhy = \"a sentence somebody can check\"\n",
+        );
+        let findings = check(&corpus_of(&text));
+        assert!(
+            findings
+                .iter()
+                .any(|f| f.what.contains("turns nothing off")),
+            "{findings:?}"
         );
     }
 

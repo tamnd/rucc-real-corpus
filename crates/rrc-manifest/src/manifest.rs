@@ -242,6 +242,10 @@ pub struct Build {
     /// section 7.8.
     #[serde(default)]
     pub level_flags: Option<LevelFlags>,
+    /// For a project that generates its own configuration, the target that writes it and the
+    /// symbols we turn off in what it wrote. `spec/07-harness.md` section 7.13.
+    #[serde(default)]
+    pub config: Option<Config>,
 }
 
 impl Build {
@@ -450,6 +454,35 @@ pub struct LevelFlags {
     /// having set a variable rather than anything about the compiler.
     #[serde(default, rename = "clears-environment")]
     pub clears_environment: bool,
+}
+
+/// A project whose build starts by generating its own configuration, and what we turn off in it.
+///
+/// A kconfig project decides what to compile from a file its own tooling writes, so the harness
+/// cannot simply hand it a target list the way it does everywhere else. `busybox` is the row this
+/// exists for. `make defconfig` turns on every applet including `tc`, and `tc` has not compiled
+/// against the kernel headers of the last several years, because the traffic control structures it
+/// reads were removed from `linux/pkt_sched.h` and upstream has left the applet where it is. That
+/// is a header the project is behind on and not a compiler result, and a corpus that reported it
+/// as one would be reporting the same red row under GCC as under anything else.
+///
+/// The narrow shape here is deliberate and it is `spec/06-manifest.md` section 6.8 again: the
+/// manifest names symbols, and the harness knows how to turn a symbol off. It is not a hook, it
+/// cannot run a command, and there is nothing in it that could grow into arbitrary shell. A symbol
+/// that is already off is an error rather than a no-op, because the only way that happens is a pin
+/// move where upstream changed its mind, and the run saying so is how anybody finds out.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Config {
+    /// The make target that writes the configuration, which is `defconfig` on every project that
+    /// has one so far.
+    pub target: String,
+    /// The file it writes, relative to the build directory.
+    pub file: String,
+    /// The symbols turned off in that file before the build proper starts.
+    pub disable: Vec<String>,
+    /// Why each of them is off, in a sentence somebody can check against the project.
+    pub why: String,
 }
 
 const fn default_build_system() -> BuildSystem {
