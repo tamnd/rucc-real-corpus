@@ -1,0 +1,88 @@
+[project]
+name = "flex"
+rung = 4
+upstream = "https://github.com/westes/flex"
+licence = "BSD-3-Clause"
+licence-file = "COPYING"
+description = "a scanner generator whose suite compiles and runs the scanners it wrote, and which builds itself with itself first"
+# `large-switch` because that is what a generated scanner and a generated parser both are.
+# src/parse.c is 2945 lines of bison output holding one switch over the grammar's reductions, and
+# every one of the 114 tests compiles a scanner whose body is a switch over accepting states. This
+# project is the corpus's answer to the question of what happens to a compiler when the input was
+# written by a machine, which is a different question from what happens to hand written code.
+#
+# `k-and-r-idioms` because flex 2.6.4 is from 2017 and the skeleton it emits into every generated
+# scanner is older than that. A compiler defaulting to C23 has to accept the shape of the code flex
+# writes, not just the shape of the code flex is written in, and there are 114 chances to get that
+# wrong.
+#
+# `switch-dispatch` because a scanner is a state machine and the fall through between cases in the
+# emitted table walker is deliberate.
+#
+# Left off: `recursion-depth`, which the parser has and which two other projects already carry, and
+# `pointer-arithmetic`, which the buffer management is full of and which twelve projects carry.
+demands = ["large-switch", "k-and-r-idioms", "switch-dispatch"]
+
+# 2.6.4 is the last release, from 2017, and it is what every distribution ships. The release tarball
+# rather than a tag snapshot, for the usual reason: the release carries a generated configure and a
+# generated src/parse.c, so neither autoreconf nor bison is needed to get to a build. bison is still
+# needed for the suite, which is a separate matter and is in `requires`.
+[source]
+url = "https://github.com/westes/flex/releases/download/v2.6.4/flex-2.6.4.tar.gz"
+sha256 = "e87aae032bf07c26f85ac0ed3250998c37621d95f8bd748b31f15b33c45ee995"
+strip-components = 1
+
+# A3, autoconf through automake and libtool, and the level reaches the link line. Lines 156, 175 and
+# 228 of the generated src/Makefile each put `$(CFLAGS)` on a libtool `--mode=link` invocation as
+# well as line 809 putting it on every compile, so `-flto` has something to do here.
+#
+# The six gcc builds come out at six different sizes, 373,064 bytes at -O0 down to 306,536 at -Os,
+# which is the check that the level reaches the compiler at all.
+#
+# There is a detail in this build worth knowing before reading a failure. src/Makefile.am line 9
+# declares a `stage1flex`, built from the shipped scanner, and the real flex is then built from a
+# scanner that stage1flex generated. So the compiler under test builds a scanner generator, that
+# generator writes C, and the compiler under test compiles that C. A miscompiled stage1flex does not
+# fail, it emits a subtly wrong scanner and the failure lands three steps later. Two of the corpus's
+# rung 4 rows have that shape and byacc is the other one, but byacc does not bootstrap itself, so
+# this is the deeper of the two.
+#
+# stage1flex is linked with `$(CC_FOR_BUILD)`, which configure sets from CC when it is not cross
+# compiling, so the compiler under test really does build both stages here.
+[build]
+system = "configure"
+expect-configure = [
+    "checking whether the compiler supports GNU C... yes",
+    "checking for bison... bison -y",
+]
+binary = "src/flex"
+
+# automake's parallel harness, and the count is the real count rather than a wrapper's: TESTS in
+# tests/Makefile.am is `$(check_PROGRAMS) options.cn`, so each of the 114 rows is one scanner that
+# was generated, compiled, linked and run against its own .txt input, with testwrapper.sh diffing
+# the result. That is the two stage oracle this project is here for, and it is why a wrong answer
+# from flex looks like a scanner that accepts the wrong language rather than like a crash.
+#
+# gcc 16.2.0 on the reference machine gives 114 of 114 with 0 skipped and exit 0 at all six levels
+# including -O2 -flto, so baseline-tests is 114 and no baseline-total is needed.
+#
+# Three of the 114 are bison_nr, bison_yylloc and bison_yylval, which build a bison parser next to
+# the flex scanner and need bison itself. That is what puts bison in `requires` rather than only in
+# the configure expectation: without it the count is not 114 and the row would be host dependent,
+# which is the problem issue #105 exists for.
+[test]
+command = ["make", "check"]
+oracle = "suite"
+parser = "automake"
+baseline-tests = 114
+requires = ["sh", "bison", "m4"]
+
+# Thirty five C files and twenty six thousand lines, which is small, and a suite that is not: gcc
+# runs the 114 tests in between 60 and 103 seconds because each one is a compile and a link and a
+# run rather than an assertion. The build itself is 19 to 34 seconds.
+#
+# 600 on the suite because the numbers above are gcc's and the compiler under test is the slow one,
+# and a scanner that has to be compiled 114 times multiplies any per invocation cost by 114.
+[limits]
+build-seconds = 900
+test-seconds = 600

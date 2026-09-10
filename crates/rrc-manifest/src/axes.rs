@@ -305,11 +305,16 @@ pub enum Requirement {
     Bison,
     /// Ruby.
     Ruby,
+    /// M4. This is not here for a project that regenerates its configure, which is what `autoconf`
+    /// covers. It is here because flex shells out to m4 at scanner generation time to expand its
+    /// skeleton, so every one of flex's 114 tests needs m4 present at test time on a tree whose
+    /// configure and parser were both shipped pre generated.
+    M4,
 }
 
 impl Requirement {
     /// Every requirement in the closed vocabulary.
-    pub const ALL: [Self; 11] = [
+    pub const ALL: [Self; 12] = [
         Self::Sh,
         Self::Awk,
         Self::Perl,
@@ -321,6 +326,7 @@ impl Requirement {
         Self::Flex,
         Self::Bison,
         Self::Ruby,
+        Self::M4,
     ];
 
     /// The command the harness looks for on `PATH` to decide whether the requirement is met.
@@ -338,6 +344,7 @@ impl Requirement {
             Self::Flex => "flex",
             Self::Bison => "bison",
             Self::Ruby => "ruby",
+            Self::M4 => "m4",
         }
     }
 }
