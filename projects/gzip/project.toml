@@ -1,0 +1,91 @@
+[project]
+name = "gzip"
+rung = 4
+upstream = "https://www.gnu.org/software/gzip/"
+licence = "GPL-3.0-or-later"
+licence-file = "COPYING"
+description = "the GNU compressor, and the first project on the list that brings gnulib with it, graded by the thirty shell scripts the project ships"
+# The program is eleven translation units and about eight thousand lines. gnulib underneath it is two
+# hundred and forty files and about eighty thousand, which is the fact this row is here for: ten lines
+# of portability shim per line of compressor, and all of it decided by macros the configure script
+# wrote. spec/05-the-projects.md calls that the largest portability-macro surface in open source and
+# the ratio is what that means in practice.
+#
+# bits.c is the other half of the row and it is the opposite kind of code. It is one unsigned short
+# holding a partial byte, a count of how many bits of it are used, and a send_bits that shifts a code
+# in at the bottom and flushes when it overflows, and trees.c builds the Huffman code lengths that
+# feed it. A bit that comes out in the wrong place is a file that does not decompress, and the suite
+# notices because it compresses and decompresses real data rather than checking a return value.
+#
+# The third is the first line of that config.h that anything reads. `AC_USE_SYSTEM_EXTENSIONS` writes
+# an `#undef __STDC_WANT_LIB_EXT1__` followed by a `#define` of the same name, and gnulib expects the
+# compiler to treat the undef of a macro that is not defined as the no-op the standard says it is.
+# This is the only tag in the vocabulary no other project carries, and it is the one thing measured
+# to be standing in front of all five gnulib rows, so it takes the slot ahead of integer-conversion,
+# which is also true here and is already carried by nine projects.
+#
+# Left off besides that: autoconf-probes and pointer-arithmetic, both true and both carried by eleven
+# projects or more, and there are only three slots.
+demands = ["deep-macros", "bit-manipulation", "feature-test-macros"]
+
+[source]
+url = "https://ftp.gnu.org/gnu/gzip/gzip-1.14.tar.xz"
+sha256 = "01a7b881bd220bfdf615f97b8718f80bdfd3f6add385b993dcf6efd14e8c0ac6"
+strip-components = 1
+
+# A3, ordinary autoconf and automake, and the level needs no carrier. configure takes CFLAGS out of
+# the environment and automake puts it on every compile and on the link, so lto is on both halves and
+# needs nothing added. Checked rather than assumed: the lto build produces a 181880 byte gzip against
+# 184968 at -O2 on the reference machine, so the level reached the link and did something.
+#
+# The expect line is not the one the other autoconf projects here use. autoconf 2.72 dropped
+# "checking whether we are using the GNU C compiler" for "checking whether the compiler supports GNU
+# C", and gzip 1.14 ships a configure generated with the newer one. Both spellings ask the same
+# question and a project is pinned to the script in its own tarball, so the line has to match the
+# tarball rather than the corpus habit.
+[build]
+system = "configure"
+expect-configure = ["checking whether the compiler supports GNU C... yes"]
+# The one program this row is about. The tree also installs a dozen shell scripts, zgrep and zdiff
+# and the rest, and those are text rather than output of the compiler.
+binary = "gzip"
+
+# make check runs the tests directory under automake's parallel harness, which prints the # PASS:
+# block at the end, so the automake parser reads it and no awk is needed.
+#
+# Thirty cases, twenty nine passing and one skipped, measured with gcc 16.2.0 on the reference
+# machine at all six levels including lto. The skip is write-error and the reason it skips is worth
+# writing down, because it is a property of the machine rather than of the compiler: the test makes a
+# directory unwritable and checks that gzip reports the failure, and root can write to it anyway, so
+# the script prints "being root, skipping this test" and exits 77. A cell that runs as an ordinary
+# user passes it and scores 30.
+#
+# So the baseline is 29 and not 30, which is the number every host reaches rather than the number the
+# best host reaches. That is deliberate and it is the weaker of the two choices available: 30 would
+# be a harder standard and would fail on any machine that runs the corpus as root, which both
+# reference machines do. baseline-total is not set, because the reference compiler does get a clean
+# run out of this suite and there is no case it fails.
+#
+# E2, perl, and it is required rather than optional. zgrep-signal skips itself when there is no perl
+# on the path, and a skipped case is one fewer passing case, so a host without perl would come in at
+# 28 and fail the baseline. Requiring it means such a host skips the project instead, which is the
+# honest answer.
+[test]
+command = ["make", "check"]
+oracle = "suite"
+parser = "automake"
+baseline-tests = 29
+requires = ["sh", "perl"]
+
+# gcc 16.2.0 builds this tree in five seconds and spends fifty two getting there, and almost all of
+# both is gnulib rather than gzip. The configure script is inside the build limit and it is the part
+# that dominates: it runs the compiler a few hundred times on programs of ten lines each, so what it
+# costs is process startup rather than compilation, and a compiler that is slow to start pays that
+# cost three hundred times before it compiles anything real. The limit is head room for a compiler an
+# order of magnitude slower on both halves.
+#
+# The suite is about twenty five seconds. The limit is not set from that, because every one of the
+# thirty cases is a shell script that forks gzip several times over real data.
+[limits]
+build-seconds = 1800
+test-seconds = 300
