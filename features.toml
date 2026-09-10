@@ -101,6 +101,23 @@ kind = "standard"
 summary = "float and double arithmetic in volume, without contraction changing the answer"
 kind = "standard"
 
+# The three diagnostics are three halves of the same header, which is why they are one entry. The
+# narrow string headers need the `_chk` family, the wide ones need the va_arg_pack pair, and both
+# call __builtin_object_size to work out what to check against. Nobody passes -D_FORTIFY_SOURCE for
+# this to fire: gnulib's config.h defines it as 2 whenever __OPTIMIZE__ is set, and config.h is the
+# first include of every translation unit in a gnulib project, so it happens at -O1 and above with
+# nothing on the command line.
+[fortify-builtins]
+summary = "__builtin_object_size, the __builtin___*_chk family and __builtin_va_arg_pack, which glibc's fortified headers are written in"
+kind = "gnu-builtin"
+diagnostic = [
+    "implicit declaration of function '__builtin___",
+    "implicit declaration of function '__builtin_va_arg_pack",
+    "`__builtin_object_size` is not implemented yet",
+]
+rucc-issue = "https://github.com/tamnd/rucc/issues/825"
+standard = "GNU extension with no portable spelling"
+
 [function-pointers]
 summary = "calls through a pointer, including pointers to library functions"
 kind = "standard"

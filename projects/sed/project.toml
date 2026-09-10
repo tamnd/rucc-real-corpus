@@ -22,17 +22,22 @@ description = "the stream editor, an interpreter for a small language, graded by
 # or orders the struct differently than it reports through offsetof swaps a prefix that ends in the
 # wrong place, and what comes out is a hold space with half a pointer in it rather than a diagnostic.
 #
-# feature-test-macros is the measured blocker rather than the interesting part, the same one that
-# stands in front of diffutils, grep and every other gnulib row here. `AC_USE_SYSTEM_EXTENSIONS`
-# writes an `#undef __STDC_WANT_LIB_EXT1__` and then a `#define` of the same name into the top of
-# config.h, and rucc rejects the undef of a macro that is not currently defined, which the standard
-# says has no effect. tamnd/rucc#757.
+# fortify-builtins is the measured blocker, and sed is the row that found it. sed 4.9 ships an
+# older gnulib than diffutils and grep do, and its config.h has no `#undef __STDC_WANT_LIB_EXT1__`
+# in it, so this is the first gnulib row that gets past tamnd/rucc#757 and reaches a real compile.
+# What it reaches is glibc's fortified headers. config.h line 57 defines `_FORTIFY_SOURCE` as 2
+# whenever `__OPTIMIZE__` is set, with nothing on the command line asking for it, and config.h is
+# the first include of every file in the tree, so from -O1 upward every translation unit that
+# includes wchar.h, stdio.h or string.h lands in wrappers written in `__builtin_va_arg_pack` and the
+# `__builtin___*_chk` family. rucc runs the whole of sed's configure and answers every probe, then
+# stops on the first of those. tamnd/rucc#825.
 #
-# Left off: pointer-arithmetic, which `resize_line` earns fairly, since it saves `active - text`
+# Left off: feature-test-macros, which is true of every other gnulib row here and is not what stops
+# this one. pointer-arithmetic, which `resize_line` earns fairly, since it saves `active - text`
 # across the realloc and rebuilds the pointer from the offset afterwards, and which sixteen rows
-# already carry. Also bit-manipulation and switch-dispatch, both true of lib/dfa.c, which sed
+# already carry. And bit-manipulation and switch-dispatch, both true of lib/dfa.c, which sed
 # compiles as well, and both of which grep is already on the list for with the same file.
-demands = ["feature-test-macros", "struct-layout", "large-switch"]
+demands = ["fortify-builtins", "struct-layout", "large-switch"]
 
 [source]
 url = "https://ftp.gnu.org/gnu/sed/sed-4.9.tar.xz"
@@ -89,7 +94,9 @@ requires = ["sh", "perl"]
 
 # Configure is the expensive half here, the same shape as diffutils and gzip: a few hundred compiles
 # of ten line programs, so the cost is process startup rather than compilation. The limit is head
-# room for a compiler an order of magnitude slower at both.
+# room for a compiler an order of magnitude slower at both. Measured through the harness at -O2, gcc
+# takes 74 seconds to configure and build the four hundred and ninety eight files and hundred and
+# eight thousand lines this row compiles, and 86 seconds to run the suite.
 [limits]
 build-seconds = 1800
 test-seconds = 900
