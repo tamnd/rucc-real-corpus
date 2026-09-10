@@ -31,20 +31,20 @@ Weight is what to do next. It is the sum over the held up projects of six minus 
 | `cmake-probes` | driver | 3 | 0 | 0 | none open |
 | `feature-test-macros` | preprocessor | 3 | 0 | 0 | [open](https://github.com/tamnd/rucc/issues/757) |
 | `float-arithmetic` | standard | 3 | 0 | 0 | none open |
-| `inline-asm` | gnu-extension | 3 | 0 | 0 | none open |
 | `libm-builtins` | gnu-builtin | 3 | 0 | 0 | [open](https://github.com/tamnd/rucc/issues/226) |
 | `memcpy-idioms` | gnu-builtin | 3 | 0 | 0 | none open |
 | `overflow-builtins` | gnu-builtin | 3 | 0 | 0 | [open](https://github.com/tamnd/rucc/issues/836) |
 | `rotate-idioms` | standard | 3 | 0 | 0 | none open |
-| `stack-allocation` | standard | 3 | 0 | 0 | [open](https://github.com/tamnd/rucc/issues/631) |
 | `thread-local` | standard | 3 | 0 | 0 | none open |
 | `unaligned-access` | standard | 3 | 0 | 0 | none open |
-| `char-signedness` | abi | 2 | 0 | 0 | [open](https://github.com/tamnd/rucc/issues/489) |
 | `constant-time` | standard | 2 | 0 | 0 | none open |
 | `fortify-builtins` | gnu-builtin | 2 | 0 | 0 | [open](https://github.com/tamnd/rucc/issues/825) |
+| `inline-asm` | gnu-extension | 2 | 0 | 0 | none open |
 | `nan-boxing` | standard | 2 | 0 | 0 | none open |
 | `recursion-depth` | standard | 2 | 0 | 0 | none open |
+| `stack-allocation` | standard | 2 | 0 | 0 | [open](https://github.com/tamnd/rucc/issues/631) |
 | `transparent-union` | gnu-extension | 2 | 0 | 0 | [open](https://github.com/tamnd/rucc/issues/829) |
+| `char-signedness` | abi | 1 | 0 | 0 | [open](https://github.com/tamnd/rucc/issues/489) |
 | `cleanup-attribute` | gnu-extension | 1 | 0 | 0 | [open](https://github.com/tamnd/rucc/issues/786) |
 | `driver-stdin-input` | driver | 1 | 0 | 0 | [open](https://github.com/tamnd/rucc/issues/812) |
 | `flexible-array-member` | standard | 1 | 0 | 0 | none open |
@@ -296,14 +296,6 @@ float and double arithmetic in volume, without contraction changing the answer
 - `minunit`, R1, not measured
 - `libmpfr`, R2, not measured
 
-### `inline-asm`
-
-__asm__ at file scope, including .incbin and hand written section directives
-
-- `incbin`, R0, not measured
-- `libgmp`, R2, not measured
-- `busybox`, R4, not measured
-
 ### `libm-builtins`
 
 __builtin_ceil, __builtin_floor and the rest of the libm shaped builtins
@@ -336,14 +328,6 @@ a shift left or-ed with a shift right recognised as one rotate instruction
 - `xxhash`, R1, not measured
 - `git`, R4, not measured
 
-### `stack-allocation`
-
-an array whose size is a runtime value, spelled either as a C99 variable length array or as a call to alloca, and a frame that grows and shrinks to hold it
-
-- `bash`, R4, not measured
-- `busybox`, R4, not measured
-- `git`, R4, not measured
-
 ### `thread-local`
 
 _Thread_local and __thread
@@ -360,13 +344,6 @@ loads and stores through pointers the compiler cannot prove are aligned
 - `zstd`, R2, not measured
 - `tcc`, R3, not measured
 
-### `char-signedness`
-
--funsigned-char and -fsigned-char, which decide the sign of a plain char and so change the ABI
-
-- `busybox`, R4, not measured
-- `toybox`, R4, not measured
-
 ### `constant-time`
 
 arithmetic written to take the same time whatever the secret is, which the optimizer must not turn back into a branch
@@ -380,6 +357,13 @@ __builtin_object_size, the __builtin___*_chk family and __builtin_va_arg_pack, w
 
 - `sed`, R4, not measured
 - `tar`, R4, not measured
+
+### `inline-asm`
+
+__asm__ at file scope, including .incbin and hand written section directives
+
+- `incbin`, R0, not measured
+- `libgmp`, R2, not measured
 
 ### `nan-boxing`
 
@@ -395,12 +379,25 @@ recursion deep enough that the frame layout and the tail call decision both matt
 - `parson`, R0, not measured
 - `lua-nojumptable`, R3, not measured
 
+### `stack-allocation`
+
+an array whose size is a runtime value, spelled either as a C99 variable length array or as a call to alloca, and a frame that grows and shrinks to hold it
+
+- `bash`, R4, not measured
+- `git`, R4, not measured
+
 ### `transparent-union`
 
 __attribute__((transparent_union)) on a parameter, which glibc's sockaddr argument is declared with
 
 - `git`, R4, not measured
 - `sed`, R4, not measured
+
+### `char-signedness`
+
+-funsigned-char and -fsigned-char, which decide the sign of a plain char and so change the ABI
+
+- `toybox`, R4, not measured
 
 ### `cleanup-attribute`
 
