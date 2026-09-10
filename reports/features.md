@@ -14,7 +14,7 @@ Weight is what to do next. It is the sum over the held up projects of six minus 
 |---|---|---|---|---|---|
 | `pointer-arithmetic` | standard | 15 | 0 | 0 | none open |
 | `bit-manipulation` | standard | 12 | 0 | 0 | none open |
-| `autoconf-probes` | driver | 11 | 0 | 0 | none open |
+| `autoconf-probes` | driver | 10 | 0 | 0 | none open |
 | `deep-macros` | preprocessor | 10 | 0 | 0 | none open |
 | `switch-dispatch` | standard | 10 | 0 | 0 | none open |
 | `function-pointers` | standard | 9 | 0 | 0 | none open |
@@ -40,6 +40,7 @@ Weight is what to do next. It is the sum over the held up projects of six minus 
 | `overflow-builtins` | gnu-builtin | 2 | 0 | 0 | none open |
 | `recursion-depth` | standard | 2 | 0 | 0 | none open |
 | `rotate-idioms` | standard | 2 | 0 | 0 | none open |
+| `cleanup-attribute` | gnu-extension | 1 | 0 | 0 | [open](https://github.com/tamnd/rucc/issues/786) |
 | `feature-test-macros` | preprocessor | 1 | 0 | 0 | [open](https://github.com/tamnd/rucc/issues/757) |
 | `flexible-array-member` | standard | 1 | 0 | 0 | none open |
 | `long-double` | standard | 1 | 0 | 0 | none open |
@@ -92,7 +93,6 @@ the compiler answers a generated configure script the way autoconf expects
 - `gdbm`, R2, not measured
 - `libcheck`, R2, not measured
 - `libexpat`, R2, not measured
-- `libjansson`, R2, not measured
 - `libjpeg`, R2, not measured
 - `libpng`, R2, not measured
 - `libpsl`, R2, not measured
@@ -339,6 +339,12 @@ a shift left or-ed with a shift right recognised as one rotate instruction
 - `blake2`, R1, not measured
 - `xxhash`, R1, not measured
 
+### `cleanup-attribute`
+
+__attribute__((cleanup(f))) runs f at every exit from the enclosing block, in reverse declaration order
+
+- `libjansson`, R2, not measured
+
 ### `feature-test-macros`
 
 _GNU_SOURCE and the __STDC_WANT_ family, set by the program before it includes anything, and undefined first
@@ -408,6 +414,7 @@ Each of these is a project worth admitting, or an argument that the demand is no
 These rows are why the residue above can be believed. A list that only records what it found cannot be told apart from a list nobody finished, so what was searched for and missing is written down too.
 
 - `autoconf-probes`: the amalgamation is one translation unit compiled directly, so nothing interrogates the compiler before the build
+- `cleanup-attribute`: no __attribute__((cleanup)) anywhere, and the 132 places the word cleanup appears are all identifiers and comments, which is what a library that has to build on every compiler in the world looks like: libjansson can use it because it is a library for people who have gcc or clang, and SQLite cannot
 - `cmake-probes`: same reason as autoconf, there is no configure step of any kind in front of the amalgamation
 - `computed-goto`: no labels as values anywhere, which is worth knowing because the bytecode interpreter is exactly the shape that usually has them and SQLite uses a plain switch instead
 - `constant-time`: the phrase appears twice in comments about algorithmic complexity and there is no cryptographic constant time requirement in the file
