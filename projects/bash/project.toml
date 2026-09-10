@@ -64,8 +64,12 @@ expect-configure = [
     "checking for C/C++ restrict keyword... __restrict__",
 ]
 # One program and nothing else installed. Measured through the harness at -O2 it is 1547344 bytes
-# with 1331098 of text, and at -O0 it is 1684128 with 1436594 of text, so the level reaches the
-# compiler with nothing added.
+# with 1331098 of text.
+#
+# The six levels give six sizes, so the level reaches the compiler and the linker with nothing
+# added: 1684128 bytes at -O0, 1449720 at -O1, 1547344 at -O2, 1210736 at -Os, 1720176 at -O3 and
+# 1646752 with -flto. The -Os figure is the one worth looking at twice, because it is 28 per cent
+# smaller than -O2 on a program this size, and -O1 being smaller than -O2 is the ordinary shape.
 binary = "bash"
 
 # bash's suite is neither automake nor autotest and it does not count anything. `tests/run-all`
@@ -83,9 +87,10 @@ binary = "bash"
 #
 # 86 cases and not the 88 scripts in the directory, because run-all skips run-minimal and run-gprof.
 #
-# gcc 16.2.0 on the reference machine gives 77 of 86 at -O0 and the same at -O2, running as an
-# ordinary user, and the nine it does not give are all properties of the environment rather than of
-# the compiler. They fall into four groups.
+# gcc 16.2.0 on the reference machine gives 77 of 86, running as an ordinary user, and the same 77
+# at all six levels including -flto, so the baseline is a property of the machine and not of the
+# level. The nine it does not give are all properties of the environment rather than of the
+# compiler. They fall into four groups.
 #
 # Five of them want a controlling terminal, which the harness does not give a child. run-test,
 # run-vredir and run-read open /dev/tty and get ENXIO, and run-history and run-execscript expect job
@@ -128,9 +133,11 @@ baseline-tests = 77
 requires = ["sh", "awk"]
 
 # The build is the expensive half here and for once it is the compiling rather than the configuring.
-# 444 files and 203742 lines, and gcc takes 136 seconds at -O2 and 83 at -O0 to configure and build
-# all of it, holding 117 megabytes at the peak against 74 at -O0. parse.y goes through yacc first,
-# and the y.tab.c that comes out is one of the larger translation units on the list.
+# 444 files and 203742 lines, and gcc takes 139 seconds at -O2 and 91 at -O0 to configure and build
+# all of it, holding 117 megabytes at the peak against 74 at -O0. -O3 is 154 seconds and 137
+# megabytes, and -flto is the slowest at 166, which is the whole program being compiled twice.
+# parse.y goes through yacc first, and the y.tab.c that comes out is one of the larger translation
+# units on the list.
 #
 # The suite is two and a half minutes and it is nearly all process startup: 86 scripts that between
 # them fork the shell several thousand times. The limit is eight times that rather than the two tar
