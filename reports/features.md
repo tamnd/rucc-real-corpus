@@ -21,8 +21,8 @@ Weight is what to do next. It is the sum over the held up projects of six minus 
 | `integer-conversion` | standard | 11 | 0 | 0 | none open |
 | `function-pointers` | standard | 9 | 0 | 0 | none open |
 | `large-switch` | standard | 9 | 0 | 0 | none open |
+| `setjmp-longjmp` | standard | 7 | 0 | 0 | none open |
 | `computed-goto` | gnu-extension | 6 | 0 | 0 | [open](https://github.com/tamnd/rucc/issues/353) |
-| `setjmp-longjmp` | standard | 6 | 0 | 0 | none open |
 | `double-formatting` | standard | 5 | 0 | 0 | none open |
 | `bit-builtins` | gnu-builtin | 4 | 0 | 0 | [open](https://github.com/tamnd/rucc/issues/310) |
 | `k-and-r-idioms` | standard | 4 | 0 | 0 | none open |
@@ -33,13 +33,13 @@ Weight is what to do next. It is the sum over the held up projects of six minus 
 | `float-arithmetic` | standard | 3 | 0 | 0 | none open |
 | `libm-builtins` | gnu-builtin | 3 | 0 | 0 | [open](https://github.com/tamnd/rucc/issues/226) |
 | `memcpy-idioms` | gnu-builtin | 3 | 0 | 0 | none open |
+| `overflow-builtins` | gnu-builtin | 3 | 0 | 0 | [open](https://github.com/tamnd/rucc/issues/836) |
 | `thread-local` | standard | 3 | 0 | 0 | none open |
 | `unaligned-access` | standard | 3 | 0 | 0 | none open |
 | `constant-time` | standard | 2 | 0 | 0 | none open |
 | `fortify-builtins` | gnu-builtin | 2 | 0 | 0 | [open](https://github.com/tamnd/rucc/issues/825) |
 | `inline-asm` | gnu-extension | 2 | 0 | 0 | none open |
 | `nan-boxing` | standard | 2 | 0 | 0 | none open |
-| `overflow-builtins` | gnu-builtin | 2 | 0 | 0 | none open |
 | `recursion-depth` | standard | 2 | 0 | 0 | none open |
 | `rotate-idioms` | standard | 2 | 0 | 0 | none open |
 | `char-signedness` | abi | 1 | 0 | 0 | [open](https://github.com/tamnd/rucc/issues/489) |
@@ -47,6 +47,7 @@ Weight is what to do next. It is the sum over the held up projects of six minus 
 | `driver-stdin-input` | driver | 1 | 0 | 0 | [open](https://github.com/tamnd/rucc/issues/812) |
 | `flexible-array-member` | standard | 1 | 0 | 0 | none open |
 | `long-double` | standard | 1 | 0 | 0 | none open |
+| `stack-allocation` | standard | 1 | 0 | 0 | [open](https://github.com/tamnd/rucc/issues/631) |
 | `stdckdint` | standard | 1 | 0 | 0 | none open |
 | `transparent-union` | gnu-extension | 1 | 0 | 0 | [open](https://github.com/tamnd/rucc/issues/829) |
 | `visibility-attributes` | gnu-extension | 1 | 0 | 0 | none open |
@@ -203,6 +204,18 @@ a switch with hundreds of cases, where the jump table decision is the compiler's
 - `mawk`, R4, not measured
 - `sqlite-shell`, R4, not measured
 
+### `setjmp-longjmp`
+
+setjmp and longjmp as an error mechanism, which constrains what the optimizer may keep in a register
+
+- `cmocka`, R2, not measured
+- `libpng`, R2, not measured
+- `femtolisp`, R3, not measured
+- `lua`, R3, not measured
+- `lua-nojumptable`, R3, not measured
+- `bash`, R4, not measured
+- `mawk`, R4, not measured
+
 ### `computed-goto`
 
 labels as values, goto *
@@ -213,17 +226,6 @@ labels as values, goto *
 - `micropython`, R3, not measured
 - `quickjs`, R3, not measured
 - `wren`, R3, not measured
-
-### `setjmp-longjmp`
-
-setjmp and longjmp as an error mechanism, which constrains what the optimizer may keep in a register
-
-- `cmocka`, R2, not measured
-- `libpng`, R2, not measured
-- `femtolisp`, R3, not measured
-- `lua`, R3, not measured
-- `lua-nojumptable`, R3, not measured
-- `mawk`, R4, not measured
 
 ### `double-formatting`
 
@@ -310,6 +312,14 @@ __builtin_memcpy and __builtin_memset expanded inline at a size the compiler can
 - `libpng`, R2, not measured
 - `zstd`, R2, not measured
 
+### `overflow-builtins`
+
+__builtin_add_overflow, __builtin_sub_overflow and __builtin_mul_overflow, including the mixed signedness forms that gnulib's ckd_add generates
+
+- `jtckdint`, R0, not measured
+- `libtommath`, R2, not measured
+- `bash`, R4, not measured
+
 ### `thread-local`
 
 _Thread_local and __thread
@@ -354,13 +364,6 @@ a double written to a union and read back as a uint64_t, with a pointer and a ta
 - `janet`, R3, not measured
 - `wren`, R3, not measured
 
-### `overflow-builtins`
-
-__builtin_add_overflow, __builtin_sub_overflow and __builtin_mul_overflow
-
-- `jtckdint`, R0, not measured
-- `libtommath`, R2, not measured
-
 ### `recursion-depth`
 
 recursion deep enough that the frame layout and the tail call decision both matter
@@ -404,6 +407,12 @@ a struct ending in an incomplete array, allocated with the header in front of it
 long double at the 80 bit x86-64 format
 
 - `libmpfr`, R2, not measured
+
+### `stack-allocation`
+
+an array whose size is a runtime value, spelled either as a C99 variable length array or as a call to alloca, and a frame that grows and shrinks to hold it
+
+- `bash`, R4, not measured
 
 ### `stdckdint`
 
@@ -479,6 +488,7 @@ These rows are why the residue above can be believed. A list that only records w
 - `nan-boxing`: sqlite3.c reinterprets a double as a 64 bit integer and back in sixteen places, all of them through memcpy rather than through a union, and a value's type is carried in the flags field of the Mem struct beside the number rather than in the payload of a quiet NaN, so the demand this tag names is one it does not make
 - `rotate-idioms`: no rotate written as a shift pair and no rotate helper
 - `setjmp-longjmp`: no setjmp and no longjmp, since errors are returned as codes all the way up
+- `stack-allocation`: there are five calls to alloca in sqlite3.c and every one of them is behind SQLITE_USE_ALLOCA, which the amalgamation does not define, so the default build takes sqlite3DbMallocRaw instead and no variable length array appears anywhere in the file
 - `stdckdint`: the checked arithmetic goes through the GNU overflow builtins rather than the C23 header
 - `thread-local`: no _Thread_local and no __thread, because thread state is passed in the connection handle rather than kept in the compiler's storage
 - `transparent-union`: the amalgamation opens no sockets and declares no union of its own with the attribute, so the one place glibc uses it, the sockaddr argument of bind and its relatives, is never reached from sqlite3.c

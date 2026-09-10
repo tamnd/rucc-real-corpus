@@ -1,0 +1,148 @@
+[project]
+name = "bash"
+rung = 4
+upstream = "https://www.gnu.org/software/bash/"
+licence = "GPL-3.0-or-later"
+licence-file = "COPYING"
+description = "the shell, graded by the eighty six scripts of its own test suite, each of which passes by printing nothing"
+# bash is the largest program on the list, four hundred and forty four files and two hundred and
+# three thousand lines with a yacc grammar in front of them, and it is here because it is the first
+# project on the list that asks the compiler for memory it cannot count at compile time. `alloca` is
+# not a convenience in bash, it is how the parser and the word expander work: `string_list_dollar_star`
+# and `string_list_dollar_at` in subst.c both build their result in a buffer sized from the separator
+# and the list at run time, and there are seven such sites in the tree. rucc has neither spelling, so
+# five of them stop the front end on `__builtin_alloca` and two stop the back end on `stacksave`,
+# which is one missing feature printing two different diagnostics. tamnd/rucc#631. The first one the
+# build reaches is in eval.c, at the top of the read eval print loop, which is about as central to
+# the program as a site can be.
+#
+# overflow-builtins is the second blocker and it is a new shape of it. bash ships its own
+# `stdckdint.h` and its own copy of gnulib's `intprops-internal.h`, so `ckd_add` and `ckd_sub` come
+# out as `__builtin_add_overflow` with whatever types the call site had. `mkseq` in braces.c writes
+# `ckd_add (&nelem, prevn / abs_incr, 2)` where `nelem` is a `size_t` and `prevn` is an `intmax_t`,
+# and that is a signed sixty four bit value going into an unsigned sixty four bit result. Nothing
+# there is wider than a word. rucc refuses it anyway, because it answers the question by widening
+# both sides to a common type and there is no common type for a signed and an unsigned sixty four,
+# so it asks for a hundred and twenty eight bits and stops. Same signedness on both sides works, and
+# so does the mixed case at thirty two bits, where the common type exists. tamnd/rucc#836.
+#
+# setjmp-longjmp is the third and it is what bash is, rather than what stops it. bashjmp.h declares
+# `top_level` and `subshell_top_level` as procenv_t, every error path in the parser and the
+# evaluator ends in a longjmp back to one of them, and unwind_prot.c keeps a stack of things to undo
+# on the way out. That is a control flow the optimizer has to respect: a local that is live across
+# the setjmp and modified after it has to be in memory when the longjmp arrives, or the shell comes
+# back from an error with a variable holding a value from before the command ran.
+#
+# One more feature turns up in the build and is not listed, because sed already carries it and there
+# are two places. `getpeername` is called with a `struct sockaddr *` at lib/sh/netconn.c:52 and
+# `connect` at lib/sh/netopen.c:241, glibc declares the second argument of both with a transparent
+# union, and rucc drops the attribute, so both calls are type errors. tamnd/rucc#829.
+#
+# Left off: large-switch, which the parser and the expander both earn and nine rows carry already.
+# deep-macros, which shmbutil.h is built out of and which is true of most of this list.
+# recursion-depth, true of the parser, and carried by three rows.
+demands = ["stack-allocation", "overflow-builtins", "setjmp-longjmp"]
+
+[source]
+url = "https://ftp.gnu.org/gnu/bash/bash-5.3.tar.gz"
+sha256 = "0d5cd86965f869a26cf64f4b71be7b96f90a3ba8b3d74e27e8e9d9d5550f31ba"
+strip-components = 1
+
+# A3, autoconf without automake: bash writes its own Makefile.in by hand. The level still needs no
+# carrier, because configure takes CFLAGS out of the environment and puts it straight into the
+# Makefile, and every compile and the final link use it.
+#
+# The expect lines are the autoconf 2.72 spellings, the same two diffutils, grep, sed and tar use,
+# and they are worth having for the same reason: a compiler without restrict makes configure define
+# the keyword away to nothing, and then the build succeeds without it ever having been compiled.
+# bash asks 494 probes before it writes a Makefile, which is the most of any project here, and rucc
+# answers all of them.
+[build]
+system = "configure"
+expect-configure = [
+    "checking whether the compiler supports GNU C... yes",
+    "checking for C/C++ restrict keyword... __restrict__",
+]
+# One program and nothing else installed. Measured through the harness at -O2 it is 1547344 bytes
+# with 1331098 of text.
+#
+# The six levels give six sizes, so the level reaches the compiler and the linker with nothing
+# added: 1684128 bytes at -O0, 1449720 at -O1, 1547344 at -O2, 1210736 at -Os, 1720176 at -O3 and
+# 1646752 with -flto. The -Os figure is the one worth looking at twice, because it is 28 per cent
+# smaller than -O2 on a program this size, and -O1 being smaller than -O2 is the ordinary shape.
+binary = "bash"
+
+# bash's suite is neither automake nor autotest and it does not count anything. `tests/run-all`
+# loops over the run-* scripts, prints the name of each one, runs it, and lets the script's output
+# fall through to the terminal. A case passes by printing nothing. The banner at the top says so in
+# as many words: any output from any test, unless otherwise noted, indicates a possible anomaly.
+# The whole run exits zero whatever happens, so the status is not an oracle either.
+#
+# So the awk below is the oracle. It takes each `run-` line as the start of a case and counts the
+# lines under it, and a case with no lines under it passed. The one thing it lets through is a line
+# starting with `warning:`, which is the otherwise noted part: eleven of the scripts print a warning
+# up front to say what a difference in their output would mean, and those warnings are not failures.
+# The needle is anchored, so a `warning:` that arrives with a file name in front of it, which is what
+# a locale complaint from inside a test looks like, still counts against the case.
+#
+# 86 cases and not the 88 scripts in the directory, because run-all skips run-minimal and run-gprof.
+#
+# gcc 16.2.0 on the reference machine gives 77 of 86, running as an ordinary user, and the same 77
+# at all six levels including -flto, so the baseline is a property of the machine and not of the
+# level. The nine it does not give are all properties of the environment rather than of the
+# compiler. They fall into four groups.
+#
+# Five of them want a controlling terminal, which the harness does not give a child. run-test,
+# run-vredir and run-read open /dev/tty and get ENXIO, and run-history and run-execscript expect job
+# control, so the shell says it cannot set the terminal process group.
+#
+# Two want locales that have not been generated on this host. run-intl asks for de_DE.UTF-8 and
+# run-glob-test for zh_TW.big5, and both say so in as many words before they fail.
+#
+# run-printf is a C library difference rather than a compiler one. printf7.sub asks for a precision
+# larger than an int and expects the string back, and this glibc returns EOVERFLOW instead.
+#
+# run-builtins is the interesting one, because the harness causes it. `help` truncates its two
+# column output to the screen width, and it keeps one more character in the C locale than in a UTF-8
+# one, so the line for coproc and source comes out a character longer than builtins.right has it.
+# The harness sets LC_ALL and LANG to C on purpose, so that a build cannot embed a locale specific
+# sort order and so that two runs differ only in the compiler. This is the price of that, and it is
+# a price worth paying: the setting is the same on both sides of every differential, so the case
+# fails identically for gcc and for rucc and discriminates nothing. It does mean a hand run outside
+# the harness comes in at 78 rather than 77, which is worth knowing before anybody reports it as a
+# regression.
+#
+# All nine fail in the direction that makes the baseline a floor. A host with those locales
+# generated, or one that gives the suite a terminal, comes in above 77, which passes.
+#
+# One more thing worth knowing before running this by hand: globstar2.sub builds a directory at
+# $TMPDIR/empty and gives up if something is already there. The harness gives every sandbox its own
+# TMPDIR so this never comes up in a run, but a hand run with TMPDIR unset writes into /tmp and
+# inherits whatever the last person left there, and the failure it produces is 5676 lines long and
+# looks nothing like its cause.
+[test]
+command = [
+    "sh",
+    "-c",
+    "make check > rrc-suite-output.log 2>&1; status=$?; cat rrc-suite-output.log; awk '/^run-/ { if (name != \"\") { if (n > 0) failed++; else passed++ } name = $0; n = 0; next } /^warning:/ { next } { if (name != \"\") n++ } END { if (name != \"\") { if (n > 0) failed++; else passed++ }; printf \"bash: %d of %d tests passed\\n\", passed, passed + failed }' rrc-suite-output.log; exit $status",
+]
+oracle = "suite"
+parser = "custom-regex"
+regex = "bash: (\\d+) of (\\d+) tests passed"
+baseline-tests = 77
+requires = ["sh", "awk"]
+
+# The build is the expensive half here and for once it is the compiling rather than the configuring.
+# 444 files and 203742 lines, and gcc takes 139 seconds at -O2 and 91 at -O0 to configure and build
+# all of it, holding 117 megabytes at the peak against 74 at -O0. -O3 is 154 seconds and 137
+# megabytes, and -flto is the slowest at 166, which is the whole program being compiled twice.
+# parse.y goes through yacc first, and the y.tab.c that comes out is one of the larger translation
+# units on the list.
+#
+# The suite is two and a half minutes and it is nearly all process startup: 86 scripts that between
+# them fork the shell several thousand times. The limit is eight times that rather than the two tar
+# uses, because here the thing being forked is the program the compiler just built, so a slower
+# binary really does make the suite slower.
+[limits]
+build-seconds = 2400
+test-seconds = 1200

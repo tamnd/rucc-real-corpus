@@ -36,7 +36,7 @@ evidence = "__builtin_clzll twice in the decimal and floating point conversion, 
 [[measured]]
 tag = "overflow-builtins"
 sites = 3
-evidence = "sqlite3AddInt64, sqlite3SubInt64 and sqlite3MulInt64 are each one call to the matching __builtin_*_overflow"
+evidence = "sqlite3AddInt64, sqlite3SubInt64 and sqlite3MulInt64 are each one call to the matching __builtin_*_overflow, and all three are i64 into i64, so the mixed signedness form that stops bash is not here"
 
 [[measured]]
 tag = "large-switch"
@@ -230,3 +230,8 @@ evidence = "no _FORTIFY_SOURCE anywhere in sqlite3.c, no __builtin___ name of an
 tag = "driver-stdin-input"
 sites = 0
 evidence = "the amalgamation is one file handed to the compiler by name, and there is no configure step in front of it piping programs into the compiler to find out what the machine has"
+
+[[measured]]
+tag = "stack-allocation"
+sites = 0
+evidence = "there are five calls to alloca in sqlite3.c and every one of them is behind SQLITE_USE_ALLOCA, which the amalgamation does not define, so the default build takes sqlite3DbMallocRaw instead and no variable length array appears anywhere in the file"
