@@ -15,21 +15,21 @@ Weight is what to do next. It is the sum over the held up projects of six minus 
 | `pointer-arithmetic` | standard | 15 | 0 | 0 | none open |
 | `bit-manipulation` | standard | 13 | 0 | 0 | none open |
 | `autoconf-probes` | driver | 11 | 0 | 0 | none open |
+| `switch-dispatch` | standard | 11 | 0 | 0 | none open |
 | `deep-macros` | preprocessor | 10 | 0 | 0 | none open |
 | `struct-layout` | abi | 10 | 0 | 0 | none open |
-| `switch-dispatch` | standard | 10 | 0 | 0 | none open |
 | `function-pointers` | standard | 9 | 0 | 0 | none open |
 | `integer-conversion` | standard | 9 | 0 | 0 | none open |
-| `large-switch` | standard | 8 | 0 | 0 | none open |
+| `large-switch` | standard | 9 | 0 | 0 | none open |
 | `computed-goto` | gnu-extension | 6 | 0 | 0 | [open](https://github.com/tamnd/rucc/issues/353) |
 | `setjmp-longjmp` | standard | 6 | 0 | 0 | none open |
 | `double-formatting` | standard | 5 | 0 | 0 | none open |
 | `bit-builtins` | gnu-builtin | 4 | 0 | 0 | [open](https://github.com/tamnd/rucc/issues/310) |
+| `k-and-r-idioms` | standard | 4 | 0 | 0 | none open |
 | `varargs-depth` | standard | 4 | 0 | 0 | none open |
 | `atomic-builtins` | gnu-builtin | 3 | 0 | 0 | [open](https://github.com/tamnd/rucc/issues/311) |
 | `cmake-probes` | driver | 3 | 0 | 0 | none open |
 | `float-arithmetic` | standard | 3 | 0 | 0 | none open |
-| `k-and-r-idioms` | standard | 3 | 0 | 0 | none open |
 | `libm-builtins` | gnu-builtin | 3 | 0 | 0 | [open](https://github.com/tamnd/rucc/issues/226) |
 | `memcpy-idioms` | gnu-builtin | 3 | 0 | 0 | none open |
 | `thread-local` | standard | 3 | 0 | 0 | none open |
@@ -103,6 +103,22 @@ the compiler answers a generated configure script the way autoconf expects
 - `pcre2`, R2, not measured
 - `xz`, R4, not measured
 
+### `switch-dispatch`
+
+a state machine written as a switch, with deliberate fall through between cases
+
+- `c4`, R0, not measured
+- `coremark`, R0, not measured
+- `heatshrink`, R0, not measured
+- `picohttpparser`, R0, not measured
+- `brotli`, R2, not measured
+- `libexpat`, R2, not measured
+- `libyaml`, R2, not measured
+- `pcre2`, R2, not measured
+- `chibi-scheme`, R3, not measured
+- `tcc`, R3, not measured
+- `flex`, R4, not measured
+
 ### `deep-macros`
 
 macros expanding through several layers, including __VA_ARGS__ forwarding
@@ -132,21 +148,6 @@ struct offsets, padding and alignment as the ABI states them
 - `tcc`, R3, not measured
 - `byacc`, R4, not measured
 - `xz`, R4, not measured
-
-### `switch-dispatch`
-
-a state machine written as a switch, with deliberate fall through between cases
-
-- `c4`, R0, not measured
-- `coremark`, R0, not measured
-- `heatshrink`, R0, not measured
-- `picohttpparser`, R0, not measured
-- `brotli`, R2, not measured
-- `libexpat`, R2, not measured
-- `libyaml`, R2, not measured
-- `pcre2`, R2, not measured
-- `chibi-scheme`, R3, not measured
-- `tcc`, R3, not measured
 
 ### `function-pointers`
 
@@ -186,6 +187,7 @@ a switch with hundreds of cases, where the jump table decision is the compiler's
 - `lua`, R3, not measured
 - `lua-nojumptable`, R3, not measured
 - `quickjs`, R3, not measured
+- `flex`, R4, not measured
 - `mawk`, R4, not measured
 - `sqlite-shell`, R4, not measured
 
@@ -230,6 +232,15 @@ __builtin_clz, __builtin_ctz, __builtin_popcount and their l and ll forms
 - `quickjs`, R3, not measured
 - `xz`, R4, not measured
 
+### `k-and-r-idioms`
+
+declarations and calls in the shape C had before it was standardised, which a compiler defaulting to C23 rejects
+
+- `ncompress`, R1, not measured
+- `libjpeg`, R2, not measured
+- `byacc`, R4, not measured
+- `flex`, R4, not measured
+
 ### `varargs-depth`
 
 varargs forwarded through several layers of function
@@ -262,14 +273,6 @@ float and double arithmetic in volume, without contraction changing the answer
 - `llama2.c`, R0, not measured
 - `minunit`, R1, not measured
 - `libmpfr`, R2, not measured
-
-### `k-and-r-idioms`
-
-declarations and calls in the shape C had before it was standardised, which a compiler defaulting to C23 rejects
-
-- `ncompress`, R1, not measured
-- `libjpeg`, R2, not measured
-- `byacc`, R4, not measured
 
 ### `libm-builtins`
 

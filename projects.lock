@@ -90,6 +90,14 @@ licence-sha256 = "081b0afd337461294dace894aac211c09f97f29d7ffb7b962650f595f434f5
 verified = "2026-09-08"
 
 [[project]]
+name = "flex"
+url = "https://github.com/westes/flex/releases/download/v2.6.4/flex-2.6.4.tar.gz"
+sha256 = "e87aae032bf07c26f85ac0ed3250998c37621d95f8bd748b31f15b33c45ee995"
+bytes = 1419096
+licence-sha256 = "97fd685958d93be7f8dab939bb8161dbd6afb0718c63bfc337c24321aea44273"
+verified = "2026-09-10"
+
+[[project]]
 name = "gdbm"
 url = "https://ftp.gnu.org/gnu/gdbm/gdbm-1.26.tar.gz"
 sha256 = "6a24504a14de4a744103dcb936be976df6fbe88ccff26065e54c1c47946f4a5e"
