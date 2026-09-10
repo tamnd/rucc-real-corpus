@@ -675,6 +675,7 @@ fn build_steps(job: &Job<'_>, env: &BTreeMap<String, String>, workdir: &Path) ->
     let limit = Duration::from_secs(job.manifest.limits.build_seconds);
     let make = || -> Vec<String> {
         let mut args = build.targets.clone();
+        args.extend(host_cc_assignment(env));
         if let Some(assignment) = build.level_assignment(job.level) {
             args.push(assignment);
         }
@@ -724,13 +725,10 @@ fn build_steps(job: &Job<'_>, env: &BTreeMap<String, String>, workdir: &Path) ->
             let Some(config) = &build.config else {
                 return vec![at("make", Phase::Linked, "make", make())];
             };
+            let mut configure = vec![config.target.clone()];
+            configure.extend(host_cc_assignment(env));
             vec![
-                at(
-                    "configure",
-                    Phase::Configured,
-                    "make",
-                    vec![config.target.clone()],
-                ),
+                at("configure", Phase::Configured, "make", configure),
                 at("make", Phase::Linked, "make", make()),
             ]
         }
@@ -825,6 +823,26 @@ pub(crate) fn resolve(program: &str, env: &BTreeMap<String, String>, workdir: &P
         .unwrap_or_else(|| PathBuf::from(program))
 }
 
+/// `HOSTCC=<the host compiler>` on the make command line, which is the only place it survives.
+///
+/// [`crate::env`] already puts the host compiler in the environment under three names, and section
+/// 7.4's reason for it is that a generator built by a miscompiling compiler emits wrong source and
+/// the failure then lands in a file with nothing to do with the bug. A makefile that says
+/// `HOSTCC = gcc` with a plain assignment takes that guarantee away without saying anything, and it
+/// takes it away in the worst possible direction: make prefers its own assignment to the
+/// environment, `gcc` is resolved through the shim, and the shim is the compiler under test. So the
+/// host tool is built by the compiler under test, silently, on exactly the projects that generate
+/// the most source.
+///
+/// busybox is the row that found it. kbuild's Makefile line 274 is `HOSTCC = gcc`, and the first
+/// thing a busybox build does is compile `scripts/basic/fixdep` with what that resolves to. A
+/// command line assignment is the one thing make prefers over its own, which is why this goes here
+/// and not in the environment, and it is empty when the environment has no host compiler in it so
+/// that nothing is asserted about a build that was never given one.
+fn host_cc_assignment(env: &BTreeMap<String, String>) -> Option<String> {
+    env.get("HOSTCC").map(|host| format!("HOSTCC={host}"))
+}
+
 fn test_invocation(
     job: &Job<'_>,
     env: &BTreeMap<String, String>,
@@ -832,10 +850,11 @@ fn test_invocation(
 ) -> Option<Invocation> {
     let (program, args) = job.manifest.test.command.split_first()?;
     let mut args = args.to_vec();
-    if program == "make"
-        && let Some(assignment) = job.manifest.build.level_assignment(job.level)
-    {
-        args.push(assignment);
+    if program == "make" {
+        args.extend(host_cc_assignment(env));
+        if let Some(assignment) = job.manifest.build.level_assignment(job.level) {
+            args.push(assignment);
+        }
     }
     Some(Invocation {
         program: resolve(program, env, workdir),
@@ -2007,5 +2026,26 @@ int main(void){
         .unwrap();
         let record = graded(&job(&f, &manifest), Slot::A).unwrap();
         assert_eq!(record.outcome, Outcome::Passed);
+    }
+
+    /// A makefile that says `HOSTCC = gcc` beats the environment and loses to the command line, so
+    /// the command line is where the harness has to say it. Without this the shim answers `gcc` and
+    /// the host tool is built by the compiler under test.
+    #[test]
+    fn the_host_compiler_is_said_on_the_command_line_where_a_makefile_cannot_overrule_it() {
+        let mut env = BTreeMap::new();
+        env.insert("HOSTCC".to_string(), "/opt/gcc-16/bin/gcc-16".to_string());
+        assert_eq!(
+            host_cc_assignment(&env),
+            Some("HOSTCC=/opt/gcc-16/bin/gcc-16".to_string())
+        );
+    }
+
+    /// Nothing is asserted about a build that was never given a host compiler, because an empty
+    /// `HOSTCC=` on the command line is not the same as leaving it alone: make would export the
+    /// empty value and the project's own default would never run.
+    #[test]
+    fn no_host_compiler_in_the_environment_says_nothing_rather_than_saying_nothing_twice() {
+        assert_eq!(host_cc_assignment(&BTreeMap::new()), None);
     }
 }
