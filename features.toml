@@ -45,6 +45,13 @@ standard = "GNU extension; C23 <stdbit.h> is the portable spelling"
 summary = "shifts, masks and bit level packing across byte boundaries"
 kind = "standard"
 
+[char-signedness]
+summary = "-funsigned-char and -fsigned-char, which decide the sign of a plain char and so change the ABI"
+kind = "abi"
+diagnostic = ["unknown option `-funsigned-char`", "unknown option `-fsigned-char`"]
+rucc-issue = "https://github.com/tamnd/rucc/issues/489"
+standard = "the standard leaves the sign of plain char to the implementation; on x86-64 it is signed and the flag is how a program says otherwise"
+
 [cmake-probes]
 summary = "the compiler answers cmake's compiler identification and abi detection the way cmake expects"
 kind = "driver"
@@ -71,6 +78,13 @@ kind = "standard"
 [driver-print-dirs]
 summary = "-print-search-dirs, -print-libgcc-file-name and the rest of what a build system asks the driver"
 kind = "driver"
+
+[driver-stdin-input]
+summary = "-x names the language of the inputs that follow, and a file named - is standard input"
+kind = "driver"
+diagnostic = ["unknown option `-xc`", "cannot find -"]
+rucc-issue = "https://github.com/tamnd/rucc/issues/812"
+standard = "not in the standard; it is how a build system asks a question without writing a file"
 
 [feature-test-macros]
 summary = "_GNU_SOURCE and the __STDC_WANT_ family, set by the program before it includes anything, and undefined first"

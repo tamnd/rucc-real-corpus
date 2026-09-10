@@ -1,0 +1,116 @@
+[project]
+name = "toybox"
+rung = 4
+upstream = "https://github.com/landley/toybox"
+licence = "0BSD"
+licence-file = "LICENSE"
+description = "four hundred command line tools in one binary, whose suite runs each of them against recorded output"
+# `char-signedness` because toybox puts `-funsigned-char` on every compile line it generates, and it
+# is not a packaging preference. The tools read bytes out of files and index tables with them, and a
+# plain char is signed on x86-64, so a byte with the high bit set is a negative index. Upstream said
+# the flag once rather than casting at every use, which means a compiler that does not take the flag
+# cannot build a single file and a compiler that takes it and ignores it miscompiles quietly.
+#
+# `driver-stdin-input` because scripts/genconfig.sh decides what the binary will contain by piping
+# programs into the compiler with `-xc -` and seeing which of them link. That runs before any file
+# of toybox is compiled, so a driver that cannot read a translation unit from standard input never
+# reaches the code.
+#
+# `deep-macros` because the command table is the same header included several times with NEWTOY
+# defined differently each time, which is how one binary gets four hundred entry points, an option
+# string per command and a globals union covering all of them. generated/flags.h is macro output
+# read back in as macro input, and toys.h expands it three ways.
+#
+# Left off: `bit-manipulation`, which the option parser is built on and which thirteen projects
+# already carry, and `pointer-arithmetic`, which is in every one of these tools and which fifteen
+# carry.
+demands = ["char-signedness", "driver-stdin-input", "deep-macros"]
+
+# 0.8.12 is the current release. The tarball rather than a tag snapshot, because the release is what
+# upstream tests and it needs nothing generated before a build can start.
+[source]
+url = "https://landley.net/toybox/downloads/toybox-0.8.12.tar.gz"
+sha256 = "ad88a921133ae2231d9f2df875ec0bd42af4429145caea7d7db9e02208a6fd2e"
+strip-components = 1
+
+# A1, and the two targets run in one make because defconfig writes the .config that toybox reads.
+# There is no configure script worth the name: the file called configure prints a note and runs
+# `make defconfig` for you, which is why this is A1 and not A2.
+#
+# The build is not a Makefile in any interesting sense. The Makefile has seventeen lines and hands
+# everything to scripts/make.sh, which compiles a host tool, generates four headers, and then runs
+# the compiler over the command files itself. It also parallelises on its own, counting the CPUs and
+# splitting the file list, so `parallel` stays off here and the build still uses every core. That
+# also means the first diagnostic out of a failed build is a race, which is a real limitation of
+# this row rather than something the manifest can fix.
+[build]
+system = "make"
+targets = ["defconfig", "toybox"]
+# One binary with four hundred names, and the suite runs it through every one of them.
+#
+# Measured at -O2 it is 579040 bytes with 518887 of text. The six levels come out at six different
+# sizes, 632288 bytes at -O3 down to 464416 at -Os, which is the check that the level reached the
+# compiler at all.
+binary = "toybox"
+
+# The level has to arrive as OPTIMIZE and not as CFLAGS, and this is the clearest case of section
+# 7.8 on the list. scripts/make.sh builds the compile line as `$CFLAGS -I . $OPTIMIZE`, so the
+# level in CFLAGS lands first and whatever OPTIMIZE holds lands last and wins. configure defaults
+# OPTIMIZE to `-Os` and four other flags when the environment does not set it, so before this
+# carrier existed every level built the same binary: -O0 and -O2 both produced 464416 bytes, which
+# is the -Os number.
+#
+# The suffix carries the four flags the default value had besides the level. Two of them are size
+# flags that pair with -ffunction-sections at link time, one turns off unwind tables, and
+# -fno-strict-aliasing is the one that matters: these tools cast between types constantly and
+# upstream builds with aliasing off, so dropping it would not change the level, it would change
+# whether the program is correct.
+[build.level-flags]
+variable = "OPTIMIZE"
+why = "scripts/make.sh puts $OPTIMIZE after $CFLAGS on every compile, and configure sets OPTIMIZE to -Os when the environment does not"
+suffix = "-ffunction-sections -fdata-sections -fno-asynchronous-unwind-tables -fno-strict-aliasing"
+
+# scripts/runtest.sh prints PASS, FAIL or SKIP and a name, one line per case, and prints no total of
+# any kind. So the counting is done here with awk over the log, which is the shape pdpmake, janet,
+# tcc and micropython already use. VERBOSE=all is what makes the suite keep going after a failure
+# rather than stopping at the first one, and without it a run that fails one case reports nothing
+# about the fifteen hundred after it.
+#
+# The run count is passes plus failures and leaves the skips out. Twenty four cases skip themselves
+# and every one of them skips for a reason decided before the compiler was involved: a command left
+# out of defconfig, or a tool the machine does not have.
+#
+# On the reference machine gcc 16.2.0 gives 1572 of 1572 with 24 skipped and an exit status of zero
+# at all six levels, including lto.
+#
+# This is the row that section 7.12 was written for. Run as root the same suite attempts a different
+# set of cases, 1623 of them with 18 skipped, because cases that check what a program does without
+# permission are skipped for an ordinary user and run for root. Two of those extra cases fail,
+# losetup -D and tar ownership, so as root this project is red and the total is a different number.
+# The harness drops privilege before it builds, so the baseline below is the ordinary user's number
+# and a run forced back with --as-root fails it, which is what that flag says it is for.
+[test]
+command = [
+    "sh",
+    "-c",
+    "VERBOSE=all make tests > rrc-suite-output.log 2>&1; status=$?; cat rrc-suite-output.log; awk '/^PASS: /{ passed++ } /^FAIL: /{ failed++ } END { printf \"toybox: %d of %d tests passed\\n\", passed, passed + failed }' rrc-suite-output.log; exit $status",
+]
+oracle = "suite"
+parser = "custom-regex"
+regex = "toybox: (\\d+) of (\\d+) tests passed"
+baseline-tests = 1572
+requires = ["sh", "awk"]
+
+# Two hundred and ninety files and ninety four thousand lines, and gcc builds all of it in between
+# thirteen and thirty six seconds depending on the level, because the build script uses every core
+# whether or not anybody asked it to. Thirty six is lto and the next slowest is eighteen, and the
+# limit is head room for a compiler an order of magnitude slower rather than a limit set for gcc.
+#
+# The suite is the expensive half and it is nearly three minutes at every level. Fifteen hundred
+# cases each fork the binary at least once, most of them several times, and a few of them sleep on
+# purpose, so what it costs is process startups rather than anything the compiler decides. A binary
+# that is slow because the level could not do its work makes the whole suite slower without anything
+# having gone wrong, which is why the limit is four times what gcc needs.
+[limits]
+build-seconds = 900
+test-seconds = 1200

@@ -492,6 +492,14 @@ licence-sha256 = "d5c1816fe55f43fe3f3224755d3d2808817d44e80c4538ef48c1d43b34ceb7
 verified = "2026-09-08"
 
 [[project]]
+name = "toybox"
+url = "https://landley.net/toybox/downloads/toybox-0.8.12.tar.gz"
+sha256 = "ad88a921133ae2231d9f2df875ec0bd42af4429145caea7d7db9e02208a6fd2e"
+bytes = 3600320
+licence-sha256 = "948039f91e7e23916019047a035c69214447323c5fc272aefc0fd21e505bf41d"
+verified = "2026-09-10"
+
+[[project]]
 name = "uzlib"
 url = "https://codeload.github.com/pfalcon/uzlib/tar.gz/ae6dbe4582247076efe1b940d1dc7bc9e52d9779"
 sha256 = "7630a4c58bb2e5bf85bc3ada6a07ffcc387a729b89911e4fd1ab189214790a42"

@@ -16,7 +16,7 @@ Weight is what to do next. It is the sum over the held up projects of six minus 
 | `bit-manipulation` | standard | 14 | 0 | 0 | none open |
 | `switch-dispatch` | standard | 12 | 0 | 0 | none open |
 | `autoconf-probes` | driver | 11 | 0 | 0 | none open |
-| `deep-macros` | preprocessor | 10 | 0 | 0 | none open |
+| `deep-macros` | preprocessor | 11 | 0 | 0 | none open |
 | `integer-conversion` | standard | 10 | 0 | 0 | none open |
 | `struct-layout` | abi | 10 | 0 | 0 | none open |
 | `function-pointers` | standard | 9 | 0 | 0 | none open |
@@ -41,7 +41,9 @@ Weight is what to do next. It is the sum over the held up projects of six minus 
 | `overflow-builtins` | gnu-builtin | 2 | 0 | 0 | none open |
 | `recursion-depth` | standard | 2 | 0 | 0 | none open |
 | `rotate-idioms` | standard | 2 | 0 | 0 | none open |
+| `char-signedness` | abi | 1 | 0 | 0 | [open](https://github.com/tamnd/rucc/issues/489) |
 | `cleanup-attribute` | gnu-extension | 1 | 0 | 0 | [open](https://github.com/tamnd/rucc/issues/786) |
+| `driver-stdin-input` | driver | 1 | 0 | 0 | [open](https://github.com/tamnd/rucc/issues/812) |
 | `flexible-array-member` | standard | 1 | 0 | 0 | none open |
 | `long-double` | standard | 1 | 0 | 0 | none open |
 | `stdckdint` | standard | 1 | 0 | 0 | none open |
@@ -136,6 +138,7 @@ macros expanding through several layers, including __VA_ARGS__ forwarding
 - `micropython`, R3, not measured
 - `gzip`, R4, not measured
 - `pdpmake`, R4, not measured
+- `toybox`, R4, not measured
 
 ### `integer-conversion`
 
@@ -360,11 +363,23 @@ a shift left or-ed with a shift right recognised as one rotate instruction
 - `blake2`, R1, not measured
 - `xxhash`, R1, not measured
 
+### `char-signedness`
+
+-funsigned-char and -fsigned-char, which decide the sign of a plain char and so change the ABI
+
+- `toybox`, R4, not measured
+
 ### `cleanup-attribute`
 
 __attribute__((cleanup(f))) runs f at every exit from the enclosing block, in reverse declaration order
 
 - `libjansson`, R2, not measured
+
+### `driver-stdin-input`
+
+-x names the language of the inputs that follow, and a file named - is standard input
+
+- `toybox`, R4, not measured
 
 ### `flexible-array-member`
 
@@ -429,11 +444,13 @@ Each of these is a project worth admitting, or an argument that the demand is no
 These rows are why the residue above can be believed. A list that only records what it found cannot be told apart from a list nobody finished, so what was searched for and missing is written down too.
 
 - `autoconf-probes`: the amalgamation is one translation unit compiled directly, so nothing interrogates the compiler before the build
+- `char-signedness`: sqlite3.c spells the signedness it wants rather than asking for a flag, 392 uses of unsigned char and an explicit signed char on the operand fields of the VDBE opcode struct and on INT8_TYPE, so a build that changed the sign of a plain char would not change what the amalgamation means
 - `cleanup-attribute`: no __attribute__((cleanup)) anywhere, and the 132 places the word cleanup appears are all identifiers and comments, which is what a library that has to build on every compiler in the world looks like: libjansson can use it because it is a library for people who have gcc or clang, and SQLite cannot
 - `cmake-probes`: same reason as autoconf, there is no configure step of any kind in front of the amalgamation
 - `computed-goto`: no labels as values anywhere, which is worth knowing because the bytecode interpreter is exactly the shape that usually has them and SQLite uses a plain switch instead
 - `constant-time`: the phrase appears twice in comments about algorithmic complexity and there is no cryptographic constant time requirement in the file
 - `driver-print-dirs`: the amalgamation is compiled directly and has no build system in front of it, so nothing asks the driver where it keeps anything
+- `driver-stdin-input`: the amalgamation is one file handed to the compiler by name, and there is no configure step in front of it piping programs into the compiler to find out what the machine has
 - `flexible-array-member`: the trailing empty brackets in the source are extern array declarations of unknown size rather than flexible members inside a structure
 - `inline-asm`: there is a __asm__ block for reading the cycle counter, but it is guarded on i386 and 32 bit x86 is not a target here, so on the machines this corpus runs on the count is nought
 - `k-and-r-idioms`: every definition is prototyped, and the lines that look like an identifier list are __declspec(dllexport) on the Windows exports
