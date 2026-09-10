@@ -2,6 +2,14 @@
 # A pin move is a diff in this file with the hash in it.
 
 [[project]]
+name = "bash"
+url = "https://ftp.gnu.org/gnu/bash/bash-5.3.tar.gz"
+sha256 = "0d5cd86965f869a26cf64f4b71be7b96f90a3ba8b3d74e27e8e9d9d5550f31ba"
+bytes = 11355854
+licence-sha256 = "8ceb4b9ee5adedde47b31e975c1d90c73ad27b6b165a1dcd80c7c545eb65b903"
+verified = "2026-09-10"
+
+[[project]]
 name = "blake2"
 url = "https://codeload.github.com/BLAKE2/BLAKE2/tar.gz/ed1974ea83433eba7b2d95c5dcd9ac33cb847913"
 sha256 = "e1d1194cde9fec0f150961cca8f3d9bdf7c5a5cbe020d1cdfb962b4887793124"

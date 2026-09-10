@@ -5,14 +5,16 @@ upstream = "https://www.gnu.org/software/bash/"
 licence = "GPL-3.0-or-later"
 licence-file = "COPYING"
 description = "the shell, graded by the eighty six scripts of its own test suite, each of which passes by printing nothing"
-# bash is the largest program on the list, a hundred and sixty five thousand lines of C with a yacc
-# grammar in front of it, and it is here because it is the first project that asks the compiler for
-# memory it cannot count at compile time. `alloca` is not a convenience in bash, it is how the
-# parser and the word expander work: `string_list_dollar_star` and `string_list_dollar_at` in
-# subst.c both build their result in a buffer sized from the separator and the list at run time, and
-# there are seven such sites in the tree. rucc has neither spelling, so five of them stop the front
-# end on `__builtin_alloca` and two stop the back end on `stacksave`, which is one missing feature
-# printing two different diagnostics. tamnd/rucc#631.
+# bash is the largest program on the list, four hundred and forty four files and two hundred and
+# three thousand lines with a yacc grammar in front of them, and it is here because it is the first
+# project on the list that asks the compiler for memory it cannot count at compile time. `alloca` is
+# not a convenience in bash, it is how the parser and the word expander work: `string_list_dollar_star`
+# and `string_list_dollar_at` in subst.c both build their result in a buffer sized from the separator
+# and the list at run time, and there are seven such sites in the tree. rucc has neither spelling, so
+# five of them stop the front end on `__builtin_alloca` and two stop the back end on `stacksave`,
+# which is one missing feature printing two different diagnostics. tamnd/rucc#631. The first one the
+# build reaches is in eval.c, at the top of the read eval print loop, which is about as central to
+# the program as a site can be.
 #
 # overflow-builtins is the second blocker and it is a new shape of it. bash ships its own
 # `stdckdint.h` and its own copy of gnulib's `intprops-internal.h`, so `ckd_add` and `ckd_sub` come
@@ -32,9 +34,9 @@ description = "the shell, graded by the eighty six scripts of its own test suite
 # back from an error with a variable holding a value from before the command ran.
 #
 # One more feature turns up in the build and is not listed, because sed already carries it and there
-# are only three places. `getpeername` and `connect` are called with a `struct sockaddr *` in
-# lib/sh/netopen.c, glibc declares both with a transparent union, and rucc drops the attribute, so
-# the calls are type errors. tamnd/rucc#829.
+# are two places. `getpeername` is called with a `struct sockaddr *` at lib/sh/netconn.c:52 and
+# `connect` at lib/sh/netopen.c:241, glibc declares the second argument of both with a transparent
+# union, and rucc drops the attribute, so both calls are type errors. tamnd/rucc#829.
 #
 # Left off: large-switch, which the parser and the expander both earn and nine rows carry already.
 # deep-macros, which shmbutil.h is built out of and which is true of most of this list.
@@ -62,7 +64,7 @@ expect-configure = [
     "checking for C/C++ restrict keyword... __restrict__",
 ]
 # One program and nothing else installed. Measured through the harness at -O2 it is 1547344 bytes
-# with 1331098 of text, and at -O0 it is larger at 1436594 of text, so the level reaches the
+# with 1331098 of text, and at -O0 it is 1684128 with 1436594 of text, so the level reaches the
 # compiler with nothing added.
 binary = "bash"
 
@@ -81,23 +83,38 @@ binary = "bash"
 #
 # 86 cases and not the 88 scripts in the directory, because run-all skips run-minimal and run-gprof.
 #
-# gcc 16.2.0 on the reference machine gives 78 of 86, running as an ordinary user, and the eight it
-# does not give are all properties of the machine rather than of the compiler. Four of them want a
-# controlling terminal, which the harness does not give a child: run-test and run-vredir open
-# /dev/tty, and run-history and run-execscript expect job control to be on. Two want locales that
-# have not been generated: run-intl asks for de_DE.UTF-8 and run-glob-test for zh_TW.big5. run-read
-# wants a terminal as well. run-printf is the odd one, and it is a C library difference rather than
-# a compiler one: printf7.sub asks for a precision larger than an int and expects the string back,
-# and this glibc returns EOVERFLOW instead.
+# gcc 16.2.0 on the reference machine gives 77 of 86 at -O0 and the same at -O2, running as an
+# ordinary user, and the nine it does not give are all properties of the environment rather than of
+# the compiler. They fall into four groups.
 #
-# All eight fail in the direction that makes the baseline a floor. A host with those locales
-# generated, or one that gives the suite a terminal, comes in above 78, which passes.
+# Five of them want a controlling terminal, which the harness does not give a child. run-test,
+# run-vredir and run-read open /dev/tty and get ENXIO, and run-history and run-execscript expect job
+# control, so the shell says it cannot set the terminal process group.
 #
-# Worth knowing before running this by hand: globstar2.sub builds a directory at $TMPDIR/empty and
-# gives up if something is already there. The harness gives every sandbox its own TMPDIR so this
-# never comes up in a run, but a hand run with TMPDIR unset writes into /tmp and inherits whatever
-# the last person left, and the failure it produces is 5676 lines long and looks nothing like its
-# cause.
+# Two want locales that have not been generated on this host. run-intl asks for de_DE.UTF-8 and
+# run-glob-test for zh_TW.big5, and both say so in as many words before they fail.
+#
+# run-printf is a C library difference rather than a compiler one. printf7.sub asks for a precision
+# larger than an int and expects the string back, and this glibc returns EOVERFLOW instead.
+#
+# run-builtins is the interesting one, because the harness causes it. `help` truncates its two
+# column output to the screen width, and it keeps one more character in the C locale than in a UTF-8
+# one, so the line for coproc and source comes out a character longer than builtins.right has it.
+# The harness sets LC_ALL and LANG to C on purpose, so that a build cannot embed a locale specific
+# sort order and so that two runs differ only in the compiler. This is the price of that, and it is
+# a price worth paying: the setting is the same on both sides of every differential, so the case
+# fails identically for gcc and for rucc and discriminates nothing. It does mean a hand run outside
+# the harness comes in at 78 rather than 77, which is worth knowing before anybody reports it as a
+# regression.
+#
+# All nine fail in the direction that makes the baseline a floor. A host with those locales
+# generated, or one that gives the suite a terminal, comes in above 77, which passes.
+#
+# One more thing worth knowing before running this by hand: globstar2.sub builds a directory at
+# $TMPDIR/empty and gives up if something is already there. The harness gives every sandbox its own
+# TMPDIR so this never comes up in a run, but a hand run with TMPDIR unset writes into /tmp and
+# inherits whatever the last person left there, and the failure it produces is 5676 lines long and
+# looks nothing like its cause.
 [test]
 command = [
     "sh",
@@ -107,16 +124,18 @@ command = [
 oracle = "suite"
 parser = "custom-regex"
 regex = "bash: (\\d+) of (\\d+) tests passed"
-baseline-tests = 78
+baseline-tests = 77
 requires = ["sh", "awk"]
 
 # The build is the expensive half here and for once it is the compiling rather than the configuring.
-# 442 C files and headers and a hundred and sixty five thousand lines, and gcc takes 158 seconds at
-# -O2 to configure and build all of it. parse.y goes through yacc first, and the y.tab.c that comes
-# out is one of the larger translation units on the list.
+# 444 files and 203742 lines, and gcc takes 136 seconds at -O2 and 83 at -O0 to configure and build
+# all of it, holding 117 megabytes at the peak against 74 at -O0. parse.y goes through yacc first,
+# and the y.tab.c that comes out is one of the larger translation units on the list.
 #
-# The suite is quick by comparison, about four minutes, and most of that is process startup: 86
-# scripts that between them fork the shell several thousand times.
+# The suite is two and a half minutes and it is nearly all process startup: 86 scripts that between
+# them fork the shell several thousand times. The limit is eight times that rather than the two tar
+# uses, because here the thing being forked is the program the compiler just built, so a slower
+# binary really does make the suite slower.
 [limits]
 build-seconds = 2400
 test-seconds = 1200
