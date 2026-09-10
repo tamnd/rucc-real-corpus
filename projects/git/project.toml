@@ -114,9 +114,19 @@ command = [
 oracle = "suite"
 parser = "custom-regex"
 regex = "git: (\\d+) of (\\d+) tests passed"
-baseline-tests = 31942
+# The baseline is measured and it is not the number the tarball advertises. A hand count of the
+# assertions in the tree comes to 31942 and gcc 16.2.0 on the reference machine runs 31598 of them,
+# all of which pass. The difference is the four dependencies this build turns off: no curl means
+# every http and smart protocol script skips, no gettext means the localization scripts skip, and a
+# skipped script contributes to `total` and to neither `success` nor `failed`. So 31598 is what a
+# green cell looks like here and 31942 is what a differently configured build would look like,
+# which is exactly the mistake #140 caught on bash.
+baseline-tests = 31598
 requires = ["sh", "awk", "perl"]
 
+# Measured rather than guessed, and both are about three times the worst cell so that a busy
+# machine does not turn a slow run into a red one. The reference builds git in 225 seconds at -O0
+# and 396 at -O2, and runs the suite in between 485 and 656 with the cores it has.
 [limits]
-build-seconds = 5400
-test-seconds = 2400
+build-seconds = 1500
+test-seconds = 2100
