@@ -71,6 +71,11 @@ pub struct EnvPlan<'a> {
     pub prefix: Option<&'a Path>,
     /// Anything the manifest asks for on top.
     pub project_env: &'a BTreeMap<String, String>,
+    /// The account the build and the suite will run as, from [`crate::privilege`].
+    ///
+    /// `None` only on a machine that could not answer the question, and then the name is left out
+    /// rather than guessed at.
+    pub user: Option<&'a str>,
 }
 
 /// Build the environment for one build.
@@ -86,6 +91,16 @@ pub fn environment(plan: &EnvPlan<'_>) -> BTreeMap<String, String> {
     env.insert("HOME".into(), display(&plan.sandbox.home()));
     env.insert("TMPDIR".into(), display(&plan.sandbox.tmp()));
     env.insert("DESTDIR".into(), display(&plan.sandbox.dest()));
+
+    // Who we are, which the suites ask about more often than anybody expects. toybox's find tests
+    // interpolate $USER into a -user predicate, and an environment with no name in it turns that
+    // into `find -user` with nothing after it, which fails for a reason that is not the compiler.
+    // It is the name the process actually runs as rather than the one the terminal was opened
+    // with, so it agrees with the uid after a drop.
+    if let Some(user) = plan.user {
+        env.insert("USER".into(), user.to_string());
+        env.insert("LOGNAME".into(), user.to_string());
+    }
 
     // Determinism. A build that embeds a date, a locale specific sort order or a timezone
     // dependent timestamp is a build that differs between two runs for reasons that are not
@@ -234,6 +249,7 @@ mod tests {
             extra_path: &[],
             prefix: None,
             project_env,
+            user: Some("rrc-test"),
         }
     }
 
@@ -404,6 +420,30 @@ mod tests {
     }
 
     #[test]
+    fn a_run_that_could_not_name_its_user_leaves_the_name_out_rather_than_guessing() {
+        // An empty USER is worse than no USER, because a suite that interpolates it produces a
+        // command with a missing argument rather than one that fails to expand.
+        let f = fixture("no-user");
+        let empty = BTreeMap::new();
+        let mut plan = plan(&f, &empty);
+        plan.user = None;
+        let env = environment(&plan);
+        assert!(!env.contains_key("USER"));
+        assert!(!env.contains_key("LOGNAME"));
+        std::fs::remove_dir_all(&f.root).ok();
+    }
+
+    #[test]
+    fn the_name_in_the_environment_is_the_one_the_build_will_run_as() {
+        let f = fixture("user");
+        let empty = BTreeMap::new();
+        let env = environment(&plan(&f, &empty));
+        assert_eq!(env["USER"], "rrc-test");
+        assert_eq!(env["LOGNAME"], "rrc-test");
+        std::fs::remove_dir_all(&f.root).ok();
+    }
+
+    #[test]
     fn nothing_from_the_calling_shell_leaks_in() {
         let f = fixture("no-leak");
         let empty = BTreeMap::new();
@@ -422,6 +462,8 @@ mod tests {
             "CC_FOR_BUILD",
             "HOSTCC",
             "BUILD_CC",
+            "USER",
+            "LOGNAME",
         ];
         let mut names: Vec<&str> = env.keys().map(String::as_str).collect();
         names.sort_unstable();
