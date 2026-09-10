@@ -14,19 +14,19 @@ Weight is what to do next. It is the sum over the held up projects of six minus 
 |---|---|---|---|---|---|
 | `pointer-arithmetic` | standard | 15 | 0 | 0 | none open |
 | `bit-manipulation` | standard | 12 | 0 | 0 | none open |
-| `autoconf-probes` | driver | 10 | 0 | 0 | none open |
+| `autoconf-probes` | driver | 11 | 0 | 0 | none open |
 | `deep-macros` | preprocessor | 10 | 0 | 0 | none open |
 | `switch-dispatch` | standard | 10 | 0 | 0 | none open |
 | `function-pointers` | standard | 9 | 0 | 0 | none open |
 | `integer-conversion` | standard | 9 | 0 | 0 | none open |
+| `struct-layout` | abi | 9 | 0 | 0 | none open |
 | `large-switch` | standard | 8 | 0 | 0 | none open |
-| `struct-layout` | abi | 8 | 0 | 0 | none open |
 | `computed-goto` | gnu-extension | 6 | 0 | 0 | [open](https://github.com/tamnd/rucc/issues/353) |
 | `setjmp-longjmp` | standard | 6 | 0 | 0 | none open |
 | `double-formatting` | standard | 5 | 0 | 0 | none open |
+| `bit-builtins` | gnu-builtin | 4 | 0 | 0 | [open](https://github.com/tamnd/rucc/issues/310) |
 | `varargs-depth` | standard | 4 | 0 | 0 | none open |
 | `atomic-builtins` | gnu-builtin | 3 | 0 | 0 | [open](https://github.com/tamnd/rucc/issues/311) |
-| `bit-builtins` | gnu-builtin | 3 | 0 | 0 | [open](https://github.com/tamnd/rucc/issues/310) |
 | `cmake-probes` | driver | 3 | 0 | 0 | none open |
 | `float-arithmetic` | standard | 3 | 0 | 0 | none open |
 | `libm-builtins` | gnu-builtin | 3 | 0 | 0 | [open](https://github.com/tamnd/rucc/issues/226) |
@@ -100,6 +100,7 @@ the compiler answers a generated configure script the way autoconf expects
 - `libyaml`, R2, not measured
 - `oniguruma`, R2, not measured
 - `pcre2`, R2, not measured
+- `xz`, R4, not measured
 
 ### `deep-macros`
 
@@ -159,19 +160,6 @@ the integer types are the widths the standard says they are, and conversions bet
 - `libmpfr`, R2, not measured
 - `libtommath`, R2, not measured
 
-### `large-switch`
-
-a switch with hundreds of cases, where the jump table decision is the compiler's
-
-- `libconfig`, R2, not measured
-- `pcre2`, R2, not measured
-- `duktape`, R3, not measured
-- `lua`, R3, not measured
-- `lua-nojumptable`, R3, not measured
-- `quickjs`, R3, not measured
-- `mawk`, R4, not measured
-- `sqlite-shell`, R4, not measured
-
 ### `struct-layout`
 
 struct offsets, padding and alignment as the ABI states them
@@ -184,6 +172,20 @@ struct offsets, padding and alignment as the ABI states them
 - `libuv`, R2, not measured
 - `oniguruma`, R2, not measured
 - `tcc`, R3, not measured
+- `xz`, R4, not measured
+
+### `large-switch`
+
+a switch with hundreds of cases, where the jump table decision is the compiler's
+
+- `libconfig`, R2, not measured
+- `pcre2`, R2, not measured
+- `duktape`, R3, not measured
+- `lua`, R3, not measured
+- `lua-nojumptable`, R3, not measured
+- `quickjs`, R3, not measured
+- `mawk`, R4, not measured
+- `sqlite-shell`, R4, not measured
 
 ### `computed-goto`
 
@@ -217,6 +219,15 @@ printf and strtod round tripping a double without losing a digit
 - `duktape`, R3, not measured
 - `mawk`, R4, not measured
 
+### `bit-builtins`
+
+__builtin_clz, __builtin_ctz, __builtin_popcount and their l and ll forms
+
+- `rpmalloc`, R1, not measured
+- `micropython`, R3, not measured
+- `quickjs`, R3, not measured
+- `xz`, R4, not measured
+
 ### `varargs-depth`
 
 varargs forwarded through several layers of function
@@ -233,14 +244,6 @@ __atomic_load_n and __atomic_store_n at relaxed ordering
 - `rpmalloc`, R1, not measured
 - `libjansson`, R2, not measured
 - `sqlite-shell`, R4, not measured
-
-### `bit-builtins`
-
-__builtin_clz, __builtin_ctz, __builtin_popcount and their l and ll forms
-
-- `rpmalloc`, R1, not measured
-- `micropython`, R3, not measured
-- `quickjs`, R3, not measured
 
 ### `cmake-probes`
 

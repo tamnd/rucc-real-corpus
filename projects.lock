@@ -484,6 +484,14 @@ licence-sha256 = "6ffedbc0f7878612d2b23589f1ff2ab15633e1df7963a5d9fc750ec5500c7e
 verified = "2026-09-08"
 
 [[project]]
+name = "xz"
+url = "https://github.com/tukaani-project/xz/releases/download/v5.8.1/xz-5.8.1.tar.gz"
+sha256 = "507825b599356c10dca1cd720c9d0d0c9d5400b9de300af00e4d1ea150795543"
+bytes = 2587189
+licence-sha256 = "0b01625d853911cd0e2e088dcfb743261034a091bb379246cb25a14cc4c74bf1"
+verified = "2026-09-10"
+
+[[project]]
 name = "zlib"
 url = "https://codeload.github.com/madler/zlib/tar.gz/51b7f2abdade71cd9bb0e7a373ef2610ec6f9daf"
 sha256 = "d9e270d46252734aa49770fbc544125391617956266f220bd63216c834f3a522"
