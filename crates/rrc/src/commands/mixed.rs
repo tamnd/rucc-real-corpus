@@ -224,6 +224,7 @@ mod tests {
                 rucc_version: String::new(),
                 rucc_commit: String::new(),
                 tool_prefixes: Vec::new(),
+                as_user: String::new(),
             },
             outcome,
             phase_reached: Phase::Tested,

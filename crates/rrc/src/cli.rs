@@ -293,6 +293,14 @@ pub struct Options {
     pub under_test: PathBuf,
     /// The reference compiler.
     pub reference: PathBuf,
+    /// The user builds and suites run as, when the harness is root and something other than the
+    /// default choice is wanted. `spec/07-harness.md` section 7.12.
+    pub as_user: Option<String>,
+    /// Stay root even when there is somebody to drop to.
+    ///
+    /// Here so that a machine which cannot open its paths up to another user can still get a run,
+    /// with the counts that come with that, rather than getting no run at all.
+    pub as_root: bool,
 }
 
 impl Default for Options {
@@ -301,6 +309,8 @@ impl Default for Options {
             corpus: PathBuf::from("."),
             under_test: PathBuf::from("rucc"),
             reference: PathBuf::from("gcc"),
+            as_user: None,
+            as_root: false,
         }
     }
 }
@@ -330,6 +340,8 @@ pub fn parse(args: &[String]) -> Result<Invocation, String> {
             "--corpus" => options.corpus = value(args, &mut index, "--corpus")?.into(),
             "--rucc" => options.under_test = value(args, &mut index, "--rucc")?.into(),
             "--gcc" => options.reference = value(args, &mut index, "--gcc")?.into(),
+            "--as-user" => options.as_user = Some(value(args, &mut index, "--as-user")?),
+            "--as-root" => options.as_root = true,
             _ => rest.push(arg.to_string()),
         }
         index += 1;
@@ -831,6 +843,10 @@ Options that apply to all of them:
   --corpus DIR    where projects/ and features.toml live, defaulting to the working directory
   --rucc PATH     the compiler under test, defaulting to rucc on PATH
   --gcc PATH      the reference compiler, defaulting to gcc on PATH
+  --as-user NAME  run builds and suites as this user, which only a root harness can do. Without
+                  it a root harness picks the first of rrc, runner or nobody that exists
+  --as-root       stay root even when there is somebody to drop to, which grades several suites
+                  wrong and is here for a machine that cannot open its paths up to another user
 
 Options for run:
 

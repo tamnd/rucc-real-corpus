@@ -290,6 +290,9 @@ pub fn cross(job: &Job<'_>, abi: &Abi, pairing: Pairing) -> std::io::Result<Cros
         reference: job.toolchain.reference.clone(),
     };
     let shim = Shim::create(&sandbox.bin(), &toolchain)?;
+    // The same handover the driver does, for the same reason and at the same point: after the
+    // harness has made everything it makes, and before the four builds run anything.
+    crate::privilege::hand_over(job.privilege, sandbox.root())?;
     let flags = job.manifest.build.flag_list();
     let env = environment(&EnvPlan {
         sandbox: &sandbox,
@@ -343,6 +346,7 @@ pub fn cross(job: &Job<'_>, abi: &Abi, pairing: Pairing) -> std::io::Result<Cros
         cwd: workdir.clone(),
         env,
         timeout: Duration::from_secs(job.manifest.limits.test_seconds),
+        as_user: job.privilege.ids(),
     };
     let completed = exec::run(&invocation)?;
     crossed.seconds += completed.seconds;
@@ -403,6 +407,7 @@ fn steps(
             cwd: workdir.to_path_buf(),
             env: env.clone(),
             timeout: limit,
+            as_user: job.privilege.ids(),
         },
     };
 
@@ -771,6 +776,7 @@ int main(void) {
                 rucc_version: "test".to_string(),
                 rucc_commit: "test".to_string(),
                 tool_prefixes: Vec::new(),
+                as_user: String::new(),
             },
             pin: "0".repeat(64),
         })
@@ -787,6 +793,7 @@ int main(void) {
             extra_path: &[],
             needs: &[],
             pin_sha256: &fixture.pin,
+            privilege: &crate::privilege::Privilege::AsIs,
         }
     }
 

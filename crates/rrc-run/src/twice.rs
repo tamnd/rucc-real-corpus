@@ -466,6 +466,7 @@ oracle = "self-checking"
             rucc_version: "test".to_string(),
             rucc_commit: "test".to_string(),
             tool_prefixes: Vec::new(),
+            as_user: String::new(),
         };
         let pin = "0".repeat(64);
         let job = crate::driver::Job {
@@ -478,6 +479,7 @@ oracle = "self-checking"
             extra_path: &[],
             needs: &[],
             pin_sha256: &pin,
+            privilege: &crate::privilege::Privilege::AsIs,
         };
 
         let one =

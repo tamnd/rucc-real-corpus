@@ -10,6 +10,8 @@
 //! - [`sandbox`] is the private tree a build gets, and the copy on write placement of the source.
 //! - [`shim`] is the `bin` directory a build finds first, which adds no flags of its own.
 //! - [`mod@env`] is the constructed environment, which handles both isolation and determinism.
+//! - [`privilege`] is who the build runs as, because a run started as root grades a different
+//!   program from one started as anybody else and the difference is not the compiler.
 //!
 //! What a build produces:
 //!
@@ -58,6 +60,7 @@ pub mod interrogate;
 pub mod memory;
 pub mod mixed;
 pub mod parse;
+pub mod privilege;
 pub mod record;
 pub mod reduce;
 pub mod sandbox;

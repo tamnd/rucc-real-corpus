@@ -40,6 +40,13 @@ pub struct Invocation {
     pub env: BTreeMap<String, String>,
     /// The wall clock limit from the manifest.
     pub timeout: Duration,
+    /// The user and group to become before running, from [`crate::privilege`], or `None` to stay
+    /// as whoever started the run.
+    ///
+    /// `None` on every machine that is not root, which is most of them, and on the handful of
+    /// commands that are the harness talking to a compiler rather than a project's build system
+    /// talking to one.
+    pub as_user: Option<(u32, u32)>,
 }
 
 impl Invocation {
@@ -181,8 +188,30 @@ fn spawn(invocation: &Invocation) -> std::io::Result<Child> {
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
     put_in_own_process_group(&mut command);
+    become_user(&mut command, invocation.as_user);
     command.spawn()
 }
+
+/// Become another user before running, when the run decided to drop.
+///
+/// The standard library sets the group first and the user second, which is the order that matters:
+/// the other way round the process has already given up the privilege it needed to change groups.
+/// Both calls are safe functions, which is what makes this possible at all under the workspace's
+/// `unsafe_code = "forbid"`.
+///
+/// What is not done here is `setgroups`, because there is no safe way to reach it, so the child
+/// keeps the supplementary groups of whoever started the run. [`crate::privilege`] says why that is
+/// enough for what this is for and where it would stop being enough.
+#[cfg(unix)]
+fn become_user(command: &mut Command, as_user: Option<(u32, u32)>) {
+    use std::os::unix::process::CommandExt;
+    if let Some((uid, gid)) = as_user {
+        command.gid(gid).uid(uid);
+    }
+}
+
+#[cfg(not(unix))]
+fn become_user(_command: &mut Command, _as_user: Option<(u32, u32)>) {}
 
 /// Put the child in its own process group, so that a timeout can kill what it started.
 ///
@@ -364,6 +393,7 @@ mod tests {
             cwd: std::env::temp_dir(),
             env: BTreeMap::new(),
             timeout: Duration::from_secs(timeout_seconds),
+            as_user: None,
         }
     }
 
