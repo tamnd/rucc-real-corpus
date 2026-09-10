@@ -335,7 +335,7 @@ arithmetic written to take the same time whatever the secret is, which the optim
 
 ### `fortify-builtins`
 
-__builtin_object_size, the __builtin___*_chk family and __builtin_va_arg_pack, which glibc's fortified headers are written in
+__builtin_object_size, the __builtin___*_chk family and __builtin_va_arg_pack, which glibc's fortified headers and its error.h are written in
 
 - `sed`, R4, not measured
 - `tar`, R4, not measured
