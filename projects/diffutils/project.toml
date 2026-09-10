@@ -56,9 +56,14 @@ expect-configure = [
     "checking whether the compiler supports GNU C... yes",
     "checking for C/C++ restrict keyword... __restrict__",
 ]
-# The tree builds four programs and this is the one the row is named for. gcc 16.2.0 at -O2 gives
-# 644064 bytes for diff against 226880 for cmp, so the size column follows the program with the
-# algorithm in it rather than the smallest of the four.
+# The tree builds four programs and this is the one the row is named for. Measured through the
+# harness at -O2, src/diff is 165992 bytes with 133927 of text, and it is the largest of the four,
+# so the size column follows the program with the algorithm in it rather than the smallest.
+#
+# Building it by hand gives 644064 instead, and the difference is not the compiler. configure
+# defaults CFLAGS to `-g -O2` when the environment does not say, and the harness says `-O2`, so a
+# hand build carries debug information the recorded one does not. Worth writing down because it is
+# the sort of gap that gets read as a regression the first time somebody compares the two.
 binary = "src/diff"
 
 # make check runs two automake harnesses, the project's own tests directory and gnulib-tests, and

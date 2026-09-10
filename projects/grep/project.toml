@@ -51,7 +51,10 @@ expect-configure = [
     "checking for C/C++ restrict keyword... __restrict__",
 ]
 # src/egrep and src/fgrep are 104 byte shell scripts that exec this one with a flag, so there is only
-# one binary here to measure. 771184 bytes from gcc 16.2.0 at -O2.
+# one binary here to measure. Through the harness at -O2 it is 199328 bytes with 162146 of text. A
+# hand build of the same tree gives 771184, because configure defaults CFLAGS to `-g -O2` when the
+# environment is silent and the harness says `-O2`, so the difference is debug information rather
+# than code.
 binary = "src/grep"
 
 # Two automake harnesses, the project's own tests directory and gnulib-tests, each printing its own
