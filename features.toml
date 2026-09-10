@@ -58,6 +58,13 @@ kind = "standard"
 summary = "-print-search-dirs, -print-libgcc-file-name and the rest of what a build system asks the driver"
 kind = "driver"
 
+[feature-test-macros]
+summary = "_GNU_SOURCE and the __STDC_WANT_ family, set by the program before it includes anything, and undefined first"
+kind = "preprocessor"
+diagnostic = ["cannot be undefined"]
+rucc-issue = "https://github.com/tamnd/rucc/issues/757"
+standard = "POSIX and C23 Annex K name the macros; an #undef of one that is not currently defined has no effect, per 6.10.4"
+
 [flexible-array-member]
 summary = "a struct ending in an incomplete array, allocated with the header in front of it"
 kind = "standard"

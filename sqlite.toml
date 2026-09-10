@@ -127,6 +127,11 @@ sites = 0
 evidence = "no setjmp and no longjmp, since errors are returned as codes all the way up"
 
 [[measured]]
+tag = "feature-test-macros"
+sites = 1
+evidence = "sqlite3.c defines _GNU_SOURCE itself at line 253 when it sees __GNUC__, before it includes any system header, and that is the whole of it. There is no #undef of a __STDC_WANT_ name anywhere in the 269649 lines, which is the half of this tag that stops the gnulib projects, so SQLite makes the easier half of the demand and not the hard one"
+
+[[measured]]
 tag = "inline-asm"
 sites = 0
 evidence = "there is a __asm__ block for reading the cycle counter, but it is guarded on i386 and 32 bit x86 is not a target here, so on the machines this corpus runs on the count is nought"
