@@ -10,7 +10,7 @@
 //! one project waiting on a socket is a corpus run nobody will put in CI.
 
 use std::collections::BTreeMap;
-use std::io::Read;
+use std::io::{PipeReader, Read};
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Stdio};
 use std::sync::{Arc, Mutex};
@@ -129,13 +129,17 @@ impl Completed {
 /// difference between two machines that nobody wrote down.
 pub fn run(invocation: &Invocation) -> std::io::Result<Completed> {
     let started = Instant::now();
-    let mut child = spawn(invocation).map_err(|error| could_not_start(invocation, &error))?;
+    let Started {
+        mut child,
+        stdout,
+        stderr,
+    } = spawn(invocation).map_err(|error| could_not_start(invocation, &error))?;
 
     // Both pipes are drained on their own threads. A build that writes more than a pipe buffer
     // to stderr while the harness waits on stdout is a deadlock, and a long compile with a lot
     // of warnings does exactly that.
-    let stdout = child.stdout.take().map(Drain::of);
-    let stderr = child.stderr.take().map(Drain::of);
+    let stdout = Some(Drain::of(stdout));
+    let stderr = Some(Drain::of(stderr));
 
     let watched = wait_for(&mut child, invocation.timeout)?;
     let ending = watched.ending;
@@ -177,7 +181,25 @@ fn could_not_start(invocation: &Invocation, error: &std::io::Error) -> std::io::
     )
 }
 
-fn spawn(invocation: &Invocation) -> std::io::Result<Child> {
+/// A running command and the two ends the harness reads it through.
+struct Started {
+    child: Child,
+    stdout: PipeReader,
+    stderr: PipeReader,
+}
+
+fn spawn(invocation: &Invocation) -> std::io::Result<Started> {
+    // The pipes are made here rather than left to `Stdio::piped`, because a run that drops has to
+    // hand them to the user it drops to before the child starts. A build script that writes to
+    // /dev/stderr is opening this pipe by name through /proc, and the kernel checks that open
+    // against the pipe's owner, which without this is root and not the user now doing the writing.
+    // toybox's scripts/make.sh does exactly that thirteen times in a row and loses every line of
+    // it, which on a failed build means losing the diagnostic.
+    let (out_reader, out_writer) = std::io::pipe()?;
+    let (err_reader, err_writer) = std::io::pipe()?;
+    hand_pipes_over(invocation.as_user, &out_reader, &out_writer)?;
+    hand_pipes_over(invocation.as_user, &err_reader, &err_writer)?;
+
     let mut command = Command::new(&invocation.program);
     command
         .args(&invocation.args)
@@ -185,11 +207,43 @@ fn spawn(invocation: &Invocation) -> std::io::Result<Child> {
         .env_clear()
         .envs(&invocation.env)
         .stdin(Stdio::null())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped());
+        .stdout(Stdio::from(out_writer))
+        .stderr(Stdio::from(err_writer));
     put_in_own_process_group(&mut command);
     become_user(&mut command, invocation.as_user);
-    command.spawn()
+    let child = command.spawn()?;
+    Ok(Started {
+        child,
+        stdout: out_reader,
+        stderr: err_reader,
+    })
+}
+
+/// Give a pipe to the user the child will become, so the child can reopen it by name.
+///
+/// Both ends, because they are one inode and it is the inode the permission check reads. Done
+/// before the spawn rather than after it, so there is no window in which a fast child finds the
+/// pipe still owned by root.
+#[cfg(unix)]
+fn hand_pipes_over(
+    as_user: Option<(u32, u32)>,
+    reader: &std::io::PipeReader,
+    writer: &std::io::PipeWriter,
+) -> std::io::Result<()> {
+    let Some((uid, gid)) = as_user else {
+        return Ok(());
+    };
+    std::os::unix::fs::fchown(reader, Some(uid), Some(gid))?;
+    std::os::unix::fs::fchown(writer, Some(uid), Some(gid))
+}
+
+#[cfg(not(unix))]
+fn hand_pipes_over(
+    _as_user: Option<(u32, u32)>,
+    _reader: &std::io::PipeReader,
+    _writer: &std::io::PipeWriter,
+) -> std::io::Result<()> {
+    Ok(())
 }
 
 /// Become another user before running, when the run decided to drop.
@@ -403,6 +457,21 @@ mod tests {
         assert_eq!(out.ending, Ending::Exited(0));
         assert_eq!(out.stdout.trim(), "out");
         assert_eq!(out.stderr.trim(), "err");
+    }
+
+    #[test]
+    fn a_script_that_writes_to_dev_stderr_by_name_is_still_captured() {
+        // Not the same thing as writing to file descriptor two. This one opens the pipe again
+        // through /proc, which is where the ownership of the pipe starts to matter, and toybox's
+        // build script does it on every line it prints.
+        let out = run(&shell(
+            "echo named > /dev/stderr; echo out > /dev/stdout",
+            10,
+        ))
+        .unwrap();
+        assert_eq!(out.ending, Ending::Exited(0));
+        assert_eq!(out.stderr.trim(), "named");
+        assert_eq!(out.stdout.trim(), "out");
     }
 
     #[test]
