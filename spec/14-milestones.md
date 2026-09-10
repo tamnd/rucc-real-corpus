@@ -76,7 +76,7 @@ Writing the abandonment branch into the milestone in advance is the only way it 
 
 **Exit:**
 
-1. R0 through R3 `passed` at five levels including `-O3`, or excluded with an issue.
+1. R0 through R3 `passed` at every level their rung requires, which is five at R0 and six everywhere else, or excluded with an issue. This read five levels everywhere when the milestone was written, because `-flto` started at R4 then and document 04.7 moved it to R1 during RC4. A project that was green under the older, smaller set is not green now until its `lto` cell has been run.
 2. Lua's official suite passes at the GCC baseline count in both the jump-table and non-jump-table builds, which is the E4 oracle and the computed-goto attribution in one result.
 3. `rucc-corpus` has `-flto`, `long-double`, `vla-and-alloca` and `setjmp-longjmp`.
 
@@ -90,7 +90,7 @@ Writing the abandonment branch into the milestone in advance is the only way it 
 
 **Exit:**
 
-1. R0 through R4 `passed` at six levels including `-flto`, or excluded with an issue.
+1. R0 through R4 `passed` at every level their rung requires, which is six levels including `-flto` at R1 and above and five at R0, or excluded with an issue.
 2. A mixed build with GCC passes in both directions on every R4 project, per document 08.6.
 3. Median time from a red nightly to a commit naming a file is under one day, measured over the milestone. This is document 02.2's claim two made a gate.
 4. The nightly is within document 12.2's four hours.

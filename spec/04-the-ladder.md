@@ -10,7 +10,7 @@ Four parts, and all four hold or the rung is not climbed. This is parent documen
 
 1. **It builds** with `CC=rucc` and the project's own unmodified build system, with **no source patches**, per document 09.
 2. **Its own test suite passes at the GCC baseline**, meaning the same count of passing tests as a GCC 16 build of the same pin on the same machine produces, not "the tests that passed last week".
-3. **It passes at every optimization level the rung requires**, which is not the same set at every rung. R0 through R3 require `-O0`, `-O1`, `-O2`, `-Os` and `-O3`. R4 adds `-flto`. The staging is document 4.7.
+3. **It passes at every optimization level the rung requires**, which is not the same set at every rung. Every rung requires `-O0`, `-O1`, `-O2`, `-Os` and `-O3`. R1 and above add `-flto`, and R0 is the one rung that does not have it. The staging is document 4.7.
 4. **The build is byte-identical across two runs**, per parent document 03's determinism requirement.
 
 The changed clause is 2: the parent says "at the same level as a GCC build passes it", and this document makes that a recorded number rather than a judgement, because eighty projects cannot be judged.
@@ -73,7 +73,7 @@ A command-line program whose test suite is a few hundred shell scripts asserting
 
 **What it demands:** thousands of small files, `-Os` under real pressure, a driver fast enough that the build finishes, generated sources, a host compiler distinct from the target compiler, and correctness in code paths reached only by a specific command line. This is also the first rung where the mixed build of document 08.6 stops being an optimization and becomes the only way to localize a failure.
 
-**LTO lands here** because it is a whole-program property and R4 is the first rung with a whole program worth speaking of.
+**LTO used to land here** because it is a whole-program property and R4 is the first rung with a whole program worth speaking of. It now lands at R1, and section 4.7 has the argument. What stays true of this rung is that R4 is the first place the level goes through a link the harness did not write, against a Makefile that decides its own link line.
 
 **Exit:** every R4 project passes at six levels including `-flto`; a mixed build with GCC in both directions passes, which is document 08.6.
 
@@ -90,9 +90,9 @@ Parent document 14.2, unchanged, restated as the top of this ladder so that the 
 | rung | `-O0` | `-O1` | `-O2` | `-Os` | `-O3` | `-flto` |
 |---|---|---|---|---|---|---|
 | R0 | yes | yes | yes | yes | yes | |
-| R1 | yes | yes | yes | yes | yes | |
-| R2 | yes | yes | yes | yes | yes | |
-| R3 | yes | yes | yes | yes | yes | |
+| R1 | yes | yes | yes | yes | yes | yes |
+| R2 | yes | yes | yes | yes | yes | yes |
+| R3 | yes | yes | yes | yes | yes | yes |
 | R4 | yes | yes | yes | yes | yes | yes |
 | R5 | yes | yes | yes | yes | yes | yes |
 
@@ -102,9 +102,15 @@ Parent document 14.2, unchanged, restated as the top of this ladder so that the 
 
 **What it buys.** `-O3` is where inlining and unrolling get aggressive, and both of those rewrite code the smaller levels also run, so a bug in either is a bug that was always there and only becomes visible here. Finding it against `jsmn` at R0 is finding it in a program somebody can read in an afternoon. Finding it first against a language runtime at R3 is finding it in a hundred thousand lines with a garbage collector in them. The difference between those two mornings is the whole argument for the ladder, and staging the level to R3 was spending that argument to save twenty six minutes.
 
-`-flto` is still staged and that staging is not a cost decision, which is why nothing here retires it. It is a whole program property, so it needs a program whose whole is more than its parts, and an R0 project is one translation unit with nothing to inline across. The level would run and it would mean nothing.
+`-flto` used to start at R4 and now starts at R1, and it stops there rather than going all the way down. The reason it was staged was never cost. It is a whole program property, so it needs a program whose whole is more than its parts, and the argument put that program at R4. Reading the rungs again, the argument does not put it at R4, it puts it one rung below wherever the second translation unit shows up, and that is R1. An R1 project is a library and a program linked against it. An R2 project links against an archive somebody else's build system produced. An R3 project is a language runtime of a hundred files with an interpreter loop in the middle of it. Every one of those has an inline the level can make and the levels below it cannot, and waiting until R4 to find out meant first finding out on a program of five hundred files.
 
-**What this costs:** an `-O3` bug in an R1 library is not caught by this corpus until somebody moves the project up or runs the full matrix by hand. That is a real hole. It is mitigated by `rucc-corpus`, which runs every generated program at every level and is cheap enough to, and it is the reason document 13.5 asks for `-Os` and `-flto` there.
+R0 keeps its exemption, because the original argument is still exactly true there. A rung defined as one file with no build system has nothing to inline across, and the level would run twelve more times and measure the driver, which six other cells in the same row already do.
+
+**What it costs.** Forty four projects gain a level, times two compilers, which is eighty eight more cells on a cold run. R1 is cheap and R3 is not: those ten projects each build a runtime and then run its suite, and `-flto` is the level where the optimizer runs at link time over everything at once, so it is the slowest of the six on exactly the projects that were already the slowest. The nightly runs with `--refresh` and pays for all of it. The per commit job does not, because it names its four levels rather than taking the rung's, and section 12.1 says why. The figure to check this against is the reference run, not this paragraph, and until that run has happened this is an estimate and should be read as one.
+
+**What it buys, and the part that is not about the compiler.** `-flto` is the only level on the list whose failures are not all in the compiler. It puts the optimizer inside the link, so the level reaches `ar`, `ranlib` and the linker plugin, and a project whose Makefile builds its archive with a plain `ar` that has no plugin loaded fails the level with a compiler that is working perfectly. Those rows are worth having rather than worth avoiding. They fail under the reference too, section 11.7 makes the report name a cell the reference could not pass instead of averaging it into a score, and a build system that cannot do LTO is a fact about the ladder that is better written down than discovered at R4.
+
+**What this used to cost and no longer does:** an `-O3` bug in an R1 library was not caught by this corpus until somebody moved the project up or ran the full matrix by hand. `-O3` moving to R0 closed that and `-flto` moving to R1 closes the rest of it. `rucc-corpus` still runs every generated program at every level, and document 13.5 still asks for `-Os` and `-flto` there, because a generated program with a computed answer localizes an LTO bug in a way a hundred thousand line runtime cannot.
 
 ## 4.8 Promotion and demotion
 

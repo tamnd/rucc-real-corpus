@@ -49,9 +49,20 @@ impl Rung {
     /// read in an afternoon. Finding the same bug first against a language runtime at R3 means
     /// finding it in a hundred thousand lines with a garbage collector in them.
     ///
-    /// `-flto` is still staged, and for a reason that is not cost. It is a whole program property,
-    /// so it needs a program whose whole is more than its parts, and an R0 project is one
-    /// translation unit with nothing to inline across.
+    /// `-flto` used to start at R4 and now starts at R1, and it stops there rather than going all
+    /// the way down. The reason it was staged was never cost, it was that the level is a whole
+    /// program property and needs a program whose whole is more than its parts. That argument is
+    /// still true of R0, which is one translation unit with nothing to inline across, and it stopped
+    /// being true one rung up: R1 is a library and a program linked against it, R2 links against an
+    /// archive somebody else's build system produced, and R3 is a language runtime of a hundred
+    /// files. Every one of those has an inline the level can make and the levels below it cannot.
+    ///
+    /// It is also the only level on the list whose failures are not all in the compiler. `-flto`
+    /// puts the optimizer inside the link, so it reaches `ar`, `ranlib` and the linker plugin, and a
+    /// project whose Makefile builds its archive without the plugin fails the level with a compiler
+    /// that is working perfectly. Those rows are worth having: they say so under the reference too,
+    /// and `spec/11-reporting.md` section 11.7 makes the report name a cell the reference could not
+    /// pass rather than averaging it into a score.
     #[must_use]
     pub fn required_levels(self) -> &'static [Level] {
         const WITH_O3: &[Level] = &[Level::O0, Level::O1, Level::O2, Level::Os, Level::O3];
@@ -64,8 +75,8 @@ impl Rung {
             Level::Lto,
         ];
         match self {
-            Self::R0 | Self::R1 | Self::R2 | Self::R3 => WITH_O3,
-            Self::R4 | Self::R5 => WITH_LTO,
+            Self::R0 => WITH_O3,
+            Self::R1 | Self::R2 | Self::R3 | Self::R4 | Self::R5 => WITH_LTO,
         }
     }
 }
@@ -382,15 +393,20 @@ mod tests {
     }
 
     #[test]
-    fn link_time_optimization_is_still_staged_because_it_is_not_a_cost_decision() {
+    fn link_time_optimization_stops_at_the_rung_below_a_second_translation_unit() {
         // A whole program property needs a program whose whole is more than its parts, and an R0
         // project is one translation unit with nothing to inline across. No cache makes that
-        // level mean anything down there.
+        // level mean anything down there, so this is the one place the ladder is not uniform and
+        // the assertion is here to stop it being made uniform by accident.
         assert_eq!(Rung::R0.required_levels().len(), 5);
-        assert_eq!(Rung::R3.required_levels().len(), 5);
-        assert_eq!(Rung::R5.required_levels().len(), 6);
-        assert!(!Rung::R2.required_levels().contains(&Level::Lto));
-        assert!(Rung::R4.required_levels().contains(&Level::Lto));
+        assert!(!Rung::R0.required_levels().contains(&Level::Lto));
+        for rung in [Rung::R1, Rung::R2, Rung::R3, Rung::R4, Rung::R5] {
+            assert!(
+                rung.required_levels().contains(&Level::Lto),
+                "{rung} is not built at -flto"
+            );
+            assert_eq!(rung.required_levels().len(), 6);
+        }
     }
 
     #[test]
