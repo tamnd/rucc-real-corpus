@@ -43,9 +43,14 @@ url = "https://mirrors.edge.kernel.org/pub/software/scm/git/git-2.55.0.tar.xz"
 sha256 = "457fdb04dc8728e007d4688695e6912e6f680727920f2a40bf11eacc17505357"
 strip-components = 1
 
-# A2, a hand written Makefile with no configure step in front of it. git ships a configure, and it
-# is generated, and the Makefile works without it, so the plain make is the shorter path and the one
-# upstream documents first.
+# A5, and the only row on the corpus at that point on the axis. git ships a generated configure and
+# the Makefile works without it, so the plain make is the shorter path and the one upstream documents
+# first, but a hand written Makefile is not what makes this A5. Three of its headers do not exist in
+# the tarball: Makefile line 1050 lists command-list.h, config-list.h and hook-list.h as GENERATED_H,
+# each one is written during the build by a shell script under tools/, and help.o, hook.o,
+# builtin/help.o and builtin/bugreport.o depend on them. So the build has an order in it that the
+# compiler has to survive, and a file that does not exist yet when make starts is compiled before the
+# end of it. The suite adds the recursion, at line 3381, where `make test` goes into t/ first.
 [build]
 system = "make"
 binary = "git"
