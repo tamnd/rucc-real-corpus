@@ -7,6 +7,20 @@
 [always-inline]
 summary = "__attribute__((always_inline)) honoured rather than treated as a hint"
 kind = "gnu-extension"
+rucc-issue = "https://github.com/tamnd/rucc/issues/542"
+standard = "GNU extension with no portable spelling"
+
+# There is no diagnostic list here and there cannot be one, which is the whole point of the entry.
+# rucc parses the attribute, accepts it without a word at any warning level, and then does not run
+# the handler, so a program that uses it compiles, links, exits zero and behaves differently than
+# the same program built by gcc. Every other entry in this file that names a missing feature can be
+# found by reading a failed build's output. This one can only be found by running the program and
+# noticing the answer is wrong, which is how it was found: libjansson's api suite checks that a
+# refcount came back down at the closing brace and it had not.
+[cleanup-attribute]
+summary = "__attribute__((cleanup(f))) runs f at every exit from the enclosing block, in reverse declaration order"
+kind = "gnu-extension"
+rucc-issue = "https://github.com/tamnd/rucc/issues/786"
 standard = "GNU extension with no portable spelling"
 
 [atomic-builtins]
@@ -106,6 +120,8 @@ kind = "standard"
 [lto]
 summary = "link time optimization across translation units"
 kind = "lto"
+diagnostic = ["unknown option `-flto`"]
+rucc-issue = "https://github.com/tamnd/rucc/issues/658"
 
 [memcpy-idioms]
 summary = "__builtin_memcpy and __builtin_memset expanded inline at a size the compiler can see"

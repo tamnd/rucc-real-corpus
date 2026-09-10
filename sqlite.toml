@@ -127,6 +127,11 @@ sites = 0
 evidence = "no setjmp and no longjmp, since errors are returned as codes all the way up"
 
 [[measured]]
+tag = "cleanup-attribute"
+sites = 0
+evidence = "no __attribute__((cleanup)) anywhere, and the 132 places the word cleanup appears are all identifiers and comments, which is what a library that has to build on every compiler in the world looks like: libjansson can use it because it is a library for people who have gcc or clang, and SQLite cannot"
+
+[[measured]]
 tag = "feature-test-macros"
 sites = 1
 evidence = "sqlite3.c defines _GNU_SOURCE itself at line 253 when it sees __GNUC__, before it includes any system header, and that is the whole of it. There is no #undef of a __STDC_WANT_ name anywhere in the 269649 lines, which is the half of this tag that stops the gnulib projects, so SQLite makes the easier half of the demand and not the hard one"

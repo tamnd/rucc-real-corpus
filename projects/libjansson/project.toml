@@ -5,7 +5,7 @@ upstream = "https://github.com/akheron/jansson"
 licence = "MIT"
 licence-file = "LICENSE"
 description = "a small json library, and the smallest project in the corpus that asks for the atomic builtins"
-demands = ["atomic-builtins", "autoconf-probes", "double-formatting"]
+demands = ["atomic-builtins", "cleanup-attribute", "double-formatting"]
 
 # Spec 5.1 pins v2.14 and this is v2.15.1, which is the current release and the one that carries
 # the atomics probe unchanged. The pin is the release tarball rather than a codeload snapshot of
@@ -42,6 +42,26 @@ expect-configure = ["checking for gcc __atomic builtins... yes"]
 # The second automake summary in the output is the top level one, where the only test is a clang
 # format check that skips because clang-format is not installed. That is why the run count is two
 # and the pass count is one.
+#
+# `cleanup-attribute` is on the demands list because of one assertion in that api suite, and it was
+# added after the fact rather than when the project went in. rucc 0.10.4 is the first version that
+# gets this project built at all, and the first thing the suite did with it was fail on
+# `test_simple.c:282: automatic decrement failed`, which is `json_auto_t`, which is
+# `json_t __attribute__((cleanup(json_decrefp)))`. The refcount goes to two and stays there.
+#
+# That is five cells, `-O0` through `-O3`, and they were the first `wrong answer` cells this corpus
+# ever produced, so it is worth writing down that a demand nobody declared is exactly the kind of
+# thing a suite is here to find. All three of the demands that were declared are satisfied.
+#
+# Section 3.5 allows three, so one of the original three had to go and it is `autoconf-probes`.
+# Thirteen projects declare that tag and this project is not the one to look at for it: the probes
+# here pass and have passed since 0.10.4, so the tag was carrying no information on this row. The
+# other two stay because both are load bearing. `atomic-builtins` is the reason this project is in
+# the corpus at all and `expect-configure` below is built around it, and `double-formatting` is a
+# real demand of a json library, where a double that does not round trip is a changed document.
+#
+# The right way to read the swap is that a demands list is three slots and it should hold the three
+# things this project tells you that another project would not.
 [test]
 command = ["make", "check"]
 oracle = "suite"
