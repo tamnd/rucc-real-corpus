@@ -155,7 +155,7 @@ The recorded output turned out to be worth recording rather than settling for a 
 | project | pin | licence | A | D/E | demands |
 |---|---|---|---|---|---|
 | `sqlite-shell` | `3.53.4` | blessing | A3 | D3/E1 | the shell rather than the amalgamation: application code against system headers, one rung below R5 |
-| `busybox` | `1_38_0` | GPL-2.0 | A5 | D3/E1 | hundreds of applets in one binary under `-Os`, `__attribute__((section))`, and a config system |
+| `busybox` | `1.38.0` | GPL-2.0 | A5 | D3/E1 | four hundred applets in one binary, kbuild, a configuration it writes itself, and hand written x86-64 |
 | `toybox` | `0.8.14` | 0BSD | A5 | D3/E1 | the same shape with different idioms; slimcc patches it, so expect exclusions |
 | `pdpmake` | `2.0.4` | Unlicense | A1 | D3/E1 | a POSIX make, small enough to read, with a suite that asserts on output |
 | `mawk` | `1.3.4-20260302` | GPL-2.0 | A3 | D3/E1 | a bytecode interpreter plus generated parser tables |

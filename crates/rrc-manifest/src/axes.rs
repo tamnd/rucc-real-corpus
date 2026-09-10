@@ -321,11 +321,16 @@ pub enum Requirement {
     /// skeleton, so every one of flex's 114 tests needs m4 present at test time on a tree whose
     /// configure and parser were both shipped pre generated.
     M4,
+    /// Zip, the archiver rather than the library. busybox is the only row that asks for it, and it
+    /// asks at test time rather than at build time: one of its unzip cases builds the archive with
+    /// the host tool and then hands it to the applet, so a host without zip fails the case instead
+    /// of skipping it.
+    Zip,
 }
 
 impl Requirement {
     /// Every requirement in the closed vocabulary.
-    pub const ALL: [Self; 12] = [
+    pub const ALL: [Self; 13] = [
         Self::Sh,
         Self::Awk,
         Self::Perl,
@@ -338,6 +343,7 @@ impl Requirement {
         Self::Bison,
         Self::Ruby,
         Self::M4,
+        Self::Zip,
     ];
 
     /// The command the harness looks for on `PATH` to decide whether the requirement is met.
@@ -356,6 +362,7 @@ impl Requirement {
             Self::Bison => "bison",
             Self::Ruby => "ruby",
             Self::M4 => "m4",
+            Self::Zip => "zip",
         }
     }
 }
