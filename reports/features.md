@@ -21,7 +21,7 @@ Weight is what to do next. It is the sum over the held up projects of six minus 
 | `integer-conversion` | standard | 9 | 0 | 0 | none open |
 | `struct-layout` | abi | 8 | 0 | 0 | none open |
 | `large-switch` | standard | 7 | 0 | 0 | none open |
-| `computed-goto` | gnu-extension | 6 | 0 | 0 | none open |
+| `computed-goto` | gnu-extension | 6 | 0 | 0 | [open](https://github.com/tamnd/rucc/issues/353) |
 | `setjmp-longjmp` | standard | 5 | 0 | 0 | none open |
 | `double-formatting` | standard | 4 | 0 | 0 | none open |
 | `varargs-depth` | standard | 4 | 0 | 0 | none open |

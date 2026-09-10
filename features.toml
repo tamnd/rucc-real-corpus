@@ -39,6 +39,8 @@ kind = "driver"
 summary = "labels as values, goto *"
 kind = "gnu-extension"
 diagnostic = ["no rule lowers a block_addr"]
+rucc-issue = "https://github.com/tamnd/rucc/issues/353"
+standard = "GNU extension with no portable spelling"
 
 [constant-time]
 summary = "arithmetic written to take the same time whatever the secret is, which the optimizer must not turn back into a branch"
