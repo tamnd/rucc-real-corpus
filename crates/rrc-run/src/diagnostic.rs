@@ -20,12 +20,30 @@ use std::sync::OnceLock;
 /// errors printed before it are usually the same bug wearing a different hat. A compile error
 /// beats a link error for the same reason, since a link that never got its object file is
 /// downstream of whatever stopped the compile.
-const MARKERS: [&str; 5] = [
+///
+/// The last six are there because `ld` does not say `error:`. It says what went wrong and stops,
+/// and a list that only knew the compiler's spellings walked past the whole line. That cost 39
+/// cells in one run, filed as issue 122: seven projects failed the same way, printed the reason,
+/// and were recorded as having printed nothing. Every one of the six is a real `ld` line and each
+/// has a test below holding a copy of it, because the value of this field is that two projects
+/// failing the same way produce the same string, and a paraphrase cannot show that.
+///
+/// `relocation ` is the loosest of them and the trailing space is doing work. It has to match both
+/// `relocation R_X86_64_PC32 against symbol` and `relocation truncated to fit: R_X86_64_32S`,
+/// which is why it does not name the type, and it sits below `error:` so that a warning about a
+/// relocation cannot outrank a real compile error on the same build.
+const MARKERS: [&str; 11] = [
     "internal compiler error",
     "fatal error:",
     "error:",
     "undefined reference to",
     "symbol(s) not found",
+    "undefined symbol:",
+    "relocation ",
+    "multiple definition of",
+    "cannot find -l",
+    "cannot open output file",
+    "final link failed",
 ];
 
 /// Lines that report that a tool failed without saying why.
@@ -34,10 +52,15 @@ const MARKERS: [&str; 5] = [
 /// therefore outrank the line that names the missing symbol. Letting `collect2: error: ld
 /// returned 1 exit status` win would file every link failure in the corpus under one row, which
 /// is exactly the merge the module comment above says is worse than a split.
-const SUMMARIES: [&str; 3] = [
+///
+/// `final link failed` is the same thing one layer down. `ld` prints it after the line that names
+/// the relocation it would not write, and it belongs here rather than in the list above for
+/// exactly the reason the rest of this list exists.
+const SUMMARIES: [&str; 4] = [
     "ld returned",
     "linker command failed",
     "compilation terminated",
+    "final link failed",
 ];
 
 /// Whether a line only says that something failed.
@@ -259,5 +282,107 @@ collect2: error: ld returned 1 exit status
         let text = "ld: undefined reference to `__atomic_load_8'\n";
         let first = Normalizer::bare().first(text).unwrap();
         assert!(first.contains("__atomic_load_8"));
+    }
+
+    // The six below are the ones issue 122 is about. Each holds a line copied out of a real build
+    // log rather than a paraphrase, because the whole point of the field is that the string is the
+    // one the tool printed.
+
+    #[test]
+    fn a_relocation_the_linker_will_not_write_is_a_diagnostic() {
+        let text = "\
+ld: .libs/pngerror.o: relocation R_X86_64_PC32 against symbol `stderr@@GLIBC_2.2.5' can not be \
+used when making a shared object; recompile with -fPIC
+ld: final link failed: bad value
+";
+        let first = Normalizer::bare().first(text).unwrap();
+        assert!(
+            first.contains("R_X86_64_PC32"),
+            "this line says error nowhere, and skipping it recorded seven projects as having \
+             printed no diagnostic at all"
+        );
+        assert!(
+            !first.contains("final link failed"),
+            "the line that names the relocation has to beat the line that says the link failed"
+        );
+    }
+
+    #[test]
+    fn a_truncated_relocation_is_the_same_shape() {
+        let text =
+            "ld: (.text+0x2b): relocation truncated to fit: R_X86_64_32S against `.rodata'\n";
+        let first = Normalizer::bare().first(text).unwrap();
+        assert!(first.contains("R_X86_64_32S"));
+    }
+
+    #[test]
+    fn a_relocation_never_outranks_a_compile_error() {
+        let text = "\
+png.c:88:3: error: unknown builtin '__builtin_clz'
+ld: pngerror.o: relocation R_X86_64_PC32 against symbol `stderr' can not be used
+";
+        let first = Normalizer::bare().first(text).unwrap();
+        assert!(
+            first.contains("__builtin_clz"),
+            "the link is downstream of whatever stopped the compile"
+        );
+    }
+
+    #[test]
+    fn a_library_the_linker_could_not_find_is_a_diagnostic() {
+        let text = "ld: cannot find -lz: No such file or directory\n";
+        let first = Normalizer::bare().first(text).unwrap();
+        assert!(first.contains("-lz"));
+    }
+
+    #[test]
+    fn a_symbol_defined_twice_is_a_diagnostic() {
+        let text = "ld: b.o:(.bss+0x0): multiple definition of `counter'; a.o:(.bss+0x0): first \
+                    defined here\n";
+        let first = Normalizer::bare().first(text).unwrap();
+        assert!(first.contains("counter"));
+    }
+
+    #[test]
+    fn a_symbol_left_undefined_in_a_shared_object_is_a_diagnostic() {
+        let text = "ld: libfoo.so: undefined symbol: sqlite3_step\n";
+        let first = Normalizer::bare().first(text).unwrap();
+        assert!(first.contains("sqlite3_step"));
+    }
+
+    #[test]
+    fn an_output_file_the_linker_could_not_write_is_a_diagnostic() {
+        let text = "ld: cannot open output file .libs/libpng16.so.16.50.0: Permission denied\n";
+        let first = Normalizer::bare().first(text).unwrap();
+        assert!(first.contains("Permission denied"));
+    }
+
+    #[test]
+    fn the_link_failed_summary_is_kept_as_a_last_resort() {
+        let text = "ld: final link failed: bad value\n";
+        let first = Normalizer::bare().first(text).unwrap();
+        assert_eq!(
+            first, "ld: final link failed: bad value",
+            "it says nothing about the cause, but a build that printed only this printed \
+             something, and the field is for what the tool said"
+        );
+    }
+
+    #[test]
+    fn two_projects_refusing_the_same_relocation_land_in_one_row() {
+        let n = Normalizer::bare();
+        let png = n.message(
+            "ld: pngerror.o: relocation R_X86_64_PC32 against symbol `stderr@@GLIBC_2.2.5' can \
+             not be used when making a shared object; recompile with -fPIC",
+        );
+        let jpeg = n.message(
+            "ld: jerror.o: relocation R_X86_64_PC32 against symbol `stderr@@GLIBC_2.2.5' can not \
+             be used when making a shared object; recompile with -fPIC",
+        );
+        assert_eq!(
+            png, jpeg,
+            "the object file differs and the relocation and the symbol do not, and it is the \
+             second pair that says which bug this is"
+        );
     }
 }
