@@ -4,7 +4,7 @@ rung = 4
 upstream = "https://git-scm.com/"
 licence = "GPL-2.0"
 licence-file = "COPYING"
-description = "the version control system, graded by the thirty two thousand assertions of its own test suite"
+description = "the version control system, graded by the thirty one thousand assertions of its own test suite"
 # git is here for a reason that is the opposite of bash's. bash was admitted because it stops early
 # and stops on something new. git was admitted because it very nearly does not stop at all: rucc
 # compiles 548 of its objects and fails in exactly eight files, across exactly two features, both of
@@ -126,7 +126,8 @@ requires = ["sh", "awk", "perl"]
 
 # Measured rather than guessed, and both are about three times the worst cell so that a busy
 # machine does not turn a slow run into a red one. The reference builds git in 225 seconds at -O0
-# and 396 at -O2, and runs the suite in between 485 and 656 with the cores it has.
+# and 1080 at lto, which is the longest build in the corpus and the one the budget is sized from,
+# and it runs the suite in between 435 and 656 with the cores it has.
 [limits]
-build-seconds = 1500
+build-seconds = 3000
 test-seconds = 2100
