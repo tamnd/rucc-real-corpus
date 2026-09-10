@@ -53,6 +53,15 @@ targets = ["defconfig", "toybox"]
 # compiler at all.
 binary = "toybox"
 
+# V=1 is not a debugging convenience here, it is what makes a failed build say why it failed.
+# scripts/genconfig.sh runs its probes with the compiler's output redirected into a temporary file
+# and scripts/make.sh prints the command it ran only when V is set, so a build that dies takes the
+# diagnostic with it: the first run of this row recorded `did not build` with no diagnostic at all
+# and nothing for the feature map to classify. With V=1 the compiler's own words reach the log and
+# the row names -funsigned-char, which is the thing that is actually missing.
+[build.env]
+V = "1"
+
 # The level has to arrive as OPTIMIZE and not as CFLAGS, and this is the clearest case of section
 # 7.8 on the list. scripts/make.sh builds the compile line as `$CFLAGS -I . $OPTIMIZE`, so the
 # level in CFLAGS lands first and whatever OPTIMIZE holds lands last and wins. configure defaults
@@ -101,7 +110,7 @@ regex = "toybox: (\\d+) of (\\d+) tests passed"
 baseline-tests = 1572
 requires = ["sh", "awk"]
 
-# Two hundred and ninety files and ninety four thousand lines, and gcc builds all of it in between
+# Three hundred and two files and ninety one thousand lines, and gcc builds all of it in between
 # thirteen and thirty six seconds depending on the level, because the build script uses every core
 # whether or not anybody asked it to. Thirty six is lto and the next slowest is eighteen, and the
 # limit is head room for a compiler an order of magnitude slower rather than a limit set for gcc.
