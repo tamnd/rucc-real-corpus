@@ -455,7 +455,7 @@ __attribute__((visibility)) on functions and on objects
 
 ## The SQLite column
 
-Every demand the SQLite amalgamation makes, the smallest project below it that makes the same demand, and what the run says about that project. Measured against 3.53.4 of `sqlite3.c`, which is 269649 lines. The counts and what was counted for each are in `sqlite.toml` at the root, which is the file to go and disagree with. SQLite is not admitted to the list until RC5, so until then this column is a measurement of the source rather than a run of it.
+Every demand the SQLite amalgamation makes, the smallest project below it that makes the same demand, and what the run says about that project. Measured against 3.53.4 of `sqlite3.c`, which is 269649 lines. The counts and what was counted for each are in `sqlite.toml` at the root, which is the file to go and disagree with. SQLite is on the list now, as the R5 row, and this column stays a measurement of the source rather than of that row's run, because the two answer different questions: the row says whether the build gets through, and the column says what it would take.
 
 This is the number RC2 turns on. The residue is the demands with nothing below them, which are the things the ladder was never going to find out about before the climb. It is currently 1 of 20.
 

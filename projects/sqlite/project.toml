@@ -73,8 +73,8 @@ expect-configure = ["Using tclConfig.sh:"]
 # The shell rather than the library, for the mundane reason that this configure builds no shared
 # library and no static one either. sqlite3 is shell.c linked against the whole amalgamation, so its
 # size is very nearly the library's size, and it is the only artifact on disk worth measuring. Worth
-# knowing when reading the size column: -O0 is the largest build here and not the smallest, 2,403,824
-# bytes against 1,889,280 at -O1 and 2,129,456 at -O2 with gcc 16.2.0.
+# knowing when reading the size column: -O0 is the largest build here and not the smallest, 2,403,288
+# bytes against 1,888,784 at -O1 and 2,128,992 at -O2 with gcc 16.2.0.
 binary = "sqlite3"
 
 # make tcltest, which is one testfixture process running test/veryquick.test. That is the right
