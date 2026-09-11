@@ -121,6 +121,29 @@ pub struct RunPlan {
     pub out: PathBuf,
     /// Whether a cell that has been run before under identical conditions is built again.
     pub reuse: Reuse,
+    /// An earlier run to take the list of cells from, keeping only the ones that did not pass.
+    ///
+    /// The record cache already stops an unchanged cell being built twice, and that is the right
+    /// answer for a run that wants a whole report out the other end. It is the wrong answer for
+    /// somebody who has just changed one thing in the compiler, because the cache key has the
+    /// compiler's bytes in it, so a new compiler misses on every cell and the run is the full run
+    /// again. That person does not want the whole report. They want the cells that were failing
+    /// and nothing else, and they want them in seconds.
+    ///
+    /// So this names a directory or a `records.jsonl` from a run that already happened and keeps
+    /// the cells whose outcome was not a pass. It is a filter over what was already selected, so
+    /// `--rung 0 --failing runs/latest` is the failing cells of rung zero and not of everything.
+    ///
+    /// The report a run like this writes covers the cells it ran, which is the point and is also
+    /// the thing to remember about it: it is a worklist and not a result for the corpus. The
+    /// number that says whether a rung is green comes from a run that asked for the whole rung.
+    pub failing: Option<PathBuf>,
+    /// The cells to keep, resolved from [`RunPlan::failing`] once the records have been read.
+    ///
+    /// Empty means no filter, which is every run that did not ask for one. The scheduler reads
+    /// this rather than the path, so that the file is read once at the top of the run instead of
+    /// once per project.
+    pub only: Vec<(String, Level)>,
     /// Whether to also build each R4 and R5 project with a fixed tenth of its files ours.
     ///
     /// Off by default and on in the nightly, which is where `spec/12-ci-and-cost.md` puts the four
@@ -186,6 +209,8 @@ impl Default for RunPlan {
             baseline: Baseline::Measure,
             out: PathBuf::from("runs/latest"),
             reuse: Reuse::Allow,
+            failing: None,
+            only: Vec::new(),
             mixed: false,
         }
     }
@@ -457,6 +482,7 @@ fn run(args: &[String]) -> Result<RunPlan, String> {
             "--no-baseline" => plan.baseline = Baseline::Skip,
             "--no-cache" => plan.reuse = Reuse::Off,
             "--refresh" => plan.reuse = Reuse::Refresh,
+            "--failing" => plan.failing = Some(value(args, &mut index, "--failing")?.into()),
             "--jobs" => plan.jobs = parse_jobs(&value(args, &mut index, "--jobs")?)?,
             other => return Err(unknown(other, "run")),
         }
@@ -859,6 +885,9 @@ Options for run:
                   column that compares one compiler against the other
   --refresh       build every cell even if it has been built before, and keep the results
   --no-cache      neither read nor write the record cache
+  --failing DIR   keep only the cells that did not pass in an earlier run, named by its output
+                  directory or its records.jsonl, which is the work that is left rather than a
+                  result for the corpus
   --out DIR       where the records and the report go, defaulting to runs/latest
 
 Options for abi:
@@ -1163,6 +1192,34 @@ mod tests {
         let usage = usage();
         assert!(usage.contains("--no-cache"));
         assert!(usage.contains("--refresh"));
+        assert!(usage.contains("--failing"));
+    }
+
+    /// `--failing` is a path and is nothing at all unless it was asked for.
+    ///
+    /// The default has to be nothing rather than the last run, because a flag that quietly
+    /// narrows a run to a worklist is a flag that makes the nightly report a different claim
+    /// from the one it says it is.
+    #[test]
+    fn the_failing_filter_is_a_path_and_is_off_unless_it_was_given() {
+        let Command::Run(plan) = parsed("run") else {
+            panic!("not a run");
+        };
+        assert_eq!(plan.failing, None);
+        assert!(plan.only.is_empty());
+
+        let Command::Run(plan) = parsed("run --failing runs/latest") else {
+            panic!("not a run");
+        };
+        assert_eq!(plan.failing, Some(PathBuf::from("runs/latest")));
+
+        // The resolved list is filled in by the scheduler once the records have been read, so
+        // parsing alone never puts anything in it.
+        assert!(plan.only.is_empty());
+        assert!(
+            parse(&args("run --failing")).is_err(),
+            "the flag takes a path"
+        );
     }
 
     #[test]

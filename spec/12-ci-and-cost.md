@@ -125,6 +125,8 @@ A run of rungs 0 through 2 is a hundred and six minutes of cell time on the refe
 
 **Switching it off.** `--no-cache` neither reads nor writes. `rrc test`, which is what somebody runs while watching one cell, never uses it at all.
 
+**What to reach for when the cache cannot help.** The key has the compiler's bytes in it, so a run with a compiler that was rebuilt five minutes ago misses on every cell and pays the full price. That is correct and it is also the exact case somebody working on the compiler is in all day. `--failing <run>` is the answer for them: it keeps the cells an earlier run did not pass and drops the rest, so a rung with four failures left is four cells rather than sixty. The two mechanisms cover opposite halves of the same problem. The cache is for a corpus that did not change and the filter is for a compiler that did, and neither one can do the other's job. Document 07.2 has the rules and the one that matters is that a filtered run is a worklist rather than a result: the rule in document 04.0 that a rung is climbed only when everything on it passes on one commit is answered by a run that asked for the whole rung, and never by this.
+
 ## 12.10 Engineering cost
 
 Document 00 puts RC2 at six to nine engineer-weeks and RC5 at four to six months, and the shape of the first number is worth breaking out, since it is the one somebody has to approve.
