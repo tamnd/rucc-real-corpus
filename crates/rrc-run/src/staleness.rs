@@ -25,11 +25,14 @@ pub struct Stale {
 
 /// Every excluded cell in a run whose entry has stopped matching it.
 ///
+/// `baseline` is the reference compiler's half of the same run, or empty when the run measured no
+/// baseline. It is read for condition two on an `upstream:` entry and for nothing else.
+///
 /// Records with no `observed_outcome` are ignored rather than reported. That is what a record
 /// written before excluded cells were run looks like, and reading an old log should not invent
 /// findings.
 #[must_use]
-pub fn check(records: &[RunRecord], register: &Exclusions) -> Vec<Stale> {
+pub fn check(records: &[RunRecord], baseline: &[RunRecord], register: &Exclusions) -> Vec<Stale> {
     let mut found = Vec::new();
     for record in records {
         let (Some(observed), Some(entry)) = (
@@ -49,13 +52,35 @@ pub fn check(records: &[RunRecord], register: &Exclusions) -> Vec<Stale> {
             issue: entry.issue.clone(),
             what,
         };
+        let upstream = entry.issue.trim_start().starts_with("upstream:");
 
         // Condition two. Not just `passed`, because a cell that stopped failing in any way has
         // stopped being described by an entry that says it fails.
-        if !observed.is_failure() {
+        //
+        // An `upstream:` entry is a claim about the reference compiler rather than about ours, so
+        // the outcome that answers it is the reference compiler's. Asking ours instead gets the
+        // question backwards: the day we become able to pass a cell gcc still fails, the entry
+        // would be called stale for having come true. A run with no baseline has nothing to ask,
+        // and says nothing rather than guessing.
+        let answers = if upstream {
+            reference(baseline, record).map(|found| found.outcome)
+        } else {
+            Some(observed)
+        };
+        if let Some(answers) = answers
+            && !answers.is_failure()
+        {
+            let whose = if upstream {
+                "is excluded as an upstream failure and the reference compiler came back"
+            } else {
+                "is excluded and came back"
+            };
             found.push(stale(format!(
-                "is excluded and came back {observed}, so either the bug is fixed and the entry should go, or it was never the bug the entry names"
+                "{whose} {answers}, so either the bug is fixed and the entry should go, or it was never the bug the entry names"
             )));
+            continue;
+        }
+        if !observed.is_failure() {
             continue;
         }
 
@@ -76,15 +101,22 @@ pub fn check(records: &[RunRecord], register: &Exclusions) -> Vec<Stale> {
         // entry whose issue carries the `upstream:` prefix of section 9.6 says the failure is not
         // ours, and a cell that comes back with a diagnostic only the compiler under test prints
         // contradicts that no matter how the reason is worded.
-        if entry.issue.trim_start().starts_with("upstream:")
-            && let Some(code) = diagnostic_in(said)
-        {
+        if upstream && let Some(code) = diagnostic_in(said) {
             found.push(stale(format!(
                 "is excluded as an upstream failure and now fails with `{said}`, and {code} is the compiler under test talking rather than the project"
             )));
         }
     }
     found
+}
+
+/// The reference compiler's half of one cell, when the run measured a baseline.
+fn reference<'a>(baseline: &'a [RunRecord], record: &RunRecord) -> Option<&'a RunRecord> {
+    baseline.iter().find(|found| {
+        found.project == record.project
+            && found.level == record.level
+            && found.provenance.host == record.provenance.host
+    })
 }
 
 /// The diagnostic code a piece of text names, if it names one.
@@ -188,7 +220,7 @@ mod tests {
 
     #[test]
     fn an_excluded_cell_that_passed_is_the_finding_the_whole_check_exists_for() {
-        let found = check(&[excluded(Outcome::Passed, "")], &entry("E0686"));
+        let found = check(&[excluded(Outcome::Passed, "")], &[], &entry("E0686"));
         assert_eq!(found.len(), 1);
         assert!(found[0].what.contains("came back passed"));
     }
@@ -202,6 +234,7 @@ mod tests {
         assert!(
             check(
                 &[record],
+                &[],
                 &entry("an atomic builtin has no lowering, E0686")
             )
             .is_empty()
@@ -213,6 +246,7 @@ mod tests {
         let record = excluded(Outcome::Crashed, "E0912 internal compiler error");
         let found = check(
             &[record],
+            &[],
             &entry("an atomic builtin has no lowering, E0686"),
         );
         assert_eq!(found.len(), 1);
@@ -222,7 +256,7 @@ mod tests {
     #[test]
     fn a_reason_that_is_only_prose_has_nothing_to_compare_and_produces_nothing() {
         let record = excluded(Outcome::Crashed, "segmentation fault");
-        assert!(check(&[record], &entry("the decoder frees a null pointer")).is_empty());
+        assert!(check(&[record], &[], &entry("the decoder frees a null pointer")).is_empty());
     }
 
     #[test]
@@ -233,6 +267,7 @@ mod tests {
         );
         let found = check(
             &[record],
+            &[],
             &upstream_entry("the header lays the symbols out wrong above -O0"),
         );
         assert_eq!(found.len(), 1);
@@ -249,6 +284,7 @@ mod tests {
         assert!(
             check(
                 &[record],
+                &[],
                 &upstream_entry("the header lays the symbols out wrong above -O0")
             )
             .is_empty()
@@ -259,13 +295,52 @@ mod tests {
     fn a_record_from_before_excluded_cells_were_run_is_left_alone() {
         let mut record = excluded(Outcome::Passed, "");
         record.observed_outcome = None;
-        assert!(check(&[record], &entry("E0686")).is_empty());
+        assert!(check(&[record], &[], &entry("E0686")).is_empty());
     }
 
     #[test]
     fn a_cell_no_entry_covers_is_not_checked_even_if_the_project_is_on_the_register() {
         let mut record = excluded(Outcome::Passed, "");
         record.level = Level::O0;
-        assert!(check(&[record], &entry("E0686")).is_empty());
+        assert!(check(&[record], &[], &entry("E0686")).is_empty());
+    }
+
+    /// The case the incbin entry is. An upstream entry says gcc fails the cell, so our passing it
+    /// is the entry coming true rather than the entry going stale, and the reference half is
+    /// where the answer is.
+    #[test]
+    fn an_upstream_entry_is_asked_of_the_reference_compiler_and_not_of_ours() {
+        let mut reference = excluded(Outcome::WrongAnswer, "");
+        reference.outcome = Outcome::WrongAnswer;
+        reference.observed_outcome = None;
+        assert!(
+            check(
+                &[excluded(Outcome::Passed, "")],
+                &[reference],
+                &upstream_entry("the assertion fails with gcc 16 above -O0")
+            )
+            .is_empty()
+        );
+    }
+
+    /// And the other way, which is the finding the check exists for: gcc stopped failing it, so
+    /// the entry is describing a bug that is no longer there whatever we do with the cell.
+    #[test]
+    fn an_upstream_entry_whose_reference_half_now_passes_is_the_entry_that_should_go() {
+        let mut reference = excluded(Outcome::Passed, "");
+        reference.outcome = Outcome::Passed;
+        reference.observed_outcome = None;
+        let found = check(
+            &[excluded(Outcome::Passed, "")],
+            &[reference],
+            &upstream_entry("the assertion fails with gcc 16 above -O0"),
+        );
+        assert_eq!(found.len(), 1);
+        assert!(
+            found[0]
+                .what
+                .contains("the reference compiler came back passed"),
+            "{found:?}"
+        );
     }
 }

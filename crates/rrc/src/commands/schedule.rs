@@ -1019,7 +1019,7 @@ pub fn run(loaded: &Loaded, options: &Options, plan: &RunPlan) -> Result<Done, S
         Vec::new()
     };
 
-    let stale = staleness::check(&records, &loaded.corpus.exclusions);
+    let stale = staleness::check(&records, &reference, &loaded.corpus.exclusions);
     let report = rrc_report::Report::of(&records, &reference);
     let mut markdown = report.markdown();
     markdown.push_str(&register(&stale));
