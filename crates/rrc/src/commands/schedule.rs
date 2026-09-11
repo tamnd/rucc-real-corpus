@@ -30,7 +30,7 @@ use rrc_run::driver::{self, Baseline, Compiler, Job, Prepared};
 use rrc_run::env;
 use rrc_run::interrogate::{self, Divergence, Names, Where};
 use rrc_run::privilege::{self, Privilege};
-use rrc_run::record::{Outcome, Provenance, RecordLog, RunRecord};
+use rrc_run::record::{self, Outcome, Provenance, RecordLog, RunRecord};
 use rrc_run::sandbox::Slot;
 use rrc_run::shim::{self, Toolchain};
 use rrc_run::staleness::{self, Stale};
@@ -953,7 +953,8 @@ fn reuse_line(records: &[RunRecord], reuse: Reuse, cache: &cache::Cache) -> Stri
 /// Progress goes to standard error and the report goes to standard output, so that piping the
 /// report somewhere still leaves a person watching a long run something to watch.
 pub fn run(loaded: &Loaded, options: &Options, plan: &RunPlan) -> Result<Done, String> {
-    let chosen = loaded.select(&plan.rungs, &plan.projects)?;
+    let (plan, chosen) = selection(loaded, plan)?;
+    let plan = &plan;
     if chosen.is_empty() {
         return Ok(Done::good("no projects matched, so nothing ran\n"));
     }
@@ -1386,13 +1387,83 @@ fn prefetch(setup: &Setup, loaded: &Loaded, chosen: &[&Manifest]) -> Result<(), 
 /// for a rung whose table does not include it.
 fn levels_for(manifest: &Manifest, plan: &RunPlan) -> Vec<Level> {
     let mine = manifest.levels();
-    match &plan.levels {
+    let asked: Vec<Level> = match &plan.levels {
         None => mine,
         Some(asked) => mine
             .into_iter()
             .filter(|level| asked.contains(level))
             .collect(),
+    };
+    if plan.only.is_empty() {
+        return asked;
     }
+    let name = &manifest.project.name;
+    asked
+        .into_iter()
+        .filter(|level| {
+            plan.only
+                .iter()
+                .any(|(project, at)| project == name && at == level)
+        })
+        .collect()
+}
+
+/// What a run covers, which is the rungs and projects it asked for with `--failing` taken off it.
+///
+/// The two come back together because the second needs the first: a project every one of whose
+/// levels the filter removed is not in the run at all, and deciding that means having the
+/// resolved plan to hand. Reporting it as a project with no cells would be a row in the report
+/// that says nothing and a line on the terminal for work nobody did.
+fn selection<'a>(
+    loaded: &'a Loaded,
+    plan: &RunPlan,
+) -> Result<(RunPlan, Vec<&'a Manifest>), String> {
+    let plan = narrowed(plan, loaded)?;
+    let chosen = loaded
+        .select(&plan.rungs, &plan.projects)?
+        .into_iter()
+        .filter(|manifest| !levels_for(manifest, &plan).is_empty())
+        .collect();
+    Ok((plan, chosen))
+}
+
+/// The plan with `--failing` resolved into the list of cells to keep.
+///
+/// Read once, here, rather than per project. A run that did not ask for it comes back unchanged,
+/// which is every run the nightly and CI make.
+///
+/// An outcome that is not a pass is kept, and that is deliberately wider than a failure. A cell
+/// that was skipped for a missing requirement, or was not compared because there were no counts
+/// to compare, is a cell that did not answer the question, and somebody asking for the work that
+/// is left wants those back too. The one thing that is not kept is a pass, because a pass is the
+/// work that is done.
+fn narrowed(plan: &RunPlan, loaded: &Loaded) -> Result<RunPlan, String> {
+    let Some(from) = plan.failing.clone() else {
+        return Ok(plan.clone());
+    };
+    let at = absolute(loaded, &from);
+    let at = if at.is_dir() {
+        at.join("records.jsonl")
+    } else {
+        at
+    };
+    let earlier = record::read_log(&at).map_err(|why| format!("{why}, asked for by --failing"))?;
+    let only: Vec<(String, Level)> = earlier
+        .into_iter()
+        .filter(|record| record.outcome != Outcome::Passed)
+        .map(|record| (record.project, record.level))
+        .collect();
+    // A run whose cells all passed has nothing left to do, and saying so is better than running
+    // the whole selection as though the flag had not been given.
+    if only.is_empty() {
+        return Err(format!(
+            "every cell in {} passed, so `--failing` has nothing to run",
+            at.display()
+        ));
+    }
+    let mut plan = plan.clone();
+    plan.only = only;
+    Ok(plan)
 }
 
 /// The exclusion register section, which is written on every run rather than only when something
@@ -1541,6 +1612,43 @@ command = ["./sample"]
             "rung zero's table has no lto, and a run that reports one is reporting a cell that \
              does not exist"
         );
+    }
+
+    /// `--failing` narrows a selection rather than replacing it.
+    ///
+    /// Two rules, and both of them are what somebody chasing the last few cells of a rung would
+    /// expect. A cell the earlier run passed is gone, because it is work that is done. A cell the
+    /// earlier run failed at a level this run did not ask for is gone as well, because the flag
+    /// filters what was selected and does not add to it.
+    #[test]
+    fn the_failing_filter_keeps_the_cells_that_did_not_pass_and_nothing_else() {
+        let manifest = manifest_at(Rung::R0);
+        let plan = RunPlan {
+            levels: Some(vec![Level::O0, Level::O1, Level::O2]),
+            only: vec![
+                ("sample".to_string(), Level::O1),
+                ("sample".to_string(), Level::Os),
+                ("elsewhere".to_string(), Level::O0),
+            ],
+            ..RunPlan::default()
+        };
+        assert_eq!(
+            levels_for(&manifest, &plan),
+            vec![Level::O1],
+            "O0 and O2 passed last time, Os is not in this run's levels, and the other project's \
+             failure is not this project's"
+        );
+    }
+
+    /// A project with nothing left to do drops out of the run instead of being reported empty.
+    #[test]
+    fn a_project_the_failing_filter_empties_is_not_in_the_run_at_all() {
+        let manifest = manifest_at(Rung::R0);
+        let plan = RunPlan {
+            only: vec![("elsewhere".to_string(), Level::O0)],
+            ..RunPlan::default()
+        };
+        assert!(levels_for(&manifest, &plan).is_empty());
     }
 
     #[test]
