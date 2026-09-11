@@ -1,14 +1,31 @@
 # The register from `spec/09-patches-and-exclusions.md` section 9.4.
 # Every entry names an issue, because an exclusion with no issue is a project quietly removed from
-# the denominator. All three entries here are upstream failures found while recording the gcc 16
-# baselines, which is to say none of them is about rucc and all of them would be a false red
-# against it. The upstream prefix says whose bug it is and the url behind it is our own tracking
-# issue, because none has been reported to its project yet and a register that points at an issue
-# nobody filed is worse than one that points at a note somebody wrote.
+# the denominator. The upstream prefix says whose bug it is and the url behind it is our own
+# tracking issue, because none has been reported to its project yet and a register that points at an
+# issue nobody filed is worse than one that points at a note somebody wrote.
+#
+# Seven entries, and they are not all the same kind of thing, which is worth saying before anybody
+# reads the count as one number. Three were found while recording the gcc 16 baselines: a test that
+# frees a null pointer and reads through it, a header whose own arithmetic stops holding once there
+# are several of it in a link, and an internal compiler error in gcc's aarch64 back end. Two more,
+# femtolisp and micropython, are source that does not build on macos arm64 for reasons that have
+# nothing to do with the compiler under test. None of those five is about rucc and every one of them
+# would be a false red against it.
+#
+# The last two are not a bug in anybody's code. janet and tcc run a different number of cases on
+# macos than on linux, because parts of both suites are written for a linux facility and skip
+# themselves elsewhere, and baseline-tests holds one number. So a host that runs fewer cases and
+# passes all of them is graded a wrong answer for a difference in what the suite chose to run. That
+# is tamnd/rucc-real-corpus#105 and it is a gap in this harness rather than in a project, which is
+# the one kind of entry here that we are supposed to be able to remove by fixing something.
 #
 # An entry is as narrow as the failure it describes. The level field says which levels, the host
-# field says which machines, and leaving either off means all of them. All three were rechecked
-# against the first full differential run on linux x86-64 on 2026-09-07 and all three stand.
+# field says which machines, and leaving either off means all of them. Five of the seven are scoped
+# to macos-aarch64, and every one of those five passes at every level on the reference machine.
+#
+# Rechecked on 2026-09-11 against the RC5 exit criterion, which asks for no entry older than RC3
+# without a dated justification. All seven carry a since date and an issue, the oldest is four days
+# old, and all seven stand.
 
 [[exclude]]
 project = "heatshrink"
