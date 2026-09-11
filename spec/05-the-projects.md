@@ -1,6 +1,6 @@
 # The projects
 
-Seventy three entries across six rungs. Each row states the version the list starts at, the build system class from document 03.1 axis A, the oracle class from axis D, and the one to three things the project is on the list *for*.
+Seventy two entries across six rungs, which is the first time that sentence has been true of all six. Each row states the version the list starts at, the build system class from document 03.1 axis A, the oracle class from axis D, and the one to three things the project is on the list *for*.
 
 Two rules about reading this table.
 
@@ -154,7 +154,7 @@ The recorded output turned out to be worth recording rather than settling for a 
 
 | project | pin | licence | A | D/E | demands |
 |---|---|---|---|---|---|
-| `sqlite-shell` | `3.53.4` | blessing | A3 | D3/E1 | the shell rather than the amalgamation: application code against system headers, one rung below R5 |
+| `sqlite-shell` | `3.53.4` | blessing | A2 | D3/E1 | the shell rather than the amalgamation: application code against system headers, one rung below R5 |
 | `busybox` | `1.38.0` | GPL-2.0 | A5 | D3/E1 | four hundred applets in one binary, kbuild, a configuration it writes itself, and hand written x86-64 |
 | `toybox` | `0.8.14` | 0BSD | A5 | D3/E1 | the same shape with different idioms; slimcc patches it, so expect exclusions |
 | `pdpmake` | `2.0.4` | Unlicense | A1 | D3/E1 | a POSIX make, small enough to read, with a suite that asserts on output |
@@ -214,15 +214,35 @@ The suite is thirty shell scripts under automake's parallel harness, which print
 
 **The test phase costs more than the suite does, and this is the row that makes that visible.** It takes between 120 and 140 seconds at the ordinary levels and 564 at `lto`, against a build of 569, which is not what a suite of a thousand shell cases looks like. `make test` depends on the binary, so entering the phase regenerates the applet table, rebuilds the seven objects that depend on it, and then links. Then busybox links itself another four times, because its own link step tries `crypt`, `m`, `resolv` and `rt` in turn to find out which of them it can do without. Five link time optimized links of four hundred applets is most of nine minutes, and the budget in the manifest is sized for it rather than for the suite. Both slots of the differential pay the same price, so nothing about the comparison moves, but a reader looking at 564 seconds of `test-seconds` and thinking about test cases would be reading the wrong number.
 
-**One row came off this list rather than on to it, and section 5.7 has the three sets of numbers.** `oksh` sat between `pdpmake` and `mawk` as `D3/E1`, which is a promise that the project has a suite that prints a pass count. The 7.7 tarball has sixty three source files, a hand written configure, and no test suite of any kind, and its own CI builds it without running anything. D3 was written down from the outside and never checked, which is the failure mode a rung is most exposed to: every other axis on a row can be read off the tarball in a minute, and the strength of an oracle can only be read by running it. Two shells were measured as replacements and neither is worth its price, so the rung is fifteen rows and the shell demands are carried by `bash`, `busybox` and `toybox`, all three of which are already on it with suites that do print a count.
+**One row came off this list rather than on to it, and section 5.8 has the three sets of numbers.** `oksh` sat between `pdpmake` and `mawk` as `D3/E1`, which is a promise that the project has a suite that prints a pass count. The 7.7 tarball has sixty three source files, a hand written configure, and no test suite of any kind, and its own CI builds it without running anything. D3 was written down from the outside and never checked, which is the failure mode a rung is most exposed to: every other axis on a row can be read off the tarball in a minute, and the strength of an oracle can only be read by running it. Two shells were measured as replacements and neither is worth its price, so the rung is fifteen rows and the shell demands are carried by `bash`, `busybox` and `toybox`, all three of which are already on it with suites that do print a count.
 
-## 5.6 Reserved, not run
+## 5.6 R5: SQLite
+
+| project | pin | licence | A | D/E | demands |
+|---|---|---|---|---|---|
+| `sqlite` | `3.53.4` | blessing | A2 | D3/E3 | the library with every extension compiled in, graded by the three hundred and ninety four thousand assertions the project ships for it |
+
+One row, and it is the whole rung. The ladder exists to make this project reachable and there is nothing above it, so the rung does not need a second row to be honest about what it is measuring.
+
+**It is the same tarball as `sqlite-shell` and it has to be.** The amalgamation zip is four files and no build system and no tests. The autoconf tarball has a configure and no test target. The Tcl suite is in the source distribution and nowhere else, which is what section 7.10 of document 07 already said when `sqlite-shell` was admitted one rung below. So the two rows fetch one archive between them and the cache pays for it once.
+
+**What separates the two rows is one configure flag and one test target, and both are the point.** `sqlite-shell` builds the default configuration and runs the eleven files that drive the command line tool as a subprocess. This row passes `--all`, which turns on fts4, fts5, rtree, geopoly, session, dbpage, dbstat and carray, and then runs the library's own suite. Every one of those extensions is already in the amalgamation and compiled out by default, so the flag costs nothing in fetch size and buys a great deal of compiler surface: the r-tree reads coordinates straight out of a byte buffer, fts5 is the densest varint and bit manipulation in the tree, and the session extension is the only part of SQLite that calls back into Tcl from C. It also moves the suite from 332,119 assertions to 394,786, which is where most of the extra grading comes from.
+
+**The test target is `make tcltest` and it is not `make test`, and this is a distinction worth writing down because the names suggest the opposite.** `make tcltest` is one `testfixture` process running `test/veryquick.test`. `make test` is `testrunner.tcl mdevtest`, which builds several configurations and runs them across every core the machine has. A corpus that reports a serial wall clock and compares it between two compilers cannot use a target that decides for itself how much of the machine to take, so the smaller sounding name is the right one.
+
+**The reference does not get a clean run and the two cases it does not pass are named rather than rounded off.** `zipfile-25.0` expects `[1 {cannot open file: x}]` and gets `[1 {error in fread()}]`, which means a file called `x` existed in the build tree when the case ran and the case is written on the assumption that it does not. `sessionnoact-4.3` expects `[]` from `S diff aux t1` and gets `[invalid command name "log"]`, naming a Tcl command that the session tests never define. Both of them pass when their own file is run on its own, which is the evidence that neither is about the compiler: they are cases that depend on what an earlier file in the same `veryquick` run left behind.
+
+**That is what makes `baseline-total` safe here, and it was checked rather than assumed.** The same tree was run twice and gave 394,786 both times with the same two names, and the `-O1` tree gave the same pair again, so the denominator is stable across repeated runs and across levels and the failing set is identical. A compiler that scores 394,784 of 394,786 has matched the reference exactly. One that drops a test file fails on the total, which is the half of the rule that stops a suite from passing by running less of itself. One that breaks a third case fails on the count.
+
+**E3, and it is the requirement RC5 asked for in as many words.** `testfixture` needs a `tclConfig.sh` to build and a `tclsh` to generate with, so a host without Tcl skips the project rather than failing it, and the cell reads `not compared` and never `passed`. Both reference machines have Tcl 8.6.14 and both have zlib, which matters because SQLite's configure has no switch for zlib at all: it probes, defines `SQLITE_HAVE_ZLIB` and links `-lz` when it finds one, and a host without it runs a different number of `zipfile` cases. That is tamnd/rucc-real-corpus#105 and it is the same exposure `sqlite-shell` already carries on the same tarball.
+
+## 5.7 Reserved, not run
 
 Parent document 14's rungs 2 through 4 name projects this ladder stops below: PostgreSQL, the Linux kernel, FFmpeg, OpenSSL, QEMU, CPython, curl, musl. They are listed here with their intended rung so that the growth is planned, and they are not in `projects/`, are not fetched, and are not counted in any number.
 
 The rule for moving one in is parent document 17's milestone gate, not this repository's judgement: a project enters when the milestone that needs it starts.
 
-## 5.7 Considered and rejected
+## 5.8 Considered and rejected
 
 Kept so the argument is not had twice. Each entry names the criterion from document 03.3 that excluded it.
 
@@ -246,7 +266,7 @@ Kept so the argument is not had twice. Each entry names the criterion from docum
 
 **`yash` fits the harness today and costs too much.** It is `system = "configure"` with `targets = ["yash"]`, and the target list is needed because plain `make` recurses into `po/` and calls `xgettext`, which is not a build dependency anybody should have to install to compile a shell, and because `--disable-nls` does not help: the generated `all` rule lists `mofiles` unconditionally and `enable_nls` is only consulted when installing. The suite is the strongest oracle of the three, 20133 assertions with 20100 passed, 1 failed and 32 skipped, and it takes about twenty minutes. Six levels of that is two hours out of a four hour nightly for one project, or about a third of the budget for a fortieth of the corpus, and document 03.3's build time bar exists for exactly this trade.
 
-## 5.8 What the list does not cover, and what covers it instead
+## 5.9 What the list does not cover, and what covers it instead
 
 Three demands that matter and that no project below R5 makes, recorded so that the gap is deliberate:
 

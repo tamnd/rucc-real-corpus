@@ -19,22 +19,22 @@ Weight is what to do next. It is the sum over the held up projects of six minus 
 | `autoconf-probes` | driver | 11 | 0 | 0 | none open |
 | `deep-macros` | preprocessor | 11 | 0 | 0 | none open |
 | `integer-conversion` | standard | 11 | 0 | 0 | none open |
+| `large-switch` | standard | 10 | 0 | 0 | none open |
 | `function-pointers` | standard | 9 | 0 | 0 | none open |
-| `large-switch` | standard | 9 | 0 | 0 | none open |
 | `setjmp-longjmp` | standard | 7 | 0 | 0 | none open |
 | `computed-goto` | gnu-extension | 6 | 0 | 0 | [open](https://github.com/tamnd/rucc/issues/353) |
 | `double-formatting` | standard | 5 | 0 | 0 | none open |
+| `atomic-builtins` | gnu-builtin | 4 | 0 | 0 | [open](https://github.com/tamnd/rucc/issues/311) |
 | `bit-builtins` | gnu-builtin | 4 | 0 | 0 | [open](https://github.com/tamnd/rucc/issues/310) |
 | `k-and-r-idioms` | standard | 4 | 0 | 0 | none open |
+| `overflow-builtins` | gnu-builtin | 4 | 0 | 0 | [open](https://github.com/tamnd/rucc/issues/836) |
 | `varargs-depth` | standard | 4 | 0 | 0 | none open |
-| `atomic-builtins` | gnu-builtin | 3 | 0 | 0 | [open](https://github.com/tamnd/rucc/issues/311) |
 | `cmake-probes` | driver | 3 | 0 | 0 | none open |
 | `feature-test-macros` | preprocessor | 3 | 0 | 0 | [open](https://github.com/tamnd/rucc/issues/757) |
 | `float-arithmetic` | standard | 3 | 0 | 0 | none open |
 | `inline-asm` | gnu-extension | 3 | 0 | 0 | none open |
 | `libm-builtins` | gnu-builtin | 3 | 0 | 0 | [open](https://github.com/tamnd/rucc/issues/226) |
 | `memcpy-idioms` | gnu-builtin | 3 | 0 | 0 | none open |
-| `overflow-builtins` | gnu-builtin | 3 | 0 | 0 | [open](https://github.com/tamnd/rucc/issues/836) |
 | `rotate-idioms` | standard | 3 | 0 | 0 | none open |
 | `thread-local` | standard | 3 | 0 | 0 | none open |
 | `unaligned-access` | standard | 3 | 0 | 0 | none open |
@@ -177,20 +177,6 @@ the integer types are the widths the standard says they are, and conversions bet
 - `diffutils`, R4, not measured
 - `tar`, R4, not measured
 
-### `function-pointers`
-
-calls through a pointer, including pointers to library functions
-
-- `c4`, R0, not measured
-- `tinyexpr`, R0, not measured
-- `linenoise`, R1, not measured
-- `tinycthread`, R1, not measured
-- `zlib`, R1, not measured
-- `libexpat`, R2, not measured
-- `libuv`, R2, not measured
-- `oniguruma`, R2, not measured
-- `wren`, R3, not measured
-
 ### `large-switch`
 
 a switch with hundreds of cases, where the jump table decision is the compiler's
@@ -204,6 +190,21 @@ a switch with hundreds of cases, where the jump table decision is the compiler's
 - `flex`, R4, not measured
 - `mawk`, R4, not measured
 - `sqlite-shell`, R4, not measured
+- `sqlite`, R5, not measured
+
+### `function-pointers`
+
+calls through a pointer, including pointers to library functions
+
+- `c4`, R0, not measured
+- `tinyexpr`, R0, not measured
+- `linenoise`, R1, not measured
+- `tinycthread`, R1, not measured
+- `zlib`, R1, not measured
+- `libexpat`, R2, not measured
+- `libuv`, R2, not measured
+- `oniguruma`, R2, not measured
+- `wren`, R3, not measured
 
 ### `setjmp-longjmp`
 
@@ -238,6 +239,15 @@ printf and strtod round tripping a double without losing a digit
 - `duktape`, R3, not measured
 - `mawk`, R4, not measured
 
+### `atomic-builtins`
+
+__atomic_load_n and __atomic_store_n at relaxed ordering
+
+- `rpmalloc`, R1, not measured
+- `libjansson`, R2, not measured
+- `sqlite-shell`, R4, not measured
+- `sqlite`, R5, not measured
+
 ### `bit-builtins`
 
 __builtin_clz, __builtin_ctz, __builtin_popcount and their l and ll forms
@@ -256,6 +266,15 @@ declarations and calls in the shape C had before it was standardised, which a co
 - `byacc`, R4, not measured
 - `flex`, R4, not measured
 
+### `overflow-builtins`
+
+__builtin_add_overflow, __builtin_sub_overflow and __builtin_mul_overflow, including the mixed signedness forms that gnulib's ckd_add generates
+
+- `jtckdint`, R0, not measured
+- `libtommath`, R2, not measured
+- `bash`, R4, not measured
+- `sqlite`, R5, not measured
+
 ### `varargs-depth`
 
 varargs forwarded through several layers of function
@@ -264,14 +283,6 @@ varargs forwarded through several layers of function
 - `cmocka`, R2, not measured
 - `libcheck`, R2, not measured
 - `pdpmake`, R4, not measured
-
-### `atomic-builtins`
-
-__atomic_load_n and __atomic_store_n at relaxed ordering
-
-- `rpmalloc`, R1, not measured
-- `libjansson`, R2, not measured
-- `sqlite-shell`, R4, not measured
 
 ### `cmake-probes`
 
@@ -320,14 +331,6 @@ __builtin_memcpy and __builtin_memset expanded inline at a size the compiler can
 - `lz4`, R1, not measured
 - `libpng`, R2, not measured
 - `zstd`, R2, not measured
-
-### `overflow-builtins`
-
-__builtin_add_overflow, __builtin_sub_overflow and __builtin_mul_overflow, including the mixed signedness forms that gnulib's ckd_add generates
-
-- `jtckdint`, R0, not measured
-- `libtommath`, R2, not measured
-- `bash`, R4, not measured
 
 ### `rotate-idioms`
 
