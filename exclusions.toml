@@ -40,7 +40,7 @@ project = "incbin"
 case = "incbin"
 level = "O1,O2,Os"
 issue = "upstream:https://github.com/tamnd/rucc-real-corpus/issues/22"
-why = "the assertion that &gLoremData[gLoremSize] equals &gLoremEnd fails with gcc 16 on linux x86-64 and on macos arm64 alike, at every level above -O0, while a translation unit with a single INCBIN in it still lays the symbols out adjacently. The header's own arithmetic is right and the placement stops being right once there are several of them, so this is a header and toolchain disagreement rather than anything the compiler under test did."
+why = "the assertion that &gLoremData[gLoremSize] equals &gLoremEnd fails with gcc 16 at every level above -O0, and it fails without the comparison being made. The disassembly of main calls __assert_fail for line 18 unconditionally, so gcc decided the two addresses differ while compiling, and nm on the same binary shows them 962 bytes apart with gLoremSize being 962. The placement is right and so is the header's arithmetic. What the assertion does is compare a pointer one past the end of one declared object against the address of another, which C leaves undefined and gcc 16 folds, so the failure is in what the header's own test asks for rather than in anything a compiler laid out wrongly. The compiler under test passes all three cells because it does not make that fold, and this entry stays because a cell gcc cannot get through is not a comparison between the two of us."
 since = "2026-09-07"
 
 [[exclude]]
