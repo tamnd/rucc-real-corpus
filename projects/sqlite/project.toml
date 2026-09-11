@@ -1,0 +1,132 @@
+[project]
+name = "sqlite"
+rung = 5
+upstream = "https://sqlite.org"
+licence = "blessing"
+licence-file = "LICENSE.md"
+description = "the library rather than the shell, built with every extension on and graded by the project's own Tcl suite"
+# The top of the ladder, and the three tags are the library's rather than the shell's.
+#
+# int128 is the measured blocker and it is the one the corpus did not predict. rucc 0.10.19 configures
+# the tree and then stops at sqlite3.c line 36863 with `cannot generate code for sqlite3Multiply128:
+# no rule lowers a zext producing a i128`, which is rucc issue 351. sqlite3.c decides it has a 128 bit
+# integer from __GNUC__ and the target name and never asks the compiler, so a compiler that answers
+# GCC 16 on x86-64 is handed the type whether or not it has one. There is a portable fallback in the
+# same file behind SQLITE_DISABLE_INTRINSIC and this manifest does not define it, because a
+# compatibility flag that makes the build pass is a patch written somewhere the diff is easier to
+# miss.
+#
+# atomic-builtins was the predicted blocker and is no longer a blocker at all. AtomicLoad and
+# AtomicStore are __atomic_load_n and __atomic_store_n at relaxed ordering, taken on a version macro
+# rather than a probe, so this file asks for them whatever the compiler can do, and rucc 0.10.19
+# lowers both at every level. That was rucc issue 311 and it is closed. The tag stays in the list
+# because the list says what the project demands and not what rucc is currently missing, and a demand
+# that has been met is the only kind worth keeping a record of.
+#
+# large-switch is the reason this project is the last rung rather than another R4 row. sqlite3VdbeExec
+# is about eight and a half thousand lines holding one switch with 188 case labels, and the suite
+# walks essentially all of them. A jump table that is laid out wrongly at that size does not fail to
+# compile, it returns the wrong row. It is also on sqlite-shell and the repetition is the point:
+# sqlite-shell compiles that function and runs eleven files that drive the command line tool, so the
+# interpreter is in its binary and barely touched by its suite, and this is the row where the 188
+# cases are executed rather than merely linked.
+#
+# Left off: overflow-builtins, bit-builtins and function-pointers, all three of which are as true of
+# this file as the tags above and all three of which are already carried by other rows.
+demands = ["int128", "atomic-builtins", "large-switch"]
+
+# The same tarball sqlite-shell is pinned to, and it has to be the same one. The amalgamation zip is
+# four files and no build system and no tests. The autoconf tarball has a configure and no test
+# target. The Tcl suite exists in this tree and nowhere else, which is what spec/07-harness.md
+# section 7.10 already said when sqlite-shell was admitted a rung below.
+[source]
+url = "https://sqlite.org/2026/sqlite-src-3530400.zip"
+sha256 = "d18fa15aec74d8c17e1463f861095adc01b5ad190256acb4f91d22f0368d232b"
+strip-components = 1
+
+# A2. The configure is autosetup, it ships generated, and it takes CFLAGS out of the environment and
+# writes it into the Makefile as a plain assignment, so the level arrives without a build.level-flags
+# carrier. sqlite-shell's manifest checked that at -Os as well as -O2 and the answer holds here.
+#
+# --all is the one line that makes this row different from sqlite-shell, and it is worth the
+# paragraph. It turns on fts4, fts5, rtree, geopoly, session, dbpage, dbstat and carray, all of which
+# are in the amalgamation already and all of which are compiled out by default. So it costs nothing
+# in fetch size and buys a great deal of compiler surface: the r-tree reads coordinates straight out
+# of a byte buffer, fts5 is the densest varint and bit manipulation in the tree, and the session
+# extension is the only part of SQLite that runs a Tcl callback out of C. It also moves the suite
+# from 332119 assertions to 394786, which is where most of the extra grading comes from.
+#
+# --disable-readline for the reason sqlite-shell gives: readline is a host library that changes both
+# the binary and what the tool does when it has a terminal, and a corpus cell should not depend on
+# which machine ran it. zlib has no switch at all, configure probes for it and defines SQLITE_HAVE_
+# ZLIB and links -lz when it finds one, so the baseline below is a build that has zlib. Both
+# reference machines have it. A host without it builds a smaller shell and runs a different number of
+# zipfile cases, which is tamnd/rucc-real-corpus#105 and is the same exposure sqlite-shell already
+# carries.
+#
+# Both targets are named so that the compile lands in the build phase where it is measured. make
+# tcltest would otherwise build testfixture itself and hide a second compile of the whole
+# amalgamation inside the test time.
+[build]
+system = "configure"
+configure = ["--all", "--disable-readline"]
+targets = ["sqlite3", "testfixture"]
+expect-configure = ["Using tclConfig.sh:"]
+# The shell rather than the library, for the mundane reason that this configure builds no shared
+# library and no static one either. sqlite3 is shell.c linked against the whole amalgamation, so its
+# size is very nearly the library's size, and it is the only artifact on disk worth measuring. Worth
+# knowing when reading the size column: -O0 is the largest build here and not the smallest, 2,403,288
+# bytes against 1,888,784 at -O1 and 2,128,992 at -O2 with gcc 16.2.0.
+binary = "sqlite3"
+
+# make tcltest, which is one testfixture process running test/veryquick.test. That is the right
+# oracle and make test is not, because make test is testrunner.tcl mdevtest, which runs several
+# configurations at once across every core on the machine. A corpus that reports a serial wall clock
+# cannot use a target that decides for itself how many cores to take.
+#
+# The suite prints exactly one summary line, "N errors out of M tests on <host> Linux 64-bit", so awk
+# reads the error count out of field 1 and the total out of field 5 and passes are the difference,
+# which is the only pair the line gives. When there is no summary line at all, which is what a
+# testfixture that died on its first file looks like, awk prints zero of zero instead of nothing, and
+# that grades as a wrong answer rather than as not compared. A suite that crashed is a result.
+#
+# baseline-total is set because the reference does not get a clean run, and the two cases it does not
+# pass are worth naming rather than rounding off.
+#
+# zipfile-25.0 expects [1 {cannot open file: x}] and gets [1 {error in fread()}], which means a file
+# named x existed in the build tree when the case ran and the case is written on the assumption that
+# it does not. sessionnoact-4.3 expects [] from S diff aux t1 and gets [invalid command name "log"],
+# which is a Tcl command the session test never defines.
+#
+# Both of them pass when their own file is run on its own, which is the evidence that neither is
+# about the compiler: they are cases that depend on what an earlier file in the same veryquick run
+# left behind. The failing set is byte identical across repeated runs of the same tree and across
+# levels, which is what makes it safe to hold the row to it. A compiler that scores 394784 of 394786
+# has matched the reference exactly, one that drops a case fails on the total, and one that breaks a
+# third case fails on the count.
+#
+# E3, because testfixture needs a tclConfig.sh to build and a tclsh to generate with. A host without
+# Tcl skips the project rather than failing it, which is the RC5 requirement that a missing Tcl
+# produces not compared and never passed.
+[test]
+command = [
+    "sh",
+    "-c",
+    "status=0; make tcltest > rrc-suite-output.log 2>&1 || status=1; cat rrc-suite-output.log; awk '/errors out of/ { passed = $5 - $1; total = $5; seen = 1 } END { if (seen) printf \"sqlite: %d of %d tests passed\\n\", passed, total; else print \"sqlite: 0 of 0 tests passed\" }' rrc-suite-output.log; exit $status",
+]
+oracle = "suite"
+parser = "custom-regex"
+regex = "sqlite: (\\d+) of (\\d+) tests passed"
+baseline-tests = 394784
+baseline-total = 394786
+requires = ["sh", "awk", "tcl"]
+
+# The amalgamation is compiled twice, once into the shell and once into testfixture, and it is a
+# quarter of a million lines each time, so the build limit is sqlite-shell's with head room on top for
+# the extensions --all turns on. The suite is a little over eight minutes under gcc and the limit is
+# not set from that: what a suite costs is the speed of the code the compiler produced, so a compiler
+# that generates a two times slower interpreter is a slow run rather than a broken one and should not
+# be recorded as a timeout.
+[limits]
+build-seconds = 5400
+test-seconds = 2400

@@ -498,7 +498,7 @@ fn sqlite_column(out: &mut String, column: &Column) {
     out.push_str("## The SQLite column\n\n");
     let _ = writeln!(
         out,
-        "Every demand the SQLite amalgamation makes, the smallest project below it that makes the same demand, and what the run says about that project. Measured against {} of `sqlite3.c`, which is {} lines. The counts and what was counted for each are in `sqlite.toml` at the root, which is the file to go and disagree with. SQLite is not admitted to the list until RC5, so until then this column is a measurement of the source rather than a run of it.\n",
+        "Every demand the SQLite amalgamation makes, the smallest project below it that makes the same demand, and what the run says about that project. Measured against {} of `sqlite3.c`, which is {} lines. The counts and what was counted for each are in `sqlite.toml` at the root, which is the file to go and disagree with. SQLite is on the list now, as the R5 row, and this column stays a measurement of the source rather than of that row's run, because the two answer different questions: the row says whether the build gets through, and the column says what it would take.\n",
         column.version, column.lines
     );
     let _ = writeln!(

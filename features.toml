@@ -148,6 +148,19 @@ kind = "gnu-extension"
 summary = "the integer types are the widths the standard says they are, and conversions between them keep their values"
 kind = "standard"
 
+# Found by the R5 row rather than predicted by it, which is why it arrives with a diagnostic list
+# already filled in. sqlite3.c decides it has a 128 bit integer type from __GNUC__ and the target
+# name and never asks the compiler, so a compiler that says it is GCC on x86-64 gets the type
+# whether or not it has one. There is a portable fallback in the same file behind
+# SQLITE_DISABLE_INTRINSIC, and nothing here defines it, because defining it would be a patch
+# written in a configure flag.
+[int128]
+summary = "__int128 and __uint128_t as a type that can be multiplied, shifted and narrowed back"
+kind = "gnu-extension"
+diagnostic = ["`i128`", "__int128", "__uint128_t"]
+rucc-issue = "https://github.com/tamnd/rucc/issues/351"
+standard = "GNU extension with no portable spelling; C23 _BitInt(128) is the nearest standard thing and is a different type"
+
 [k-and-r-idioms]
 summary = "declarations and calls in the shape C had before it was standardised, which a compiler defaulting to C23 rejects"
 kind = "standard"

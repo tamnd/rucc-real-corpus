@@ -19,15 +19,15 @@ Weight is what to do next. It is the sum over the held up projects of six minus 
 | `autoconf-probes` | driver | 11 | 0 | 0 | none open |
 | `deep-macros` | preprocessor | 11 | 0 | 0 | none open |
 | `integer-conversion` | standard | 11 | 0 | 0 | none open |
+| `large-switch` | standard | 10 | 0 | 0 | none open |
 | `function-pointers` | standard | 9 | 0 | 0 | none open |
-| `large-switch` | standard | 9 | 0 | 0 | none open |
 | `setjmp-longjmp` | standard | 7 | 0 | 0 | none open |
 | `computed-goto` | gnu-extension | 6 | 0 | 0 | [open](https://github.com/tamnd/rucc/issues/353) |
 | `double-formatting` | standard | 5 | 0 | 0 | none open |
+| `atomic-builtins` | gnu-builtin | 4 | 0 | 0 | [open](https://github.com/tamnd/rucc/issues/311) |
 | `bit-builtins` | gnu-builtin | 4 | 0 | 0 | [open](https://github.com/tamnd/rucc/issues/310) |
 | `k-and-r-idioms` | standard | 4 | 0 | 0 | none open |
 | `varargs-depth` | standard | 4 | 0 | 0 | none open |
-| `atomic-builtins` | gnu-builtin | 3 | 0 | 0 | [open](https://github.com/tamnd/rucc/issues/311) |
 | `cmake-probes` | driver | 3 | 0 | 0 | none open |
 | `feature-test-macros` | preprocessor | 3 | 0 | 0 | [open](https://github.com/tamnd/rucc/issues/757) |
 | `float-arithmetic` | standard | 3 | 0 | 0 | none open |
@@ -49,6 +49,7 @@ Weight is what to do next. It is the sum over the held up projects of six minus 
 | `cleanup-attribute` | gnu-extension | 1 | 0 | 0 | [open](https://github.com/tamnd/rucc/issues/786) |
 | `driver-passthrough` | driver | 1 | 0 | 0 | [open](https://github.com/tamnd/rucc/issues/863) |
 | `flexible-array-member` | standard | 1 | 0 | 0 | none open |
+| `int128` | gnu-extension | 1 | 0 | 0 | [open](https://github.com/tamnd/rucc/issues/351) |
 | `long-double` | standard | 1 | 0 | 0 | none open |
 | `stdckdint` | standard | 1 | 0 | 0 | none open |
 | `visibility-attributes` | gnu-extension | 1 | 0 | 0 | none open |
@@ -177,20 +178,6 @@ the integer types are the widths the standard says they are, and conversions bet
 - `diffutils`, R4, not measured
 - `tar`, R4, not measured
 
-### `function-pointers`
-
-calls through a pointer, including pointers to library functions
-
-- `c4`, R0, not measured
-- `tinyexpr`, R0, not measured
-- `linenoise`, R1, not measured
-- `tinycthread`, R1, not measured
-- `zlib`, R1, not measured
-- `libexpat`, R2, not measured
-- `libuv`, R2, not measured
-- `oniguruma`, R2, not measured
-- `wren`, R3, not measured
-
 ### `large-switch`
 
 a switch with hundreds of cases, where the jump table decision is the compiler's
@@ -204,6 +191,21 @@ a switch with hundreds of cases, where the jump table decision is the compiler's
 - `flex`, R4, not measured
 - `mawk`, R4, not measured
 - `sqlite-shell`, R4, not measured
+- `sqlite`, R5, not measured
+
+### `function-pointers`
+
+calls through a pointer, including pointers to library functions
+
+- `c4`, R0, not measured
+- `tinyexpr`, R0, not measured
+- `linenoise`, R1, not measured
+- `tinycthread`, R1, not measured
+- `zlib`, R1, not measured
+- `libexpat`, R2, not measured
+- `libuv`, R2, not measured
+- `oniguruma`, R2, not measured
+- `wren`, R3, not measured
 
 ### `setjmp-longjmp`
 
@@ -238,6 +240,15 @@ printf and strtod round tripping a double without losing a digit
 - `duktape`, R3, not measured
 - `mawk`, R4, not measured
 
+### `atomic-builtins`
+
+__atomic_load_n and __atomic_store_n at relaxed ordering
+
+- `rpmalloc`, R1, not measured
+- `libjansson`, R2, not measured
+- `sqlite-shell`, R4, not measured
+- `sqlite`, R5, not measured
+
 ### `bit-builtins`
 
 __builtin_clz, __builtin_ctz, __builtin_popcount and their l and ll forms
@@ -264,14 +275,6 @@ varargs forwarded through several layers of function
 - `cmocka`, R2, not measured
 - `libcheck`, R2, not measured
 - `pdpmake`, R4, not measured
-
-### `atomic-builtins`
-
-__atomic_load_n and __atomic_store_n at relaxed ordering
-
-- `rpmalloc`, R1, not measured
-- `libjansson`, R2, not measured
-- `sqlite-shell`, R4, not measured
 
 ### `cmake-probes`
 
@@ -426,6 +429,12 @@ a struct ending in an incomplete array, allocated with the header in front of it
 
 - `sds`, R0, not measured
 
+### `int128`
+
+__int128 and __uint128_t as a type that can be multiplied, shifted and narrowed back
+
+- `sqlite`, R5, not measured
+
 ### `long-double`
 
 long double at the 80 bit x86-64 format
@@ -446,9 +455,9 @@ __attribute__((visibility)) on functions and on objects
 
 ## The SQLite column
 
-Every demand the SQLite amalgamation makes, the smallest project below it that makes the same demand, and what the run says about that project. Measured against 3.53.4 of `sqlite3.c`, which is 269649 lines. The counts and what was counted for each are in `sqlite.toml` at the root, which is the file to go and disagree with. SQLite is not admitted to the list until RC5, so until then this column is a measurement of the source rather than a run of it.
+Every demand the SQLite amalgamation makes, the smallest project below it that makes the same demand, and what the run says about that project. Measured against 3.53.4 of `sqlite3.c`, which is 269649 lines. The counts and what was counted for each are in `sqlite.toml` at the root, which is the file to go and disagree with. SQLite is on the list now, as the R5 row, and this column stays a measurement of the source rather than of that row's run, because the two answer different questions: the row says whether the build gets through, and the column says what it would take.
 
-This is the number RC2 turns on. The residue is the demands with nothing below them, which are the things the ladder was never going to find out about before the climb. It is currently 1 of 19.
+This is the number RC2 turns on. The residue is the demands with nothing below them, which are the things the ladder was never going to find out about before the climb. It is currently 1 of 20.
 
 | demand | sites | smallest reacher below | rung | outcome |
 |---|---|---|---|---|
@@ -468,6 +477,7 @@ This is the number RC2 turns on. The residue is the demands with nothing below t
 | `double-formatting` | 27 | `parson` | R0 | not measured |
 | `unaligned-access` | 22 | `lz4` | R1 | not measured |
 | `bit-builtins` | 10 | `rpmalloc` | R1 | not measured |
+| `int128` | 3 | `sqlite` | R5 | not measured |
 | `overflow-builtins` | 3 | `jtckdint` | R0 | not measured |
 | `atomic-builtins` | 2 | `rpmalloc` | R1 | not measured |
 | `feature-test-macros` | 1 | `diffutils` | R4 | not measured |

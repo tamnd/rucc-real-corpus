@@ -85,6 +85,8 @@ Parent document 14.2, unchanged, restated as the top of this ladder so that the 
 
 **Exit:** parent document 14.2's exit criterion, verbatim. The amalgamation builds; `make test` passes fully at every level; `speedtest1` is within parent document 02's bound.
 
+**What the harness runs is `make tcltest` and the difference from that sentence is deliberate.** `make test` is `testrunner.tcl mdevtest`, which builds several configurations and spreads them across every core the machine has, and a corpus that reports a serial wall clock and compares it between two compilers cannot use a target that decides for itself how much of the machine to take. `make tcltest` is one `testfixture` process running `test/veryquick.test`, which is 394,786 assertions against a tree configured with `--all`. Section 5.6 of document 05 has the numbers and the two cases the reference itself does not pass. The exit criterion above is the parent's and stays as the parent wrote it.
+
 ## 4.7 Optimization levels by rung, and why they are staged
 
 | rung | `-O0` | `-O1` | `-O2` | `-Os` | `-O3` | `-flto` |
