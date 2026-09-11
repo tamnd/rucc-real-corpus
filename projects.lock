@@ -26,6 +26,14 @@ licence-sha256 = "3d180008e36922a4e8daec11c34c7af264fed5962d07924aea928c38e8663c
 verified = "2026-09-08"
 
 [[project]]
+name = "busybox"
+url = "https://busybox.net/downloads/busybox-1.38.0.tar.bz2"
+sha256 = "34f9ea6ff8636f2c9241153b9114eefa9e65674a45318ae1ef95bb5f31c53bb2"
+bytes = 2695723
+licence-sha256 = "bbfc9843646d483c334664f651c208b9839626891d8f17604db2146962f43548"
+verified = "2026-09-10"
+
+[[project]]
 name = "byacc"
 url = "https://invisible-island.net/archives/byacc/byacc-20260126.tgz"
 sha256 = "b618c5fb44c2f5f048843db90f7d1b24f78f47b07913c8c7ba8c942d3eb24b00"

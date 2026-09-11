@@ -31,6 +31,7 @@ Weight is what to do next. It is the sum over the held up projects of six minus 
 | `cmake-probes` | driver | 3 | 0 | 0 | none open |
 | `feature-test-macros` | preprocessor | 3 | 0 | 0 | [open](https://github.com/tamnd/rucc/issues/757) |
 | `float-arithmetic` | standard | 3 | 0 | 0 | none open |
+| `inline-asm` | gnu-extension | 3 | 0 | 0 | none open |
 | `libm-builtins` | gnu-builtin | 3 | 0 | 0 | [open](https://github.com/tamnd/rucc/issues/226) |
 | `memcpy-idioms` | gnu-builtin | 3 | 0 | 0 | none open |
 | `overflow-builtins` | gnu-builtin | 3 | 0 | 0 | [open](https://github.com/tamnd/rucc/issues/836) |
@@ -38,15 +39,15 @@ Weight is what to do next. It is the sum over the held up projects of six minus 
 | `thread-local` | standard | 3 | 0 | 0 | none open |
 | `unaligned-access` | standard | 3 | 0 | 0 | none open |
 | `constant-time` | standard | 2 | 0 | 0 | none open |
+| `driver-stdin-input` | driver | 2 | 0 | 0 | [open](https://github.com/tamnd/rucc/issues/812) |
 | `fortify-builtins` | gnu-builtin | 2 | 0 | 0 | [open](https://github.com/tamnd/rucc/issues/825) |
-| `inline-asm` | gnu-extension | 2 | 0 | 0 | none open |
 | `nan-boxing` | standard | 2 | 0 | 0 | none open |
 | `recursion-depth` | standard | 2 | 0 | 0 | none open |
 | `stack-allocation` | standard | 2 | 0 | 0 | [open](https://github.com/tamnd/rucc/issues/631) |
 | `transparent-union` | gnu-extension | 2 | 0 | 0 | [open](https://github.com/tamnd/rucc/issues/829) |
 | `char-signedness` | abi | 1 | 0 | 0 | [open](https://github.com/tamnd/rucc/issues/489) |
 | `cleanup-attribute` | gnu-extension | 1 | 0 | 0 | [open](https://github.com/tamnd/rucc/issues/786) |
-| `driver-stdin-input` | driver | 1 | 0 | 0 | [open](https://github.com/tamnd/rucc/issues/812) |
+| `driver-passthrough` | driver | 1 | 0 | 0 | [open](https://github.com/tamnd/rucc/issues/863) |
 | `flexible-array-member` | standard | 1 | 0 | 0 | none open |
 | `long-double` | standard | 1 | 0 | 0 | none open |
 | `stdckdint` | standard | 1 | 0 | 0 | none open |
@@ -296,6 +297,14 @@ float and double arithmetic in volume, without contraction changing the answer
 - `minunit`, R1, not measured
 - `libmpfr`, R2, not measured
 
+### `inline-asm`
+
+__asm__ at file scope, including .incbin and hand written section directives
+
+- `incbin`, R0, not measured
+- `libgmp`, R2, not measured
+- `busybox`, R4, not measured
+
 ### `libm-builtins`
 
 __builtin_ceil, __builtin_floor and the rest of the libm shaped builtins
@@ -351,19 +360,19 @@ arithmetic written to take the same time whatever the secret is, which the optim
 - `monocypher`, R1, not measured
 - `libsodium`, R2, not measured
 
+### `driver-stdin-input`
+
+-x names the language of the inputs that follow, and a file named - is standard input
+
+- `busybox`, R4, not measured
+- `toybox`, R4, not measured
+
 ### `fortify-builtins`
 
 __builtin_object_size, the __builtin___*_chk family and __builtin_va_arg_pack, which glibc's fortified headers and its error.h are written in
 
 - `sed`, R4, not measured
 - `tar`, R4, not measured
-
-### `inline-asm`
-
-__asm__ at file scope, including .incbin and hand written section directives
-
-- `incbin`, R0, not measured
-- `libgmp`, R2, not measured
 
 ### `nan-boxing`
 
@@ -405,11 +414,11 @@ __attribute__((cleanup(f))) runs f at every exit from the enclosing block, in re
 
 - `libjansson`, R2, not measured
 
-### `driver-stdin-input`
+### `driver-passthrough`
 
--x names the language of the inputs that follow, and a file named - is standard input
+-Wp,a,b and -Wa,a,b split on commas and hand the pieces to the preprocessor or the assembler
 
-- `toybox`, R4, not measured
+- `busybox`, R4, not measured
 
 ### `flexible-array-member`
 
@@ -479,6 +488,7 @@ These rows are why the residue above can be believed. A list that only records w
 - `cmake-probes`: same reason as autoconf, there is no configure step of any kind in front of the amalgamation
 - `computed-goto`: no labels as values anywhere, which is worth knowing because the bytecode interpreter is exactly the shape that usually has them and SQLite uses a plain switch instead
 - `constant-time`: the phrase appears twice in comments about algorithmic complexity and there is no cryptographic constant time requirement in the file
+- `driver-passthrough`: neither -Wp, nor -Wa, appears anywhere in the 269,649 lines, which is the expected answer twice over: both are written by a build system onto a compile line rather than by a program into its own source, and the amalgamation has no build system in front of it, so the only flags it is ever compiled with are the ones the harness itself writes
 - `driver-print-dirs`: the amalgamation is compiled directly and has no build system in front of it, so nothing asks the driver where it keeps anything
 - `driver-stdin-input`: the amalgamation is one file handed to the compiler by name, and there is no configure step in front of it piping programs into the compiler to find out what the machine has
 - `flexible-array-member`: the trailing empty brackets in the source are extern array declarations of unknown size rather than flexible members inside a structure

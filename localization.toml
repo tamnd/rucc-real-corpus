@@ -122,6 +122,16 @@ issue = "https://github.com/tamnd/rucc/issues/658"
 note = "`rucc: error: unknown option -flto` and nothing else, before a single line of git was read. The file named here is where the flag arrives rather than a file rucc could not parse: Makefile line 1592 puts CFLAGS_APPEND last in ALL_CFLAGS, which is how the level reaches the driver at all. mawk reaches the same wall through a configure probe and says nothing useful, so this one is the easier half of the same issue."
 
 [[failure]]
+project = "busybox"
+level = "*"
+went-red = "2026-09-11"
+named-file = "2026-09-11"
+file = "scripts/Makefile.lib"
+how = "by-hand"
+issue = "https://github.com/tamnd/rucc/issues/863"
+note = "The one entry so far where the record's first diagnostic points at the wrong issue. What it says is `unknown option -xc`, twice, which is scripts/gcc-version.sh asking the driver its version through a pipe and getting nothing back, and the build carries on past it. What ends the build is the third message, `-Wp,-MD,applets/.applets.o.d`, on the first object compiled out of busybox's own source. The file named here is line 111 of scripts/Makefile.lib, which is where kbuild writes that flag onto every compile line it generates. All six levels stop in the same place, including lto, because -Wp arrives before the level does."
+
+[[failure]]
 project = "mawk"
 level = "lto"
 went-red = "2026-09-10"

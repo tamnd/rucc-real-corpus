@@ -75,6 +75,18 @@ kind = "preprocessor"
 summary = "printf and strtod round tripping a double without losing a digit"
 kind = "standard"
 
+# The diagnostic here is the whole message rather than a code, because the driver refuses this one
+# before there is a translation unit to attach a code to. It is also the entry where the summary and
+# the reason are furthest apart: rucc's message is correct, in that both programs really are inside
+# it, and gcc's preprocessor has been inside gcc for thirty years and gcc takes the flag anyway,
+# because the makefiles that write it are older than the integration.
+[driver-passthrough]
+summary = "-Wp,a,b and -Wa,a,b split on commas and hand the pieces to the preprocessor or the assembler"
+kind = "driver"
+diagnostic = ["is an argument for a separate assembler or preprocessor"]
+rucc-issue = "https://github.com/tamnd/rucc/issues/863"
+standard = "not in the standard; kbuild puts -Wp,-MD on every compile line it writes"
+
 [driver-print-dirs]
 summary = "-print-search-dirs, -print-libgcc-file-name and the rest of what a build system asks the driver"
 kind = "driver"

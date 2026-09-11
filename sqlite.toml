@@ -235,3 +235,8 @@ evidence = "the amalgamation is one file handed to the compiler by name, and the
 tag = "stack-allocation"
 sites = 0
 evidence = "there are five calls to alloca in sqlite3.c and every one of them is behind SQLITE_USE_ALLOCA, which the amalgamation does not define, so the default build takes sqlite3DbMallocRaw instead and no variable length array appears anywhere in the file"
+
+[[measured]]
+tag = "driver-passthrough"
+sites = 0
+evidence = "neither -Wp, nor -Wa, appears anywhere in the 269,649 lines, which is the expected answer twice over: both are written by a build system onto a compile line rather than by a program into its own source, and the amalgamation has no build system in front of it, so the only flags it is ever compiled with are the ones the harness itself writes"
