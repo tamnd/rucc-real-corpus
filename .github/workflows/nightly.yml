@@ -5,20 +5,24 @@
 # is explicit about why: a nightly that can block work is a nightly that gets disabled the first
 # busy week, so a red run opens an issue and the merge queue never notices.
 #
-# One thing about it is temporary and worth being honest about at the top of the file rather than
-# in a footnote. There is no rucc binary to install yet, so both halves of every comparison are
-# the same compiler. That makes this a control rather than a differential: every project is built
-# and tested against the reference alone, the config.h differential compares a configure against
-# itself, and the double build compares a compiler against its own output. All three should come
-# back empty, and anything that does not is a bug in this harness, a manifest that describes a
-# project wrongly, or a pin that has rotted upstream. Those are exactly the failures that are
-# invisible until somebody trips over them, which is what a nightly is for. When rucc can be
-# installed, the compiler under test becomes rucc and the same three checks become the real ones
-# with no other change to this file.
+# It is a differential. The compiler under test is rucc, taken from the newest release published
+# by tamnd/rucc for this host's triple and checked against the sha256 that release publishes
+# beside it, and the reference is the newest GCC the host can be persuaded to install. Both
+# versions go on every record, because a GCC 16 baseline on a host with no GCC 16 would be a
+# claim rather than a measurement, and a differential that did not say which rucc it was is a
+# number nobody can go back to.
 #
-# The compiler is whatever the newest GCC the host can be persuaded to install turns out to be,
-# and the run records the version, because a GCC 16 baseline on a host with no GCC 16 would be a
-# claim rather than a measurement.
+# The release rather than a build from source, and that is a choice worth defending. Building
+# rucc here would mean a Rust toolchain, a cold registry and ten minutes out of the four hour
+# budget every morning on three hosts, and it would test a tree nobody has tagged. The release is
+# two megabytes, it is what somebody reproducing a number from this corpus would install, and the
+# tag is in the report. A run that wants a specific tag says so on dispatch.
+#
+# Red cells are the expected state and that is the whole point of running it. rucc is a compiler
+# under development, so most of this corpus does not build under it yet, and a nightly that opened
+# an issue every time something was red would open one every morning and be muted inside a week.
+# What opens an issue is the night being worse than the night before, which is the regression rule
+# of spec/11-reporting.md section 11.4, or one of the commands not running at all.
 
 name: nightly
 
@@ -38,6 +42,13 @@ on:
       jobs:
         description: how many cells to run at once, a count or auto
         default: "1"
+        required: false
+      # Empty means the newest release there is, which is what the schedule always takes. A tag
+      # here is for the person asking what a particular rucc did, which is usually the one before
+      # the change they are suspicious of.
+      rucc:
+        description: which rucc release to test, or nothing for the newest
+        default: ""
         required: false
 
 # Never two at once. Two nightlies would fetch into the same cache and commit the same report.
@@ -68,12 +79,15 @@ jobs:
         include:
           - name: linux x86-64
             os: ubuntu-24.04
+            triple: x86_64-unknown-linux-gnu
             reference: true
           - name: linux arm64
             os: ubuntu-24.04-arm
+            triple: aarch64-unknown-linux-gnu
             reference: false
           - name: macos arm64
             os: macos-26
+            triple: aarch64-apple-darwin
             reference: false
     steps:
       - uses: actions/checkout@v7.0.1
@@ -112,7 +126,7 @@ jobs:
             brew list cmake >/dev/null 2>&1 || brew install cmake || true
           fi
 
-      - name: pick the compiler
+      - name: pick the reference
         id: cc
         run: |
           set -euo pipefail
@@ -125,17 +139,80 @@ jobs:
             exit 1
           fi
           echo "name=$found" >> "$GITHUB_OUTPUT"
-          echo "the compiler is $found"
+          echo "the reference is $found"
           "$found" --version | head -1
 
+      # The compiler under test. Not fatal on its own, because a morning with no rucc to test is
+      # itself the finding and the step below says so in a sentence rather than leaving somebody
+      # to read an exit status. Everything after it is skipped, since a differential with one
+      # compiler in it is not a differential.
+      #
+      # The newest release means the newest by publication date, taken from the list rather than
+      # from the latest endpoint, because every rucc release so far is a pre-release and that
+      # endpoint does not return those. Verifying the sha256 is not ceremony: this is a binary
+      # downloaded over the network and then handed a corpus to compile, and the release publishes
+      # the hash for exactly this.
+      - name: the compiler under test
+        id: rucc
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -uo pipefail
+          have() { echo "have=$1" >> "$GITHUB_OUTPUT"; }
+          tag="${{ inputs.rucc }}"
+          if [ -z "$tag" ]; then
+            tag=$(gh release list --repo tamnd/rucc --limit 1 --json tagName --jq '.[0].tagName')
+          fi
+          if [ -z "$tag" ]; then
+            echo "tamnd/rucc has published no releases, so there is nothing to test against"
+            have false
+            exit 0
+          fi
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          archive="rucc-$tag-${{ matrix.triple }}.tar.gz"
+          dir="$RUNNER_TEMP/rucc"
+          mkdir -p "$dir/unpacked"
+          if ! gh release download "$tag" --repo tamnd/rucc --pattern "$archive*" --dir "$dir" --clobber; then
+            echo "$tag publishes nothing for ${{ matrix.triple }}, so this host has no compiler to test"
+            have false
+            exit 0
+          fi
+          if [ "$RUNNER_OS" = "macOS" ]; then check="shasum -a 256 -c"; else check="sha256sum -c"; fi
+          if ! (cd "$dir" && $check "$archive.sha256"); then
+            echo "the bytes of $archive are not the bytes tamnd/rucc published a hash for" >&2
+            have false
+            exit 1
+          fi
+          tar xzf "$dir/$archive" -C "$dir/unpacked" --strip-components 1
+          chmod +x "$dir/unpacked/rucc"
+          echo "path=$dir/unpacked/rucc" >> "$GITHUB_OUTPUT"
+          have true
+          "$dir/unpacked/rucc" --print-config | head -3
+
       - name: cargo build
+        if: steps.rucc.outputs.have == 'true'
         run: cargo build --release -p rrc
 
       # Separate from the run so that a pin that rotted upstream reads as a fetch failure rather
       # than as forty projects that did not build. Section 12.3 has the weekly job that checks the
       # urls on their own, and this is the same check arriving a day earlier.
       - name: the pins are still there
+        if: steps.rucc.outputs.have == 'true'
         run: cargo run --release -p rrc -- fetch
+
+      # Last night's records, so that tonight can be compared with them rather than with an
+      # expectation somebody typed. The key carries this run's id and can therefore never be hit,
+      # which is the point: the prefix falls back to the most recent cache saved under it, which
+      # is the previous night on this host. The markdown in the repository cannot do this job,
+      # because a diff needs the records and the records are deliberately not committed.
+      - name: last night
+        if: steps.rucc.outputs.have == 'true'
+        uses: actions/cache/restore@v6.1.0
+        with:
+          path: last-night
+          key: rrc-lastnight-${{ matrix.os }}-${{ github.run_id }}
+          restore-keys: |
+            rrc-lastnight-${{ matrix.os }}-
 
       # The reference host also builds everything twice and compares the bytes, which is the
       # determinism check of section 07.5. The other two hosts skip it, because a compiler that is
@@ -144,13 +221,11 @@ jobs:
       #
       # The reference host also runs section 8.6's standing mixed build, which builds each R4 and R5
       # project a second time with a fixed tenth of its files given to the compiler under test and
-      # the rest to gcc. With one compiler on both sides of this workflow it has to come back
-      # `both-passed` every time, and that is the point of running it here: a dispatcher that split
-      # the build wrongly, dropped a flag or sent a link to the wrong side would fail a project that
-      # two identical compilers cannot fail, so this is the check that the machinery still works
-      # before somebody relies on it to attribute a real failure. It costs nothing on a run of rungs
-      # 0 through 2, which have no R4 projects in them, and the hours it costs on rung 4 are hours
-      # the nightly has and the per commit job does not.
+      # the rest to gcc. That is the one thing an ordinary cell cannot say, which is whether a
+      # failing project failed in code generation or in build integration, and it is the check the
+      # RC4 exit criterion is written against. It costs nothing on a run of rungs 0 through 2, which
+      # have no R4 projects in them, and the hours it costs on rung 4 are hours the nightly has and
+      # the per commit job does not.
       #
       # `--refresh` builds every cell even when the record cache has an answer for it. The whole
       # value of a nightly is that it is the one run whose numbers were all measured on the same
@@ -159,28 +234,31 @@ jobs:
       # hand on the same machine gets the answers for free.
       - name: the run
         id: run
+        if: steps.rucc.outputs.have == 'true'
         run: |
           set +e
           cargo run --release -p rrc -- \
-            --rucc ${{ steps.cc.outputs.name }} --gcc ${{ steps.cc.outputs.name }} \
+            --rucc '${{ steps.rucc.outputs.path }}' --gcc ${{ steps.cc.outputs.name }} \
             run --rung ${{ inputs.rungs || '0,1,2' }} --jobs ${{ inputs.jobs || '1' }} \
             --refresh ${{ matrix.reference && '--twice --mixed' || '' }}
           echo "status=$?" >> "$GITHUB_OUTPUT"
 
-      # Configure twice and compare what the two decided, per section 8.8. With one compiler on
-      # both sides this has to come back empty, and a difference means the interrogation itself is
-      # not reproducible, which would make every real differential unreadable.
+      # Configure twice and compare what the two decided, per section 8.8. A difference here is a
+      # result rather than a fault now that the two sides are two compilers: a configure script
+      # that answers no to a probe under rucc and yes under gcc has just told us which feature the
+      # build is about to miss, which is often a shorter road to the cause than the diagnostic.
       - name: the interrogation
         id: interrogate
+        if: steps.rucc.outputs.have == 'true'
         run: |
           set +e
           cargo run --release -p rrc -- \
-            --rucc ${{ steps.cc.outputs.name }} --gcc ${{ steps.cc.outputs.name }} \
+            --rucc '${{ steps.rucc.outputs.path }}' --gcc ${{ steps.cc.outputs.name }} \
             interrogate
           echo "status=$?" >> "$GITHUB_OUTPUT"
 
       - name: the report
-        if: always()
+        if: always() && steps.rucc.outputs.have == 'true'
         run: |
           set -euo pipefail
           mkdir -p out
@@ -193,23 +271,49 @@ jobs:
           # it failed on rather than a surprise at the commit step on a different machine.
           cargo run --release -p rrc -- report --pages || true
 
-      # The run flavoured feature map is an artifact rather than a commit, which is a deliberate
-      # departure from the letter of section 12.2 and the reason is in the spec next to it. The
-      # committed `reports/features.md` is generated from the corpus alone so that the per commit
-      # job can regenerate it and diff, and a map with a run behind it would fail that check every
-      # morning. The one with the outcome column in it lives here.
+      # What moved. This is the step that decides whether anybody is woken up, so it is the one
+      # that has to be readable on its own: `rrc diff` prints the regressions, the progressions and
+      # the cells that moved by more than the threshold, and it exits non-zero on the regressions
+      # alone, which section 11.4 gives as the only section that should ever fail anything.
+      - name: what moved since last night
+        id: moved
+        if: always() && steps.rucc.outputs.have == 'true' && hashFiles('last-night/records.jsonl') != ''
+        run: |
+          set +e
+          mkdir -p out
+          cargo run --release -p rrc -- diff last-night/records.jsonl runs/latest/records.jsonl \
+            | tee out/moved.md
+          echo "status=${PIPESTATUS[0]}" >> "$GITHUB_OUTPUT"
+
       - uses: actions/upload-artifact@v7.0.1
-        if: always()
+        if: always() && steps.rucc.outputs.have == 'true'
         with:
           name: nightly-${{ matrix.os }}
           path: out
           retention-days: 30
 
+      # Tonight becomes last night. Saved after the diff has read the old one and unconditionally,
+      # because a night that failed halfway is still the most recent measurement this host has and
+      # comparing tomorrow against a fortnight ago would attribute a fortnight of changes to one
+      # morning.
+      - name: keep tonight
+        if: always() && steps.rucc.outputs.have == 'true' && hashFiles('runs/latest/records.jsonl') != ''
+        run: |
+          set -euo pipefail
+          mkdir -p last-night
+          cp runs/latest/records.jsonl last-night/records.jsonl
+      - name: save tonight
+        if: always() && steps.rucc.outputs.have == 'true' && hashFiles('last-night/records.jsonl') != ''
+        uses: actions/cache/save@v6.1.0
+        with:
+          path: last-night
+          key: rrc-lastnight-${{ matrix.os }}-${{ github.run_id }}
+
       # Only the reference host commits, and only on the schedule. Three hosts pushing the same
       # file would be three races, and section 11.4 refuses to compare cost across machines
       # anyway, so the committed history is one machine's history or it is nothing.
       - name: commit the report
-        if: matrix.reference && github.event_name == 'schedule'
+        if: matrix.reference && github.event_name == 'schedule' && steps.rucc.outputs.have == 'true'
         run: |
           set -euo pipefail
           cp out/latest.md reports/latest.md
@@ -224,7 +328,7 @@ jobs:
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git commit -m "Nightly report for $(date -u +%Y-%m-%d)"
+          git commit -m "Nightly report for $(date -u +%Y-%m-%d), rucc ${{ steps.rucc.outputs.tag }}"
           for attempt in 1 2 3; do
             git fetch --quiet origin main
             git rebase --quiet origin/main && git push origin HEAD:main && exit 0
@@ -234,34 +338,52 @@ jobs:
           exit 1
 
       # Section 12.2 wants one issue per cluster, deduplicated by diagnostic. This is one issue
-      # per host per night, deduplicated by title, which is the part of that worth having before
-      # the clustering is wired up: it says a host is red, it carries the report that says how,
-      # and it never opens a second copy of itself.
-      - name: say so if it is red
+      # per host, deduplicated by title, which is the part of that worth having before the
+      # clustering is wired up: it says a host got worse, it carries the diff that says how, and
+      # it never opens a second copy of itself.
+      #
+      # The three things worth waking somebody for are a night that went backwards, a command that
+      # did not run at all, and a host with no compiler under test. A red cell is not one of them,
+      # for the reason at the top of this file.
+      - name: say so if it went backwards
         if: always()
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
+          have="${{ steps.rucc.outputs.have }}"
           run_status="${{ steps.run.outputs.status || '2' }}"
           probe_status="${{ steps.interrogate.outputs.status || '2' }}"
-          if [ "$run_status" = "0" ] && [ "$probe_status" = "0" ]; then
+          moved_status="${{ steps.moved.outputs.status || '0' }}"
+          if [ "$have" = "true" ] && [ "$run_status" != "2" ] && [ "$probe_status" != "2" ] && [ "$moved_status" = "0" ]; then
             echo "nothing to report"
             exit 0
           fi
           title="nightly: ${{ matrix.name }} needs a look"
           body=$(mktemp)
           {
-            echo "The nightly on ${{ matrix.name }} came back with something in it. The run exited $run_status and the interrogation exited $probe_status, where 0 is nothing to look at, 1 is a result that wants attention and 2 is the command not running at all."
-            echo
-            echo "The compiler on both sides was ${{ steps.cc.outputs.name }}, so every comparison here is a control and anything red is this corpus rather than a compiler under test. The whole run is attached to the workflow run as an artifact."
+            if [ "$have" != "true" ]; then
+              echo "The nightly on ${{ matrix.name }} had no compiler to test. It looked for a rucc release built for ${{ matrix.triple }} and did not find one, so nothing after that step ran."
+            else
+              echo "The nightly on ${{ matrix.name }} came back with something in it. The run exited $run_status, the interrogation exited $probe_status and the comparison with last night exited $moved_status, where 0 is nothing to look at, 1 is a result that wants attention and 2 is the command not running at all."
+              echo
+              echo "The compiler under test was rucc ${{ steps.rucc.outputs.tag }} and the reference was ${{ steps.cc.outputs.name }}. A red cell on its own does not open this issue, because most of this corpus does not build under rucc yet. What opens it is a cell that was better last night than it is tonight, or a command that did not run."
+            fi
             echo
             echo "Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
             echo
+            if [ -f out/moved.md ]; then
+              echo '<details><summary>What moved since last night</summary>'
+              echo
+              head -c 30000 out/moved.md
+              echo
+              echo '</details>'
+              echo
+            fi
             if [ -f out/latest.md ]; then
               echo '<details><summary>The report</summary>'
               echo
-              head -c 40000 out/latest.md
+              head -c 30000 out/latest.md
               echo
               echo '</details>'
             fi
