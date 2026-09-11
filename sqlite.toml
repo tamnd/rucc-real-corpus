@@ -39,6 +39,11 @@ sites = 3
 evidence = "sqlite3AddInt64, sqlite3SubInt64 and sqlite3MulInt64 are each one call to the matching __builtin_*_overflow, and all three are i64 into i64, so the mixed signedness form that stops bash is not here"
 
 [[measured]]
+tag = "int128"
+sites = 3
+evidence = "sqlite3Multiply128 and the function below it multiply two u64 through a __uint128_t and take the halves back out, three uses in two functions, and the type is taken on __GNUC__ and the target name rather than on a probe. This row was added after the R5 project was run and not before it, which is worth admitting: the list below was written against the amalgamation and missed a demand that stops the build at line 36863, because it was looking for builtins and attributes and this one is a type"
+
+[[measured]]
 tag = "large-switch"
 sites = 188
 evidence = "the bytecode interpreter sqlite3VdbeExec is one function of about eight and a half thousand lines holding a single switch with 188 case labels"

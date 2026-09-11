@@ -27,7 +27,6 @@ Weight is what to do next. It is the sum over the held up projects of six minus 
 | `atomic-builtins` | gnu-builtin | 4 | 0 | 0 | [open](https://github.com/tamnd/rucc/issues/311) |
 | `bit-builtins` | gnu-builtin | 4 | 0 | 0 | [open](https://github.com/tamnd/rucc/issues/310) |
 | `k-and-r-idioms` | standard | 4 | 0 | 0 | none open |
-| `overflow-builtins` | gnu-builtin | 4 | 0 | 0 | [open](https://github.com/tamnd/rucc/issues/836) |
 | `varargs-depth` | standard | 4 | 0 | 0 | none open |
 | `cmake-probes` | driver | 3 | 0 | 0 | none open |
 | `feature-test-macros` | preprocessor | 3 | 0 | 0 | [open](https://github.com/tamnd/rucc/issues/757) |
@@ -35,6 +34,7 @@ Weight is what to do next. It is the sum over the held up projects of six minus 
 | `inline-asm` | gnu-extension | 3 | 0 | 0 | none open |
 | `libm-builtins` | gnu-builtin | 3 | 0 | 0 | [open](https://github.com/tamnd/rucc/issues/226) |
 | `memcpy-idioms` | gnu-builtin | 3 | 0 | 0 | none open |
+| `overflow-builtins` | gnu-builtin | 3 | 0 | 0 | [open](https://github.com/tamnd/rucc/issues/836) |
 | `rotate-idioms` | standard | 3 | 0 | 0 | none open |
 | `thread-local` | standard | 3 | 0 | 0 | none open |
 | `unaligned-access` | standard | 3 | 0 | 0 | none open |
@@ -49,6 +49,7 @@ Weight is what to do next. It is the sum over the held up projects of six minus 
 | `cleanup-attribute` | gnu-extension | 1 | 0 | 0 | [open](https://github.com/tamnd/rucc/issues/786) |
 | `driver-passthrough` | driver | 1 | 0 | 0 | [open](https://github.com/tamnd/rucc/issues/863) |
 | `flexible-array-member` | standard | 1 | 0 | 0 | none open |
+| `int128` | gnu-extension | 1 | 0 | 0 | [open](https://github.com/tamnd/rucc/issues/351) |
 | `long-double` | standard | 1 | 0 | 0 | none open |
 | `stdckdint` | standard | 1 | 0 | 0 | none open |
 | `visibility-attributes` | gnu-extension | 1 | 0 | 0 | none open |
@@ -266,15 +267,6 @@ declarations and calls in the shape C had before it was standardised, which a co
 - `byacc`, R4, not measured
 - `flex`, R4, not measured
 
-### `overflow-builtins`
-
-__builtin_add_overflow, __builtin_sub_overflow and __builtin_mul_overflow, including the mixed signedness forms that gnulib's ckd_add generates
-
-- `jtckdint`, R0, not measured
-- `libtommath`, R2, not measured
-- `bash`, R4, not measured
-- `sqlite`, R5, not measured
-
 ### `varargs-depth`
 
 varargs forwarded through several layers of function
@@ -331,6 +323,14 @@ __builtin_memcpy and __builtin_memset expanded inline at a size the compiler can
 - `lz4`, R1, not measured
 - `libpng`, R2, not measured
 - `zstd`, R2, not measured
+
+### `overflow-builtins`
+
+__builtin_add_overflow, __builtin_sub_overflow and __builtin_mul_overflow, including the mixed signedness forms that gnulib's ckd_add generates
+
+- `jtckdint`, R0, not measured
+- `libtommath`, R2, not measured
+- `bash`, R4, not measured
 
 ### `rotate-idioms`
 
@@ -429,6 +429,12 @@ a struct ending in an incomplete array, allocated with the header in front of it
 
 - `sds`, R0, not measured
 
+### `int128`
+
+__int128 and __uint128_t as a type that can be multiplied, shifted and narrowed back
+
+- `sqlite`, R5, not measured
+
 ### `long-double`
 
 long double at the 80 bit x86-64 format
@@ -451,7 +457,7 @@ __attribute__((visibility)) on functions and on objects
 
 Every demand the SQLite amalgamation makes, the smallest project below it that makes the same demand, and what the run says about that project. Measured against 3.53.4 of `sqlite3.c`, which is 269649 lines. The counts and what was counted for each are in `sqlite.toml` at the root, which is the file to go and disagree with. SQLite is not admitted to the list until RC5, so until then this column is a measurement of the source rather than a run of it.
 
-This is the number RC2 turns on. The residue is the demands with nothing below them, which are the things the ladder was never going to find out about before the climb. It is currently 1 of 19.
+This is the number RC2 turns on. The residue is the demands with nothing below them, which are the things the ladder was never going to find out about before the climb. It is currently 1 of 20.
 
 | demand | sites | smallest reacher below | rung | outcome |
 |---|---|---|---|---|
@@ -471,6 +477,7 @@ This is the number RC2 turns on. The residue is the demands with nothing below t
 | `double-formatting` | 27 | `parson` | R0 | not measured |
 | `unaligned-access` | 22 | `lz4` | R1 | not measured |
 | `bit-builtins` | 10 | `rpmalloc` | R1 | not measured |
+| `int128` | 3 | `sqlite` | R5 | not measured |
 | `overflow-builtins` | 3 | `jtckdint` | R0 | not measured |
 | `atomic-builtins` | 2 | `rpmalloc` | R1 | not measured |
 | `feature-test-macros` | 1 | `diffutils` | R4 | not measured |

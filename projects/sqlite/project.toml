@@ -5,30 +5,33 @@ upstream = "https://sqlite.org"
 licence = "blessing"
 licence-file = "LICENSE.md"
 description = "the library rather than the shell, built with every extension on and graded by the project's own Tcl suite"
-# The top of the ladder, and the three tags are the library's rather than the shell's. Two of them
-# are also on sqlite-shell and that repetition is deliberate rather than an oversight. sqlite-shell
-# compiles the amalgamation and then runs eleven files that drive the command line tool, so the
-# interpreter and the atomics are present in its binary and barely touched by its suite. This row
-# runs three hundred and ninety four thousand assertions through the same code, so it is the first
-# one where those two tags are executed rather than merely linked.
+# The top of the ladder, and the three tags are the library's rather than the shell's.
 #
-# atomic-builtins is the blocker of record for the library half of the tarball. AtomicLoad and
-# AtomicStore are __atomic_load_n and __atomic_store_n at relaxed ordering and they are taken on a
-# version macro rather than a probe, so a compiler that answers GCC 16 gets them and has no say in
-# it. That is rucc issue 311.
+# int128 is the measured blocker and it is the one the corpus did not predict. rucc 0.10.19 configures
+# the tree and then stops at sqlite3.c line 36863 with `cannot generate code for sqlite3Multiply128:
+# no rule lowers a zext producing a i128`, which is rucc issue 351. sqlite3.c decides it has a 128 bit
+# integer from __GNUC__ and the target name and never asks the compiler, so a compiler that answers
+# GCC 16 on x86-64 is handed the type whether or not it has one. There is a portable fallback in the
+# same file behind SQLITE_DISABLE_INTRINSIC and this manifest does not define it, because a
+# compatibility flag that makes the build pass is a patch written somewhere the diff is easier to
+# miss.
+#
+# atomic-builtins was the predicted blocker and is now the one behind it. AtomicLoad and AtomicStore
+# are __atomic_load_n and __atomic_store_n at relaxed ordering, taken on a version macro rather than a
+# probe, and that is rucc issue 311. It keeps its slot because it is still ahead of the build and
+# because 351 landing is what will make it the next thing anybody sees.
 #
 # large-switch is the reason this project is the last rung rather than another R4 row. sqlite3VdbeExec
 # is about eight and a half thousand lines holding one switch with 188 case labels, and the suite
 # walks essentially all of them. A jump table that is laid out wrongly at that size does not fail to
-# compile, it returns the wrong row.
+# compile, it returns the wrong row. It is also on sqlite-shell and the repetition is the point:
+# sqlite-shell compiles that function and runs eleven files that drive the command line tool, so the
+# interpreter is in its binary and barely touched by its suite, and this is the row where the 188
+# cases are executed rather than merely linked.
 #
-# overflow-builtins takes the third slot over bit-builtins and function-pointers, both of which are
-# equally true of the file. sqlite3AddInt64, sqlite3SubInt64 and sqlite3MulInt64 are each one call to
-# the matching __builtin_*_overflow, they are the whole of SQLite's integer arithmetic, and the suite
-# has cases that drive all three to the edge and assert on the overflow error rather than on the
-# result. That is a tag whose correctness this row can actually falsify, which is not true of the
-# other two.
-demands = ["atomic-builtins", "large-switch", "overflow-builtins"]
+# Left off: overflow-builtins, bit-builtins and function-pointers, all three of which are as true of
+# this file as the tags above and all three of which are already carried by other rows.
+demands = ["int128", "atomic-builtins", "large-switch"]
 
 # The same tarball sqlite-shell is pinned to, and it has to be the same one. The amalgamation zip is
 # four files and no build system and no tests. The autoconf tarball has a configure and no test
