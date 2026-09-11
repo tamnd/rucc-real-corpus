@@ -16,10 +16,12 @@ description = "the library rather than the shell, built with every extension on 
 # compatibility flag that makes the build pass is a patch written somewhere the diff is easier to
 # miss.
 #
-# atomic-builtins was the predicted blocker and is now the one behind it. AtomicLoad and AtomicStore
-# are __atomic_load_n and __atomic_store_n at relaxed ordering, taken on a version macro rather than a
-# probe, and that is rucc issue 311. It keeps its slot because it is still ahead of the build and
-# because 351 landing is what will make it the next thing anybody sees.
+# atomic-builtins was the predicted blocker and is no longer a blocker at all. AtomicLoad and
+# AtomicStore are __atomic_load_n and __atomic_store_n at relaxed ordering, taken on a version macro
+# rather than a probe, so this file asks for them whatever the compiler can do, and rucc 0.10.19
+# lowers both at every level. That was rucc issue 311 and it is closed. The tag stays in the list
+# because the list says what the project demands and not what rucc is currently missing, and a demand
+# that has been met is the only kind worth keeping a record of.
 #
 # large-switch is the reason this project is the last rung rather than another R4 row. sqlite3VdbeExec
 # is about eight and a half thousand lines holding one switch with 188 case labels, and the suite
