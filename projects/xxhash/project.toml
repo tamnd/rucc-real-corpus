@@ -20,8 +20,14 @@ system = "make"
 DISPATCH = "0"
 
 # The suite hashes known inputs and compares against the vectors it ships, so it grades itself.
+#
+# `check` and not `test`. The `test` target reaches `test-tools`, which builds `tests/bench` with
+# `$(CXX)` and passes `CFLAGS=-Werror` down to it, so that half of it grades a C++ compiler and
+# does it at flags the harness did not choose. It also does not link on a distribution that makes
+# PIE the default, which is what this row was failing at under gcc 16 as well as under rucc.
+# `check` is `xxhsum` and the sanity vectors, which is the self checking part and is all C.
 [test]
-command = ["make", "test"]
+command = ["make", "check"]
 oracle = "self-checking"
 
 # No [abi] table. The sanity test includes the implementation with XXH_IMPLEMENTATION rather than

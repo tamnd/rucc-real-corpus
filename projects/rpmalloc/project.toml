@@ -48,6 +48,10 @@ why = "configure.py builds the test binary with this, and without it rpmalloc_fi
 flag = "-DRPMALLOC_FIRST_CLASS_HEAPS=1"
 why = "configure.py builds the test binary with this and the heap tests do not compile without it"
 
+[[build.flags]]
+flag = "-D_GNU_SOURCE"
+why = "test/main.c calls sched_getaffinity and the CPU_SET macros, which glibc only declares with this defined, and without it the suite does not compile under gcc either"
+
 # Every test prints a line and the program returns nonzero at the first one that does not hold.
 [test]
 command = ["./rpmalloc-test"]
