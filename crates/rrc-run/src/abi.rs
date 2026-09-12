@@ -483,7 +483,25 @@ fn steps(
     steps
 }
 
-/// The flags both halves get: the level, then the project's own flags, then the cross check's.
+/// What the harness adds to both halves so that the four pairings can be linked at all.
+///
+/// Whether an executable is position independent is something a compiler is configured with rather
+/// than something the ABI says, and the two compilers here are configured differently. GCC 16.2.0
+/// built from source defaults to a fixed address unless it was configured with `--enable-default-pie`,
+/// which is what most distributions do and what the reference build on the corpus machines does not.
+/// rucc always links position independent. So the archive GCC writes holds absolute relocations, the
+/// link rucc does makes a position independent executable, and the two will not go together.
+///
+/// That is a real difference between the two compilers and it is filed as one, in tamnd/rucc#1120.
+/// It is not a difference at a call boundary, and left alone it stops one of the four pairings in
+/// every project with an `[abi]` table before a single call has been made, which is the one thing
+/// the check exists to look at. Asking both halves for position independent code costs nothing,
+/// changes no calling convention, and leaves all four pairings linkable: position independent
+/// objects go into a fixed address executable as happily as into a moving one.
+const PORTABLE: &str = "-fPIE";
+
+/// The flags both halves get: the level, the one above, then the project's own flags, then the
+/// cross check's.
 ///
 /// Identical on both halves and at every pairing. A flag that reached one compiler and not the
 /// other would make every difference this reports unreadable.
@@ -494,6 +512,8 @@ fn common_flags(job: &Job<'_>, abi: &Abi) -> Vec<String> {
         .split_whitespace()
         .map(str::to_string)
         .collect();
+    // Early, so that a project that has an opinion of its own writes it after this one and wins.
+    args.push(PORTABLE.to_string());
     args.extend(
         job.manifest
             .build
@@ -880,6 +900,31 @@ int main(void) {
                 .is_some_and(|why| why.contains("run twice")),
             "the report has to say which of the two it is, and it said {:?}",
             record.disagreement
+        );
+    }
+
+    #[test]
+    fn both_halves_are_asked_for_position_independent_code_before_anything_else_is_said() {
+        let Some(f) = fixture("portable", CALLER) else {
+            return;
+        };
+        let manifest = manifest();
+        let job = job(&f, &manifest);
+        let flags = common_flags(&job, manifest.abi.as_ref().unwrap());
+        let found = flags.iter().position(|flag| flag == PORTABLE);
+        assert!(
+            found.is_some(),
+            "one compiler here defaults to a fixed address and the other does not, so without \
+             this the gcc archive and the rucc driver cannot be linked together at all: {flags:?}"
+        );
+        let optimisation = flags
+            .iter()
+            .position(|flag| flag.starts_with("-O"))
+            .unwrap();
+        assert!(
+            found.unwrap() > optimisation,
+            "it goes after the level and before everything a project says, so that a project \
+             with an opinion of its own has the last word: {flags:?}"
         );
     }
 
