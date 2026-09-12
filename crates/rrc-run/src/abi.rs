@@ -289,7 +289,7 @@ pub fn cross(job: &Job<'_>, abi: &Abi, pairing: Pairing) -> std::io::Result<Cros
         under_test: pairing.driver.path(job.toolchain),
         reference: job.toolchain.reference.clone(),
     };
-    let shim = Shim::create(&sandbox.bin(), &toolchain)?;
+    let (shim, workdir) = prepare(&sandbox, &toolchain, job)?;
     // The same handover the driver does, for the same reason and at the same point: after the
     // harness has made everything it makes, and before the four builds run anything.
     crate::privilege::hand_over(job.privilege, sandbox.root())?;
@@ -311,9 +311,6 @@ pub fn cross(job: &Job<'_>, abi: &Abi, pairing: Pairing) -> std::io::Result<Cros
         project_env: &job.manifest.build.env,
         user: user.as_deref(),
     });
-
-    let workdir = build_dir(&sandbox, job);
-    std::fs::create_dir_all(workdir.join(OBJECTS))?;
 
     let mut crossed = Crossed {
         pairing,
@@ -385,6 +382,32 @@ fn build_dir(sandbox: &Sandbox, job: &Job<'_>) -> PathBuf {
         .subdir
         .as_ref()
         .map_or_else(|| sandbox.source(), |subdir| sandbox.source().join(subdir))
+}
+
+/// Everything the harness itself puts in a pairing's tree, in one call.
+///
+/// This exists so that there is one place to look for what the handover has to cover, because the
+/// handover is a single `chown -R` over the tree as it stands and anything made after it stays
+/// owned by root. The four builds then run as somebody else and cannot write where they were told
+/// to, which is not a shape the compiler or the manifest has any part in.
+///
+/// That is how fifteen of the seventy cells on rung one came to report that the two gcc halves did
+/// not build. The objects directory was made after the handover, so every compile in all four
+/// pairings failed with a permission error, and the grading read a baseline that would not build as
+/// a manifest naming the wrong sources.
+///
+/// Two things go in it. The shim, which is what `ar` and anything reading `CC` find on the path.
+/// And the directory the object files go in, which is made here rather than by the first compile
+/// because a compiler told to write `-o dir/file.o` does not make `dir`.
+fn prepare(
+    sandbox: &Sandbox,
+    toolchain: &Toolchain,
+    job: &Job<'_>,
+) -> std::io::Result<(Shim, PathBuf)> {
+    let shim = Shim::create(&sandbox.bin(), toolchain)?;
+    let workdir = build_dir(sandbox, job);
+    std::fs::create_dir_all(workdir.join(OBJECTS))?;
+    Ok((shim, workdir))
 }
 
 /// The commands that build one pairing, in order.
@@ -857,6 +880,23 @@ int main(void) {
                 .is_some_and(|why| why.contains("run twice")),
             "the report has to say which of the two it is, and it said {:?}",
             record.disagreement
+        );
+    }
+
+    #[test]
+    fn the_directory_the_objects_go_in_is_one_of_the_things_prepare_makes() {
+        let Some(f) = fixture("prepare", CALLER) else {
+            return;
+        };
+        let manifest = manifest();
+        let job = job(&f, &manifest);
+        let sandbox = Sandbox::create(job.workspace, Slot::A, "prepared", job.level).unwrap();
+        sandbox.place_source(job.extracted).unwrap();
+        let (_shim, workdir) = prepare(&sandbox, &f.toolchain, &job).unwrap();
+        assert!(
+            workdir.join(OBJECTS).is_dir(),
+            "the handover runs straight after `prepare` and is one chown over the tree as it \
+             stands, so anything made after it stays owned by root and no compile can write into it"
         );
     }
 
