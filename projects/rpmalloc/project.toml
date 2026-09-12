@@ -57,5 +57,12 @@ why = "test/main.c calls sched_getaffinity and the CPU_SET macros, which glibc o
 command = ["./rpmalloc-test"]
 oracle = "self-checking"
 
+# The suite is a thread stress test scaled by how many cores the machine has, and on an eight core
+# host it takes ten and a half minutes under gcc 16 at -O2, all of it in the allocator rather than
+# in anything the harness does. The default of 300 seconds turns that into a timeout, so this row
+# says what the work actually costs. The build is ordinary and keeps the default.
+[limits]
+test-seconds = 1500
+
 # No [abi] table. The suite starts threads and prints how long they took, so what it prints depends
 # on the machine rather than on the compiler.
