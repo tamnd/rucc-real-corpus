@@ -17,6 +17,9 @@ sha256 = "d9e270d46252734aa49770fbc544125391617956266f220bd63216c834f3a522"
 system = "configure"
 configure = ["--static"]
 targets = ["static"]
+# The archive the static target builds. zlib also builds example and minigzip, which are its suite
+# rather than its product.
+binary = "libz.a"
 
 # No level-flags. zlib's configure is hand written, it reads CFLAGS out of the environment, and it
 # writes what it read into the generated Makefile, so the level arrives the ordinary way.

@@ -13,6 +13,8 @@ sha256 = "6b49e0f12bad8b6fdb1037e0f251c39a0f9bd39c3d756a12ccb1dcf31e5419fa"
 
 [build]
 system = "make"
+# The library rather than xxhsum, on the same rule the rest of rung one follows.
+binary = "libxxhash.a"
 
 # DISPATCH=0 keeps the build off the runtime cpu feature dispatch path, which is what spec 5.2 asks
 # for: with it on, what runs depends on the machine rather than on the compiler.

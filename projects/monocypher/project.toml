@@ -18,6 +18,9 @@ system = "make"
 # `static-library` rather than the default `all`, because `all` also links the shared object with
 # -Wl,-soname, which the macOS linker does not take. The test target does not need it.
 targets = ["static-library"]
+# The archive the target above builds, which is the whole of this project. Monocypher is one
+# translation unit plus an optional second one and there is no program to measure instead.
+binary = "lib/libmonocypher.a"
 
 # No level-flags. The Makefile says `CFLAGS ?= -O3`, which is the conditional form, so the level
 # from the environment is the one that survives.

@@ -17,9 +17,9 @@ use std::process::Command;
 pub struct Sizes {
     /// The file on disk, including everything the format carries.
     pub binary: Option<u64>,
-    /// The text segment, which is the code.
+    /// The text segment, which is the code. Every object in it, where the artifact is a library.
     pub text: Option<u64>,
-    /// The data segment, which is the initialized statics.
+    /// The data segment, which is the initialized statics, summed the same way.
     pub data: Option<u64>,
 }
 
@@ -48,25 +48,51 @@ pub fn measure(binary: &Path) -> Sizes {
 ///   14322        600         40      14962       3a72    ./jsmn_test
 /// ```
 ///
-/// Parsed positionally off the first row after the header, because the header's own words differ
-/// between the two implementations and the column order does not.
+/// Parsed positionally rather than by column name, because the header's own words differ between
+/// the two implementations and the column order does not.
 fn segments(binary: &Path) -> Option<(Option<u64>, Option<u64>)> {
     let output = Command::new("size").arg(binary).output().ok()?;
     if !output.status.success() {
         return None;
     }
-    let text = String::from_utf8_lossy(&output.stdout);
-    let row = text
-        .lines()
-        .find(|line| line.split_whitespace().next().is_some_and(is_number))?;
-    let mut columns = row.split_whitespace();
-    let text = columns.next()?.parse().ok();
-    let data = columns.next()?.parse().ok();
-    Some((text, data))
+    Some(totals(&String::from_utf8_lossy(&output.stdout)))
 }
 
-fn is_number(word: &str) -> bool {
-    !word.is_empty() && word.bytes().all(|byte| byte.is_ascii_digit())
+/// Add up every row `size` printed, which is one row for a program and one per member for a
+/// library.
+///
+/// The sum rather than the first row, and the difference is the whole of what most of rung one
+/// measures. An R1 project is a library with a hand written Makefile, so the artifact whose size
+/// is worth watching is a static archive, and `size` given an archive prints a line per object
+/// file inside it. Reading the first line gave the size of whichever translation unit `ar` had put
+/// first, which for lz4 at `-Os` is twenty seven kilobytes of a hundred and two, reported as
+/// though it were the library.
+///
+/// Nothing is added by this for a program, which has one row. There is no need to ask `size` for
+/// its own totals with `-t`, and a reason not to: this has to keep working with the macOS `size`,
+/// which is a different program with a different set of flags, and summing is arithmetic we can do
+/// here.
+fn totals(printed: &str) -> (Option<u64>, Option<u64>) {
+    let mut text = None;
+    let mut data = None;
+    for row in printed.lines() {
+        // A row of totals would double everything. `size` prints one only when it is asked with
+        // `-t`, which this never does, and it is skipped anyway so that the arithmetic here does
+        // not depend on a flag somebody may add later.
+        if row.contains("(TOTALS)") {
+            continue;
+        }
+        let mut columns = row.split_whitespace();
+        let Some(this_text) = columns.next().and_then(|word| word.parse::<u64>().ok()) else {
+            continue;
+        };
+        let Some(this_data) = columns.next().and_then(|word| word.parse::<u64>().ok()) else {
+            continue;
+        };
+        text = Some(text.unwrap_or(0) + this_text);
+        data = Some(data.unwrap_or(0) + this_data);
+    }
+    (text, data)
 }
 
 #[cfg(test)]
@@ -85,6 +111,51 @@ mod tests {
     fn a_file_that_is_not_there_measures_nothing_rather_than_failing() {
         let sizes = measure(Path::new("/nonexistent/rrc/binary"));
         assert_eq!(sizes, Sizes::default());
+    }
+
+    /// What GNU `size` printed for one program, header and all.
+    const PROGRAM: &str = "\
+   text	   data	    bss	    dec	    hex	filename
+  14322	    600	     40	  14962	   3a72	./jsmn_test
+";
+
+    /// What it printed for `liblz4.a` built at `-Os`, which is the shape the first version of
+    /// this file read one line of and called a library.
+    const ARCHIVE: &str = "\
+   text	   data	    bss	    dec	    hex	filename
+  27911	      0	      0	  27911	   6d07	lz4.o (ex /w/lib/liblz4.a)
+   3893	      0	      0	   3893	    f35	lz4file.o (ex /w/lib/liblz4.a)
+  24739	    208	      0	  24947	   6173	lz4frame.o (ex /w/lib/liblz4.a)
+  32674	      0	      0	  32674	   7fa2	lz4hc.o (ex /w/lib/liblz4.a)
+  12698	      0	      0	  12698	   319a	xxhash.o (ex /w/lib/liblz4.a)
+";
+
+    #[test]
+    fn one_program_is_the_one_row_it_printed() {
+        assert_eq!(totals(PROGRAM), (Some(14322), Some(600)));
+    }
+
+    #[test]
+    fn a_library_is_every_object_in_it_and_not_the_first_one() {
+        // Twenty seven kilobytes is what reading the first row gave, and it is the size of
+        // whichever translation unit `ar` happened to put first rather than of the library.
+        assert_eq!(totals(ARCHIVE), (Some(101_915), Some(208)));
+    }
+
+    #[test]
+    fn a_row_of_totals_is_not_added_to_the_rows_it_is_the_total_of() {
+        let asked_with_t =
+            format!("{ARCHIVE} 101915\t    208\t      0\t 102123\t  18eeb\t(TOTALS)\n");
+        assert_eq!(totals(&asked_with_t), totals(ARCHIVE));
+    }
+
+    #[test]
+    fn output_with_no_measurement_in_it_says_nothing_rather_than_zero() {
+        assert_eq!(totals(""), (None, None));
+        assert_eq!(
+            totals("size: /nothing/here: No such file or directory\n"),
+            (None, None)
+        );
     }
 
     #[test]

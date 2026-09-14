@@ -13,6 +13,9 @@ sha256 = "34a510bc44c20cfe5177c477487ae48e4a5e7e5f153ba4560ebd20e90b3c18a9"
 
 [build]
 system = "make"
+# The static library, for the same reason bzip2 measures libbz2.a rather than the bzip2 program. A
+# shared object is built here too and is not the thing rung one is about.
+binary = "build/lib/libsir_s.a"
 
 # The Makefile does `SIR_CFLAGS := $(CFLAGS)` and then `SIR_CFLAGS += $(OPTFLAGS) -DNDEBUG`, so the
 # level from the environment arrives and is then overtaken by OPTFLAGS on the same command line.
