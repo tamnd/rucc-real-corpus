@@ -50,4 +50,8 @@ Slowest first. A day of zero means the corpus named the file in the same run tha
 
 ## Red in this run and not in the register
 
-None. Every cell that failed in this run is being tracked.
+2 cells failed and have no entry, so none of them is in the median above. This is the way this measurement goes wrong: not a wrong number, but a true number over a set somebody chose.
+
+- jtckdint at O2
+- jtckdint at O3
+
