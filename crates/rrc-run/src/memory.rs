@@ -32,8 +32,22 @@ pub const INTERVAL: Duration = Duration::from_millis(100);
 /// The group is the one [`crate::exec`] put the child in, so it covers `make`, every compiler it
 /// spawned, and anything they spawned in turn. `None` means the platform will not say, or the
 /// group has already gone.
+///
+/// Group zero is refused before the process table is read at all. A process group is named after
+/// the process id of its leader and process id zero is the kernel's own, so no child the harness
+/// spawns can ever be in group zero and asking about it is asking a question with no answer. What
+/// makes it worth a line of code rather than a note is what `/proc` says if you do ask: every
+/// kernel thread reports its group as zero, a hundred and thirty four of them on the machine this
+/// was found on, and a task being created or torn down reports zero for the window between the pid
+/// appearing in the table and its group being attached to it. The kernel threads have no `VmRSS`
+/// and are dropped below, but the tasks passing through that window are ordinary processes with
+/// ordinary resident sets, so a sampler that matched on group zero would now and then come back
+/// with twenty odd megabytes belonging to whatever was being forked at that instant.
 #[must_use]
 pub fn largest_in_group(leader: u32) -> Option<u64> {
+    if leader == 0 {
+        return None;
+    }
     platform::largest_in_group(leader)
 }
 
@@ -198,6 +212,30 @@ mod tests {
     fn the_group_of_a_process_that_is_not_running_is_nothing() {
         // Process id zero is never a live group leader on either platform, so this exercises the
         // real sampler and asserts the one thing that is true of it everywhere.
+        //
+        // It says nothing about how it is true, on purpose. This used to reach the process table
+        // and pass by luck: on Linux every kernel thread is in group zero, and so briefly is any
+        // task between its pid appearing in `/proc` and its group being attached, which is how a
+        // machine building the corpus came to fail this a run in two with twenty three megabytes
+        // belonging to something that was being forked at that moment.
         assert_eq!(largest_in_group(0), None);
+    }
+
+    /// The other half of the one above, so that refusing group zero cannot be mistaken for a
+    /// sampler that refuses everything.
+    ///
+    /// Our own group is the one group this process can name without an unsafe call, by reading the
+    /// same `stat` field the Linux path reads. It is running, it is us, and it has a resident set,
+    /// so anything but `Some` here is the sampler having stopped working.
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn the_group_this_test_is_running_in_has_a_resident_set() {
+        let stat = std::fs::read_to_string("/proc/self/stat").unwrap();
+        let ours = group_of(&stat).unwrap();
+        assert_ne!(ours, 0, "a test binary is not a kernel thread");
+        assert!(
+            largest_in_group(ours).is_some_and(|bytes| bytes > 0),
+            "the sampler found nothing in the group it is itself running in"
+        );
     }
 }
