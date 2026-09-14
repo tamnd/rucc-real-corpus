@@ -319,12 +319,34 @@ fn shim_for(
 /// The two `create_dir_all` calls are here rather than where they used to be, later, for that
 /// reason alone: a directory made after the handover would be the one thing in the sandbox the
 /// build cannot write to.
+///
+/// The dependency trees are copied here for the same reason, and they used to be copied inside
+/// [`install_needs`], which runs after this. libmpfr builds gmp first, gmp's configure writes
+/// `config.log` into its own source directory, and the directory was still owned by root, so
+/// configure printed `config.log: Permission denied` twice and then gave up with `cannot determine
+/// how to define a 32-bit word`. Both halves of the cell read `did not build` and neither of them
+/// had anything to do with a compiler.
 fn hand_over(job: &Job<'_>, sandbox: &Sandbox, prefix: Option<&Path>) -> std::io::Result<()> {
     if let Some(prefix) = prefix {
         std::fs::create_dir_all(prefix)?;
     }
     make_output_dirs(job.manifest, &build_dir(sandbox, job.manifest))?;
+    for need in job.needs {
+        let root = need_root(sandbox, &need.manifest.project.name);
+        if root.exists() {
+            std::fs::remove_dir_all(&root)?;
+        }
+        crate::sandbox::clone_tree(need.extracted, &root)?;
+    }
     privilege::hand_over(job.privilege, sandbox.root())
+}
+
+/// Where one `build.needs` dependency's own source tree is unpacked.
+///
+/// Its own directory rather than the sandbox's `src`, because the dependent's source is there and
+/// the two are separate projects with separate pins.
+fn need_root(sandbox: &Sandbox, name: &str) -> PathBuf {
+    sandbox.root().join("needs").join(name)
 }
 
 /// Build and test with the compilers handed out however the caller asked.
@@ -514,11 +536,9 @@ fn install_needs(
 ) -> std::io::Result<()> {
     for need in job.needs {
         let name = &need.manifest.project.name;
-        let root = trial.sandbox.root().join("needs").join(name);
-        if root.exists() {
-            std::fs::remove_dir_all(&root)?;
-        }
-        crate::sandbox::clone_tree(need.extracted, &root)?;
+        // Copied and handed over by `hand_over`, before this runs, so that a run that dropped to
+        // another user can write into it.
+        let root = need_root(&trial.sandbox, name);
         let workdir = need
             .manifest
             .build
@@ -1872,6 +1892,35 @@ oracle = "self-checking"
         assert_eq!(record.built_against.len(), 1);
         assert_eq!(record.built_against[0].project, "widget");
         assert_eq!(record.built_against[0].pin_sha256, widget.source.sha256);
+    }
+
+    #[test]
+    fn a_dependency_tree_is_in_place_before_the_handover_and_not_after_it() {
+        // The handover is one chown over the sandbox as it stands, so a tree copied in after it
+        // stays owned by root. gmp's configure writes config.log into its own source directory,
+        // and when that directory was root's it printed `Permission denied` and gave up, which
+        // took libmpfr's cell down under both compilers for a reason neither of them caused.
+        let Some((dependent, library)) = widget_fixtures("needs-handover") else {
+            return;
+        };
+        let widget = Manifest::from_str_named(WIDGET, Path::new("test/project.toml")).unwrap();
+        let sample =
+            Manifest::from_str_named(NEEDS_WIDGET, Path::new("test/project.toml")).unwrap();
+        let prepared = [Prepared {
+            manifest: &widget,
+            extracted: &library.extracted,
+        }];
+        let mut job = job(&dependent, &sample);
+        job.needs = &prepared;
+        let sandbox = Sandbox::create(job.workspace, Slot::A, "handover", job.level).unwrap();
+        sandbox.place_source(job.extracted).unwrap();
+        let prefix = needs_prefix(&sandbox);
+        hand_over(&job, &sandbox, Some(&prefix)).unwrap();
+        assert!(
+            need_root(&sandbox, "widget").join("configure").is_file(),
+            "the dependency's own tree has to be in the sandbox before the chown runs, or its \
+             configure cannot write a single file into the directory it was told to work in"
+        );
     }
 
     #[test]
