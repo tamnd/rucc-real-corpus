@@ -103,6 +103,32 @@ impl Pairing {
     }
 }
 
+/// Whether an archive built at this level holds machine code, which is the whole of what the
+/// check needs from it.
+///
+/// Every level but `-flto`, and the exception is not a shortcoming of either compiler. A GCC
+/// object compiled with `-flto` has a `.text` of length zero and carries every function body in a
+/// `.gnu.lto_` section instead, which is a serialization of GCC's own internal representation.
+/// GCC links such an object by handing the linker a plugin that runs the GCC back end back over
+/// those sections. The format is GCC's own, it is not stable between GCC releases, and nothing
+/// outside GCC reads it. An archive built that way therefore cannot be linked by anybody else,
+/// and the pairing that tries reports an undefined reference for every function in the library
+/// before a single call has been made.
+///
+/// The obvious remedy is `-ffat-lto-objects`, which asks GCC to write the machine code alongside
+/// the bytecode, and it is the wrong one. What the other compiler would then link against is the
+/// ordinary per translation unit output, which is exactly what the `-O2` cell already crosses, so
+/// the flag buys the link back by turning this cell into a copy of one that has already run.
+///
+/// The honest reading is that an object with no machine code in it has no calling convention in
+/// it either, so there is nothing here for two compilers to disagree about. What `-flto` does to
+/// our own code generation is still measured, by the ordinary graded build at this level, which is
+/// a required cell on every rung from R1 up.
+#[must_use]
+pub fn crossable(level: Level) -> bool {
+    level != Level::Lto
+}
+
 /// What one of the four builds did, before anything has been compared.
 #[derive(Debug)]
 pub struct Crossed {
@@ -942,6 +968,21 @@ int main(void) {
             workdir.join(OBJECTS).is_dir(),
             "the handover runs straight after `prepare` and is one chown over the tree as it \
              stands, so anything made after it stays owned by root and no compile can write into it"
+        );
+    }
+
+    #[test]
+    fn every_level_but_flto_is_crossed() {
+        let crossed: Vec<Level> = Level::ALL
+            .into_iter()
+            .filter(|level| crossable(*level))
+            .collect();
+        assert_eq!(
+            crossed,
+            [Level::O0, Level::O1, Level::O2, Level::Os, Level::O3],
+            "a gcc object compiled with -flto has an empty .text and holds its function bodies in \
+             .gnu.lto_ sections, so there is no machine code in the archive for a second compiler \
+             to disagree with at the call boundary"
         );
     }
 
