@@ -12,9 +12,9 @@ The pinned archive is 3 files, 854 lines, 37.0 KiB, counted before anything is b
 | --- | --- | --- | --- |
 | O0 | passed | tested | self checking |
 | O1 | passed | tested | self checking |
-| O2 | passed | tested | self checking |
+| O2 | timed out | fetched | self checking |
 | Os | passed | tested | self checking |
-| O3 | passed | tested | self checking |
+| O3 | timed out | fetched | self checking |
 
 ## The project's own tests
 
@@ -30,18 +30,18 @@ The pinned archive is 3 files, 854 lines, 37.0 KiB, counted before anything is b
 
 | level | compile | gcc 16 | vs gcc | suite | gcc 16 | vs gcc | build memory | gcc 16 | vs gcc |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| O0 | 10.23s | 0.15s | 67.72x | 0.14s | 0.00s | not measured | 398.6 MiB | 9.2 MiB | 43.29x |
-| O1 | 262s | 0.40s | 651.47x | 0.19s | 0.04s | not measured | 1447.7 MiB | 20.5 MiB | 70.66x |
-| O2 | 268s | 0.78s | 343.54x | 0.11s | 0.03s | not measured | 1509.7 MiB | 27.3 MiB | 55.20x |
-| Os | 122s | 0.58s | 211.59x | 0.34s | 0.01s | not measured | 405.1 MiB | 30.0 MiB | 13.51x |
-| O3 | 287s | 0.58s | 497.59x | 0.47s | 0.07s | 6.45x | 1511.9 MiB | 24.5 MiB | 61.76x |
+| O0 | 28.97s | 0.39s | 73.46x | 0.27s | 0.04s | not measured | 401.7 MiB | 20.2 MiB | 19.89x |
+| O1 | 296s | 0.14s | 2090.49x | 0.11s | 0.01s | not measured | 1448.9 MiB | 9.3 MiB | 155.92x |
+| O2 | 300s | 0.62s | 481.22x | 0.00s | 0.07s | 0.00x | 1512.9 MiB | 27.8 MiB | 54.39x |
+| Os | 191s | 0.11s | 1705.67x | 0.11s | 0.00s | not measured | 407.3 MiB | 3.1 MiB | 130.99x |
+| O3 | 300s | 2.19s | 137.30x | 0.00s | 0.01s | not measured | 1448.8 MiB | 29.7 MiB | 48.72x |
 
 ## Size
 
 | level | text and data | gcc 16 | vs gcc | on disk | gcc 16 | vs gcc |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| O0 | 4.3 MiB | 1.2 KiB | 3502.54x | 4.7 MiB | 15.2 KiB | 314.24x |
-| O1 | 4.2 MiB | 1.2 KiB | 3517.88x | 4.6 MiB | 15.2 KiB | 310.02x |
-| O2 | 4.2 MiB | 1.2 KiB | 3489.93x | 4.6 MiB | 15.2 KiB | 310.02x |
-| Os | 4.1 MiB | 1.2 KiB | 3437.76x | 4.5 MiB | 15.2 KiB | 305.81x |
-| O3 | 4.2 MiB | 1.2 KiB | 3489.93x | 4.6 MiB | 15.2 KiB | 310.02x |
+| O0 | 4.2 MiB | 1.2 KiB | 3418.74x | 4.6 MiB | 15.2 KiB | 307.39x |
+| O1 | 4.1 MiB | 1.2 KiB | 3466.66x | 4.5 MiB | 15.2 KiB | 306.08x |
+| O2 | not measured | 1.2 KiB | not measured | not measured | 15.2 KiB | not measured |
+| Os | 4.1 MiB | 1.2 KiB | 3388.25x | 4.5 MiB | 15.2 KiB | 301.86x |
+| O3 | not measured | 1.2 KiB | not measured | not measured | 15.2 KiB | not measured |

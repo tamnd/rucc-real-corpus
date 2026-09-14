@@ -1,6 +1,6 @@
 # The run report
 
-**56 of 60 cells passed.** Run on linux-x86_64, as runner, with rucc 0.10.26 against gcc-16 (GCC) 16.2.0.
+**138 of 144 cells passed.** Run on linux-x86_64, as runner, with rucc 0.10.39 against gcc-16 (GCC) 16.2.0.
 
 Every number on these pages comes from one run of `rrc run`, and every one of them is paired with the same number from a GCC 16 build of the same pinned source on the same machine. Nothing here is averaged across projects, for the reason `spec/11-reporting.md` section 11.3 gives.
 
@@ -18,7 +18,8 @@ Every number on these pages comes from one run of `rrc run`, and every one of th
 
 | outcome | cells | what it means |
 | --- | ---: | --- |
-| passed | 56 | built, linked, ran its own suite, and the oracle agreed |
+| passed | 138 | built, linked, ran its own suite, and the oracle agreed |
+| timed out | 2 | it was still going when the manifest's limit ran out |
 | excluded | 4 | on the exclusion register, with an issue behind it |
 
 ## By rung
@@ -27,23 +28,25 @@ The rungs are the ladder of `spec/05-project-list.md`. A failure low on it is a 
 
 | rung | cells | passed | still to do |
 | --- | ---: | ---: | ---: |
-| R0 | 60 | 56 | 4 |
+| R0 | 60 | 54 | 6 |
+| R1 | 84 | 84 | 0 |
 
 ## By optimization level
 
-This run covered 5 levels, `O0`, `O1`, `O2`, `Os` and `O3`, and each of them is a different compiler as far as this corpus is concerned. A project that passes at `-O0` and fails at `-O2` is the most useful single result the corpus produces.
+This run covered 6 levels, `O0`, `O1`, `O2`, `Os`, `O3` and `lto`, and each of them is a different compiler as far as this corpus is concerned. A project that passes at `-O0` and fails at `-O2` is the most useful single result the corpus produces.
 
 | level | cells | passed | still to do |
 | --- | ---: | ---: | ---: |
-| O0 | 12 | 11 | 1 |
-| O1 | 12 | 11 | 1 |
-| O2 | 12 | 11 | 1 |
-| O3 | 12 | 12 | 0 |
-| Os | 12 | 11 | 1 |
+| O0 | 26 | 25 | 1 |
+| O1 | 26 | 25 | 1 |
+| O2 | 26 | 24 | 2 |
+| O3 | 26 | 25 | 1 |
+| Os | 26 | 25 | 1 |
+| lto | 14 | 14 | 0 |
 
 ## The project's own tests
 
-Of the 34 cells whose suite prints a count on both compilers, 34 pass exactly as many of the project's own tests as the GCC 16 build does.
+Of the 46 cells whose suite prints a count on both compilers, 46 pass exactly as many of the project's own tests as the GCC 16 build does.
 
 This is the number that a build outcome cannot show you. A cell that compiles, links, runs the suite and quietly passes forty fewer of the project's own tests than GCC does is a worse result than a cell that failed to build, and it counts as a pass everywhere except here.
 
@@ -58,22 +61,23 @@ It is a denominator and not a score. Four seconds is a slow build of a header on
 | rung | projects | files | lines | bytes |
 | --- | ---: | ---: | ---: | ---: |
 | R0 | 12 | 78 | 28,171 | 936.7 KiB |
-| **all** | **12** | **78** | **28,171** | **936.7 KiB** |
+| R1 | 14 | 411 | 287,800 | 14.0 MiB |
+| **all** | **26** | **489** | **315,971** | **14.9 MiB** |
 
 The largest few, since a corpus total is usually a few projects and a long tail.
 
 | project | files | lines | bytes |
 | --- | ---: | ---: | ---: |
+| [blake2](projects/blake2.md) | 62 | 65,842 | 2.6 MiB |
+| [xxhash](projects/xxhash.md) | 44 | 63,655 | 5.0 MiB |
+| [zlib](projects/zlib.md) | 75 | 42,769 | 1.7 MiB |
+| [lz4](projects/lz4.md) | 69 | 28,036 | 1.1 MiB |
+| [monocypher](projects/monocypher.md) | 11 | 23,116 | 1.7 MiB |
+| [libsir](projects/libsir.md) | 73 | 19,927 | 627.4 KiB |
+| [lmdb](projects/lmdb.md) | 26 | 19,799 | 567.1 KiB |
+| [bzip2](projects/bzip2.md) | 15 | 8,127 | 232.3 KiB |
+| [rpmalloc](projects/rpmalloc.md) | 10 | 6,823 | 225.8 KiB |
 | [coremark](projects/coremark.md) | 16 | 4,543 | 125.4 KiB |
-| [heatshrink](projects/heatshrink.md) | 11 | 4,458 | 159.6 KiB |
-| [tinf](projects/tinf.md) | 10 | 4,002 | 133.9 KiB |
-| [parson](projects/parson.md) | 3 | 3,672 | 131.7 KiB |
-| [tinyexpr](projects/tinyexpr.md) | 9 | 2,496 | 66.9 KiB |
-| [llama2.c](projects/llama2.c.md) | 5 | 2,398 | 89.2 KiB |
-| [sds](projects/sds.md) | 4 | 1,701 | 54.2 KiB |
-| [picohttpparser](projects/picohttpparser.md) | 6 | 1,538 | 60.9 KiB |
-| [jsmn](projects/jsmn.md) | 6 | 1,168 | 31.9 KiB |
-| [jtckdint](projects/jtckdint.md) | 3 | 854 | 37.0 KiB |
 
 ## What the run cost
 
@@ -81,20 +85,34 @@ Added up rather than averaged, and it is a bill rather than a score. A corpus fi
 
 | | compile seconds |
 | --- | ---: |
-| under test | 979 |
-| gcc 16 | 131 |
+| under test | 1378 |
+| gcc 16 | 764 |
 
 ## Every project
 
+- [blake2](projects/blake2.md)
+- [bzip2](projects/bzip2.md)
 - [c4](projects/c4.md)
 - [coremark](projects/coremark.md)
 - [heatshrink](projects/heatshrink.md)
 - [incbin](projects/incbin.md)
 - [jsmn](projects/jsmn.md)
 - [jtckdint](projects/jtckdint.md)
+- [libsir](projects/libsir.md)
+- [linenoise](projects/linenoise.md)
 - [llama2.c](projects/llama2.c.md)
+- [lmdb](projects/lmdb.md)
+- [lz4](projects/lz4.md)
+- [minunit](projects/minunit.md)
+- [monocypher](projects/monocypher.md)
+- [ncompress](projects/ncompress.md)
 - [parson](projects/parson.md)
 - [picohttpparser](projects/picohttpparser.md)
+- [rpmalloc](projects/rpmalloc.md)
 - [sds](projects/sds.md)
 - [tinf](projects/tinf.md)
+- [tinycthread](projects/tinycthread.md)
 - [tinyexpr](projects/tinyexpr.md)
+- [uzlib](projects/uzlib.md)
+- [xxhash](projects/xxhash.md)
+- [zlib](projects/zlib.md)
