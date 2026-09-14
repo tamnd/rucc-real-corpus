@@ -44,6 +44,7 @@ run = ["O0", "O1", "O2", "Os"]
 [limits]
 build-seconds = 300
 test-seconds  = 300
+cores         = 1
 ```
 
 The values above are illustrative and the hash in particular is a placeholder; a real manifest's hash is produced by `rrc fetch --record` against the bytes upstream actually serves, never typed by hand.
@@ -85,6 +86,8 @@ The lint refuses an archive output that is not a `.a`, either half with no sourc
 **`levels.run`** defaults to the rung's set from document 04.7 and is present so that an individual project can be held back from a level with an exclusion rather than the whole rung being held back.
 
 **`limits`** are per-project because document 03.3's thirty-minute rule is a bar for admission and these are the actual bounds the harness enforces. A timeout is a distinct outcome in document 08.2's taxonomy, not a failure, because the two want different responses.
+
+**`limits.cores`** is how much of the machine one cell of this project needs, and it defaults to one because almost every suite here is one process doing one thing. A suite that scales itself to the core count is the exception and has to say so, either with a number or with the word `all`, which means the cell runs with nothing beside it. The row exists because of what happens without it: `rrc run --jobs` gives every cell one slot, four rpmalloc cells ran at once on an eight core host each starting seventeen threads, the load average went to eighty and all four hit the 1500 second limit, where one at a time they take between 581 and 673 seconds and all four pass. Those timeouts were the scheduler, not either compiler. The run's width is handed out in the sizes projects ask for, so a cell asking for all of it waits until the rest of the run is between cells, and the `concurrency` field on its record then says one, which is the truth and is what makes its seconds comparable with a serial run's.
 
 ## 6.3 Pinning: URL plus version plus hash, and no vendored source
 

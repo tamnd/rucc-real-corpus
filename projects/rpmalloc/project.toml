@@ -63,6 +63,12 @@ oracle = "self-checking"
 # says what the work actually costs. The build is ordinary and keeps the default.
 [limits]
 test-seconds = 1500
+# The same fact said to the scheduler. The suite starts a thread per core on purpose, because
+# contention is the thing under test, so a cell of this project wants the whole machine and a run
+# given --jobs that hands it one slot and starts three more of it beside itself measures nothing.
+# Four at once on an eight core host took the load average to eighty and all four hit the limit
+# above. One at a time they take between 581 and 673 seconds and all four pass.
+cores = "all"
 
 # No [abi] table. The suite starts threads and prints how long they took, so what it prints depends
 # on the machine rather than on the compiler.

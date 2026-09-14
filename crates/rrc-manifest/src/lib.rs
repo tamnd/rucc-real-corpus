@@ -34,6 +34,7 @@ pub use lint::{Corpus, Finding};
 pub use localization::{Failure, How, Localization};
 pub use lockfile::{LockEntry, Lockfile};
 pub use manifest::{
-    Abi, Archive, Driver, LevelFlags, Manifest, ManifestError, Program, Project, Source, Test,
+    Abi, Archive, Cores, Driver, LevelFlags, Manifest, ManifestError, Program, Project, Source,
+    Test,
 };
 pub use sqlite::{Measured, Sqlite};
