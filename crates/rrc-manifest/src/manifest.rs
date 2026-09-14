@@ -620,6 +620,10 @@ pub struct Limits {
     /// Seconds the suite may take before the outcome becomes `timed out`.
     #[serde(default = "default_seconds")]
     pub test_seconds: u64,
+    /// Cores one cell of this project needs, where the default of one is what almost every suite
+    /// here wants.
+    #[serde(default)]
+    pub cores: Cores,
 }
 
 const fn default_seconds() -> u64 {
@@ -631,6 +635,88 @@ impl Default for Limits {
         Self {
             build_seconds: default_seconds(),
             test_seconds: default_seconds(),
+            cores: Cores::default(),
+        }
+    }
+}
+
+/// How much of the machine one cell of a project needs.
+///
+/// `rrc run --jobs N` gives every cell one slot, and that is right for almost everything on the
+/// list, because almost every suite here is one process doing one thing and the slot it is given is
+/// the core it needs. A suite that scales itself to the core count is not that, and the harness has
+/// no way to know which is which unless the manifest says.
+///
+/// What happens when it does not know is on the record. Four rpmalloc cells ran at once on an eight
+/// core host, each starting seventeen threads, the load average went to eighty and all four ran into
+/// the 1500 second cell limit. One at a time on the same machine with the same compilers they take
+/// 673, 581, 649 and 652 seconds and all four pass. The timeouts were the scheduler handing a suite
+/// that wants the machine a fraction of it, four times over, and nothing to do with either compiler.
+///
+/// A count is the spelling, because `"all"` is a count that happens to equal the core number and a
+/// project that wants four of eight has no other way to say so.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(try_from = "Spelled", into = "Spelled")]
+pub enum Cores {
+    /// This many cores, which is one unless the manifest says otherwise.
+    Count(usize),
+    /// Whatever the machine has, so the cell runs with nothing else beside it.
+    All,
+}
+
+impl Default for Cores {
+    fn default() -> Self {
+        Self::Count(1)
+    }
+}
+
+impl Cores {
+    /// The slots one cell takes out of a run given `jobs` of them.
+    ///
+    /// Capped at the run's own width, because a project asking for four cores on a run given two
+    /// wants as much of the machine as it can have rather than to deadlock waiting for a slot that
+    /// will never exist.
+    #[must_use]
+    pub fn slots(self, jobs: usize) -> usize {
+        match self {
+            Self::All => jobs.max(1),
+            Self::Count(cores) => cores.clamp(1, jobs.max(1)),
+        }
+    }
+}
+
+/// The two ways the field is written in TOML, which is a number or the word `all`.
+#[derive(Serialize, Deserialize)]
+#[serde(untagged)]
+enum Spelled {
+    /// `cores = 4`.
+    Count(usize),
+    /// `cores = "all"`.
+    Word(String),
+}
+
+impl TryFrom<Spelled> for Cores {
+    type Error = String;
+
+    fn try_from(spelled: Spelled) -> Result<Self, Self::Error> {
+        match spelled {
+            Spelled::Count(0) => {
+                Err("a cell needs at least one core, so `cores = 0` asks for nothing".into())
+            }
+            Spelled::Count(cores) => Ok(Self::Count(cores)),
+            Spelled::Word(word) if word == "all" => Ok(Self::All),
+            Spelled::Word(word) => Err(format!(
+                "`{word}` is not a number of cores, and the only word here is `all`"
+            )),
+        }
+    }
+}
+
+impl From<Cores> for Spelled {
+    fn from(cores: Cores) -> Self {
+        match cores {
+            Cores::All => Self::Word("all".into()),
+            Cores::Count(count) => Self::Count(count),
         }
     }
 }
@@ -713,6 +799,48 @@ oracle = "self-checking"
         assert_eq!(manifest.test.parser, SuiteParser::ExitStatus);
         assert_eq!(manifest.build.host_cc, HostCc::Reference);
         assert_eq!(manifest.levels(), Rung::R0.required_levels());
+    }
+
+    #[test]
+    fn a_manifest_that_says_nothing_about_cores_wants_one() {
+        let manifest = parse(SAMPLE).unwrap();
+        assert_eq!(manifest.limits.cores, Cores::Count(1));
+        assert_eq!(manifest.limits.cores.slots(8), 1);
+    }
+
+    #[test]
+    fn a_suite_that_wants_the_machine_says_so_with_a_word() {
+        let text = format!("{SAMPLE}\n[limits]\ncores = \"all\"\n");
+        let manifest = parse(&text).unwrap();
+        assert_eq!(manifest.limits.cores, Cores::All);
+        // The whole of a run however wide it is, which is what leaves nothing running beside it.
+        assert_eq!(manifest.limits.cores.slots(8), 8);
+        assert_eq!(manifest.limits.cores.slots(1), 1);
+    }
+
+    #[test]
+    fn a_suite_that_wants_several_cores_says_so_with_a_number() {
+        let text = format!("{SAMPLE}\n[limits]\ncores = 4\n");
+        let manifest = parse(&text).unwrap();
+        assert_eq!(manifest.limits.cores, Cores::Count(4));
+        assert_eq!(manifest.limits.cores.slots(8), 4);
+        // Capped at the width of the run, because a cell waiting for a slot the run does not have
+        // would wait for the whole run.
+        assert_eq!(manifest.limits.cores.slots(2), 2);
+    }
+
+    #[test]
+    fn a_core_count_that_asks_for_nothing_is_an_error() {
+        let text = format!("{SAMPLE}\n[limits]\ncores = 0\n");
+        let error = parse(&text).unwrap_err().to_string();
+        assert!(error.contains("at least one core"), "{error}");
+    }
+
+    #[test]
+    fn the_only_word_the_field_takes_is_all() {
+        let text = format!("{SAMPLE}\n[limits]\ncores = \"every\"\n");
+        let error = parse(&text).unwrap_err().to_string();
+        assert!(error.contains("`all`"), "{error}");
     }
 
     #[test]

@@ -1244,9 +1244,10 @@ fn one_cell(
     let mut record = cell.record;
     // Stamped here rather than in the driver, because the driver builds one cell and has no way of
     // knowing how many others were in flight beside it.
-    record.concurrency = plan.jobs;
+    let beside = beside(plan, manifest);
+    record.concurrency = beside;
     let reference = cell.reference.map(|mut record| {
-        record.concurrency = plan.jobs;
+        record.concurrency = beside;
         record
     });
     let diverged = (!cell.differences.is_empty()).then(|| Diverged {
@@ -1267,6 +1268,23 @@ fn one_cell(
     })
 }
 
+/// How many cells could have been running at once while one of this project's was.
+///
+/// `plan.jobs` divided by what the project asks for, which is `plan.jobs` for everything that takes
+/// one slot and one for a project that takes the run's whole width. The field it is written to means
+/// whether this cell's seconds can be compared with another cell's, so a suite that was given the
+/// machine to itself has to say one even on a run given `--jobs 8`, and it is the only honest answer
+/// for it: nothing was running beside it.
+///
+/// The division is rounded down for the case in between. A project asking for four slots of eight
+/// could have had one other four slot cell beside it or four one slot cells, and the number that
+/// makes a reader throw away the comparison is the higher one, so this reports how many cells of
+/// this size the run had room for rather than the most cells of any size.
+fn beside(plan: &RunPlan, manifest: &Manifest) -> usize {
+    let slots = manifest.limits.cores.slots(plan.jobs);
+    (plan.jobs / slots).max(1)
+}
+
 /// The scheduler as it has always been. Projects in the order the directories were walked, levels
 /// in the order the rung lists them, one cell at a time and the machine to itself.
 fn one_at_a_time(
@@ -1283,6 +1301,80 @@ fn one_at_a_time(
         }
     }
     Ok(())
+}
+
+/// The run's width, handed out in the sizes cells ask for.
+///
+/// A counting semaphore, which the standard library does not have, and this is the smallest one
+/// that does the job: a count behind a mutex and a condition variable to wake on. The count starts
+/// at `--jobs` and a cell takes as many of it as its project asks for, so a cell asking for all of
+/// them runs with nothing beside it.
+///
+/// Taking is all or nothing under the lock, which is what keeps two wide cells from each taking half
+/// the run and waiting for the other half forever. A waiter holds nothing while it waits.
+struct Slots {
+    width: usize,
+    free: std::sync::Mutex<usize>,
+    freed: std::sync::Condvar,
+}
+
+impl Slots {
+    /// A run this many cells wide.
+    fn of(width: usize) -> Self {
+        let width = width.max(1);
+        Self {
+            width,
+            free: std::sync::Mutex::new(width),
+            freed: std::sync::Condvar::new(),
+        }
+    }
+
+    /// Wait until `want` of them are free, then take them until the return value is dropped.
+    ///
+    /// `want` is capped at the width by [`rrc_manifest::Cores::slots`] before it arrives here, and
+    /// capped again on the way in, because a cell waiting for a slot the run does not have would
+    /// wait for the whole run and then for ever.
+    fn hold(&self, want: usize) -> Held<'_> {
+        let mut free = self
+            .free
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        let want = want.clamp(1, self.width);
+        loop {
+            if *free >= want {
+                *free -= want;
+                return Held { slots: self, want };
+            }
+            free = self
+                .freed
+                .wait(free)
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
+        }
+    }
+}
+
+/// Slots taken, given back when the cell that took them is done with them.
+struct Held<'a> {
+    slots: &'a Slots,
+    want: usize,
+}
+
+impl Drop for Held<'_> {
+    fn drop(&mut self) {
+        {
+            // Given back even if a worker panicked holding the lock, because slots that are never
+            // returned are workers that never run again.
+            let mut free = self
+                .slots
+                .free
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
+            *free += self.want;
+        }
+        // Everyone rather than one, because the one woken might be a wide cell that still does not
+        // fit while a narrow one behind it would have.
+        self.slots.freed.notify_all();
+    }
 }
 
 /// The same run with a worker per job, taking a cell at a time.
@@ -1302,6 +1394,10 @@ fn one_at_a_time(
 /// Nothing is shared writably. Every source is extracted before the first worker starts, each cell
 /// clones the tree into its own sandbox, and the only thing two cells of one project now do at the
 /// same time is read it.
+///
+/// A cell takes as many of the run's slots as its project asks for, which is one for almost
+/// everything and the whole width for a suite that scales itself to the machine. See [`Slots`] for
+/// what that is worth, and [`rrc_manifest::Cores`] for why a manifest has to be the one to say.
 fn concurrently(
     setup: &Setup,
     loaded: &Loaded,
@@ -1309,7 +1405,7 @@ fn concurrently(
     plan: &RunPlan,
     collector: &Collector,
 ) -> Result<(), String> {
-    let cells: Vec<(usize, usize, &Manifest, Level)> = chosen
+    let mut cells: Vec<(usize, usize, &Manifest, Level)> = chosen
         .iter()
         .enumerate()
         .flat_map(|(which, manifest)| {
@@ -1319,7 +1415,16 @@ fn concurrently(
                 .map(move |(index, level)| (which, index, *manifest, level))
         })
         .collect();
+    // The narrow cells first, which costs nothing and avoids the one arrangement that would hurt.
+    // The levels of one project are next to each other in this list, so six workers reaching
+    // rpmalloc together would take its six cells, find that each of them wants the whole machine,
+    // and then block all six workers until they have run one after another, with eighty other cells
+    // waiting behind them. Sorted this way the wide cells are what is left at the end, where running
+    // them one at a time is what was going to happen anyway. The sort is stable and `place` is
+    // already on every cell, so neither the report nor the order within a project moves.
+    cells.sort_by_key(|(_, _, manifest, _)| manifest.limits.cores.slots(plan.jobs));
 
+    let slots = Slots::of(plan.jobs);
     let next = std::sync::atomic::AtomicUsize::new(0);
     let failures = std::sync::Mutex::new(Vec::new());
     std::thread::scope(|scope| {
@@ -1338,6 +1443,7 @@ fn concurrently(
                         return;
                     };
                     let place = (which, index);
+                    let _held = slots.hold(manifest.limits.cores.slots(plan.jobs));
                     let outcome = one_cell(setup, loaded, plan, manifest, level, place).and_then(
                         |finished| collector.keep(&manifest.project.name, level, finished),
                     );
@@ -1569,6 +1675,7 @@ fn determinism_line(differences: &[Diverged]) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use rrc_manifest::Cores;
     use rrc_manifest::axes::Rung;
     use rrc_run::record::Phase;
 
@@ -1783,6 +1890,80 @@ command = ["./sample"]
     }
 
     #[test]
+    fn a_wide_cell_runs_with_nothing_beside_it() {
+        // What the test watches is the count of cells inside the gate at once, which is the whole
+        // of what the manifest row promises. One wide holder and four narrow ones are started
+        // together and the wide one asserts on what it can see.
+        let slots = Slots::of(4);
+        let inside = std::sync::atomic::AtomicUsize::new(0);
+        let alone = std::sync::atomic::AtomicBool::new(false);
+        std::thread::scope(|scope| {
+            scope.spawn(|| {
+                let _held = slots.hold(4);
+                let beside = inside.load(std::sync::atomic::Ordering::SeqCst);
+                alone.store(beside == 0, std::sync::atomic::Ordering::SeqCst);
+                std::thread::sleep(std::time::Duration::from_millis(20));
+            });
+            for _ in 0..4 {
+                scope.spawn(|| {
+                    let _held = slots.hold(1);
+                    inside.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+                    std::thread::sleep(std::time::Duration::from_millis(10));
+                    inside.fetch_sub(1, std::sync::atomic::Ordering::SeqCst);
+                });
+            }
+        });
+        assert!(
+            alone.load(std::sync::atomic::Ordering::SeqCst),
+            "a cell that asked for the whole run had something running beside it"
+        );
+        assert_eq!(*slots.free.lock().unwrap(), 4, "slots were not given back");
+    }
+
+    #[test]
+    fn narrow_cells_run_together() {
+        // The other half of the one above. A gate that let nothing through at once would pass that
+        // test and make `--jobs` mean nothing.
+        let slots = Slots::of(4);
+        let first = slots.hold(1);
+        let second = slots.hold(1);
+        assert_eq!(*slots.free.lock().unwrap(), 2);
+        drop((first, second));
+        assert_eq!(*slots.free.lock().unwrap(), 4);
+    }
+
+    #[test]
+    fn a_cell_that_wants_more_than_the_run_has_gets_the_run() {
+        // Otherwise it waits for a slot that will never exist, which is the whole run and then
+        // for ever.
+        let slots = Slots::of(2);
+        let held = slots.hold(9);
+        assert_eq!(*slots.free.lock().unwrap(), 0);
+        drop(held);
+        assert_eq!(*slots.free.lock().unwrap(), 2);
+    }
+
+    #[test]
+    fn the_concurrency_a_record_claims_is_what_ran_beside_it() {
+        let plan = RunPlan {
+            jobs: 8,
+            ..RunPlan::default()
+        };
+        let mut manifest = a_manifest();
+        assert_eq!(beside(&plan, &manifest), 8, "an ordinary cell takes a slot");
+
+        manifest.limits.cores = Cores::All;
+        assert_eq!(
+            beside(&plan, &manifest),
+            1,
+            "a cell given the machine has to say its seconds compare with a serial run's"
+        );
+
+        manifest.limits.cores = Cores::Count(4);
+        assert_eq!(beside(&plan, &manifest), 2);
+    }
+
+    #[test]
     fn cells_are_reported_in_the_order_the_run_asked_for_and_not_the_order_they_finished() {
         // The whole risk of running several cells at once is that the report becomes a race, so
         // the collector is handed its cells backwards here and has to put them back.
@@ -1899,6 +2080,34 @@ command = ["./sample"]
         assert!(Reuse::Allow.reads() && Reuse::Allow.writes());
         assert!(!Reuse::Refresh.reads() && Reuse::Refresh.writes());
         assert!(!Reuse::Off.reads() && !Reuse::Off.writes());
+    }
+
+    /// The smallest manifest that parses, for the tests that only ask it about `[limits]`.
+    fn a_manifest() -> Manifest {
+        let text = r#"
+[project]
+name = "jsmn"
+rung = 0
+upstream = "https://github.com/zserge/jsmn"
+licence = "MIT"
+licence-file = "LICENSE"
+description = "a minimal json parser that allocates nothing"
+demands = ["pointer-arithmetic"]
+
+[source]
+url = "https://example.invalid/jsmn.tar.gz"
+sha256 = "0000000000000000000000000000000000000000000000000000000000000000"
+
+[build]
+system = "direct"
+sources = ["jsmn_test.c"]
+output = "jsmn_test"
+
+[test]
+command = ["./jsmn_test"]
+oracle = "self-checking"
+"#;
+        Manifest::from_str_named(text, Path::new("test/project.toml")).unwrap()
     }
 
     fn a_record(outcome: Outcome) -> RunRecord {
