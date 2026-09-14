@@ -14,6 +14,9 @@ sha256 = "0905f89daa94853c4c75bfe7fc9b7636a70afd7d84abdd10ee944349de3117b1"
 [build]
 system = "make"
 targets = ["compress"]
+# A program and not a library, which is what this project is: ncompress ships the compress tool and
+# builds no archive at all.
+binary = "compress"
 
 [build.level-flags]
 variable = "CFLAGS"
