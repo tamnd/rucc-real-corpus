@@ -575,13 +575,16 @@ fn describe(record: &RunRecord) -> String {
 /// `None` when the manifest has no `[abi]` table. Most of the corpus does not have one and never
 /// will, since a project has to divide into a library and a caller before there is anything to
 /// cross, and treating that as a missing result would put a permanent hole in every report.
+///
+/// `None` as well at the one level an archive holds no machine code at, which is
+/// [`abi::crossable`].
 pub fn cross(
     setup: &Setup,
     loaded: &Loaded,
     manifest: &Manifest,
     level: Level,
 ) -> Result<Option<AbiRecord>, String> {
-    if manifest.abi.is_none() {
+    if manifest.abi.is_none() || !abi::crossable(level) {
         return Ok(None);
     }
     let extracted = loaded.extracted(&manifest.project.name);
@@ -772,11 +775,12 @@ pub fn abi_only(loaded: &Loaded, options: &Options, plan: &AbiPlan) -> Result<Do
     for manifest in chosen {
         for level in levels_asked(manifest, plan.levels.as_deref()) {
             let Some(record) = cross(&setup, loaded, manifest, level)? else {
-                eprintln!(
-                    "{:<24} {:<4} no cross check in the manifest",
-                    manifest.project.name,
-                    level.name()
-                );
+                let why = if abi::crossable(level) {
+                    "no cross check in the manifest"
+                } else {
+                    "not crossed at this level, a gcc object here holds no machine code"
+                };
+                eprintln!("{:<24} {:<4} {why}", manifest.project.name, level.name());
                 continue;
             };
             eprintln!(
@@ -862,7 +866,7 @@ fn crossings(records: &[AbiRecord]) -> String {
     }
     let _ = writeln!(
         out,
-        "The cross check covers {}, each built four ways, crossing the two compilers over the archive and the driver. This is the check of spec 8.5, and it is the only one on the ladder that a single compiler cannot pass by being wrong about the call boundary in a way it agrees with itself about.\n",
+        "The cross check covers {}, each built four ways, crossing the two compilers over the archive and the driver. This is the check of spec 8.5, and it is the only one on the ladder that a single compiler cannot pass by being wrong about the call boundary in a way it agrees with itself about. The `-flto` level is not among the cells, because a gcc object compiled with `-flto` has an empty `.text` and carries its function bodies in `.gnu.lto_` sections, so there is no machine code in the archive for a second compiler to disagree with.\n",
         cells(records.len())
     );
 
