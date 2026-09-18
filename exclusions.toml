@@ -4,7 +4,7 @@
 # tracking issue, because none has been reported to its project yet and a register that points at an
 # issue nobody filed is worse than one that points at a note somebody wrote.
 #
-# Seven entries, and they are not all the same kind of thing, which is worth saying before anybody
+# Eight entries, and they are not all the same kind of thing, which is worth saying before anybody
 # reads the count as one number. Three were found while recording the gcc 16 baselines: a test that
 # frees a null pointer and reads through it, a header whose own arithmetic stops holding once there
 # are several of it in a link, and an internal compiler error in gcc's aarch64 back end. Two more,
@@ -12,20 +12,25 @@
 # nothing to do with the compiler under test. None of those five is about rucc and every one of them
 # would be a false red against it.
 #
-# The last two are not a bug in anybody's code. janet and tcc run a different number of cases on
-# macos than on linux, because parts of both suites are written for a linux facility and skip
-# themselves elsewhere, and baseline-tests holds one number. So a host that runs fewer cases and
-# passes all of them is graded a wrong answer for a difference in what the suite chose to run. That
-# is tamnd/rucc-real-corpus#105 and it is a gap in this harness rather than in a project, which is
-# the one kind of entry here that we are supposed to be able to remove by fixing something.
+# Two more are not a bug in anybody's code. janet and tcc run a different number of cases on macos
+# than on linux, because parts of both suites are written for a linux facility and skip themselves
+# elsewhere, and baseline-tests holds one number. So a host that runs fewer cases and passes all of
+# them is graded a wrong answer for a difference in what the suite chose to run. That is
+# tamnd/rucc-real-corpus#105 and it is a gap in this harness rather than in a project, which is the
+# one kind of entry here that we are supposed to be able to remove by fixing something.
+#
+# The eighth is the only one that is about rucc, and section 9.4's own first two examples are that
+# shape, so it is the ordinary kind rather than a new one. libmpfr asks configure whether the
+# compiler knows _Decimal64, rucc says no because the three decimal types are deferred past 1.0, and
+# two of its 198 test programs then skip themselves rather than test anything. The issue behind it is
+# where the argument for the deferral is written down, and the entry comes out when the types land.
 #
 # An entry is as narrow as the failure it describes. The level field says which levels, the host
-# field says which machines, and leaving either off means all of them. Five of the seven are scoped
+# field says which machines, and leaving either off means all of them. Five of the eight are scoped
 # to macos-aarch64, and every one of those five passes at every level on the reference machine.
 #
-# Rechecked on 2026-09-11 against the RC5 exit criterion, which asks for no entry older than RC3
-# without a dated justification. All seven carry a since date and an issue, the oldest is four days
-# old, and all seven stand.
+# Rechecked on 2026-09-19 against the RC5 exit criterion, which asks for no entry older than RC3
+# without a dated justification. All eight carry a since date and an issue, and all eight stand.
 
 [[exclude]]
 project = "heatshrink"
@@ -87,3 +92,11 @@ host = "macos-aarch64"
 issue = "upstream:https://github.com/tamnd/rucc-real-corpus/issues/110"
 why = "The port compiles with -Werror and py/misc.h writes its static assert as sizeof of a char array whose size is a comparison between two object addresses. That is not a constant expression, gcc folds it anyway and clang folds it and then warns about having folded it, so py/parse.c stops the build on this host before any question about the compiler under test is reached. Upstream guards the macro for msvc and for C++ and not for clang compiling C. Every level on linux x86-64 builds and passes, which is why this is scoped to the one host."
 since = "2026-09-09"
+
+[[exclude]]
+project = "libmpfr"
+case = "libmpfr"
+level = "*"
+issue = "https://github.com/tamnd/rucc/issues/1468"
+why = "The three decimal floating types are deferred past 1.0 in section 7 of rucc's spec/07-types-and-semantics.md, and mpfr is the first thing here to ask for them. Its configure runs 'checking if compiler knows _Decimal64', gets no from rucc and yes from gcc 16.2.0, and turns MPFR_WANT_DECIMAL_FLOATS off for the whole build, after which tget_set_d64 and tget_set_d128 skip themselves at run time rather than test anything. So the cell reads 196 of 198 with two skips against gcc's 198 of 198 and is graded a wrong answer, which is the right grade: rucc covered less than gcc did and the reason is a type it does not have. The other 196 pass at every level, including the ones that assert exact bit patterns at every rounding mode, which is what this project is on the list for. Not scoped to a host, because a deferred type is absent on all of them."
+since = "2026-09-19"
