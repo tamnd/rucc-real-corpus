@@ -34,7 +34,12 @@ project = "libgmp"
 why = "mpfr is built on gmp and will not configure without libgmp and gmp.h"
 
 # One hundred and ninety eight of one hundred and ninety eight under gcc 16.2.0, nothing skipped and
-# nothing expected to fail, read off the automake summary rather than the harness count.
+# nothing expected to fail, read off the automake summary rather than the harness count. That pair
+# is the fallback for a run with no reference half; a run that has one is held to what gcc scored
+# beside it, which is document 08.3. rucc runs the same 198 and passes 196, and the two it does not
+# are tget_set_d64 and tget_set_d128, which skip themselves because configure could not find
+# _Decimal64. That is the exclusion register entry and tamnd/rucc#1468, not a wrong answer from any
+# of the arithmetic this project is here to check.
 [test]
 command = ["make", "check"]
 oracle = "suite"
