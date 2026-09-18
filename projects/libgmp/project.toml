@@ -50,7 +50,12 @@ why = "gmp 6.3.0's configure probes call a function declared with an empty param
 # documented rejection at 129. The other one of the two missing is an ordinary skip.
 #
 # Measured with gcc 16.2.0 on macos arm64, six automake summaries adding to TOTAL 175, PASS 173,
-# SKIP 1, FAIL 1.
+# SKIP 1, FAIL 1. Both numbers are the fallback for a run with no reference half rather than the
+# standard every run is held to, because this suite is a different size on a different machine: on
+# linux x86-64 it is 178 cases, of which gcc 16.2.0 passes 177 and skips one, and t-rand is among
+# the ones that pass there for the reason the paragraph above gives. Document 08.3 is the order,
+# and a run with a reference half grades against what gcc scored beside it. See
+# tamnd/rucc-real-corpus#169.
 [test]
 command = ["make", "check"]
 oracle = "suite"

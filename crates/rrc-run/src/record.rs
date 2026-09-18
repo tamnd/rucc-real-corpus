@@ -214,7 +214,8 @@ pub struct RunRecord {
     /// How many passed.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub tests_passed: Option<u32>,
-    /// How many a GCC 16 build of this pin passes on the reference machine.
+    /// How many a GCC 16 build of this pin passed, which is the reference half of this same run
+    /// when there was one and the number recorded at admission when there was not.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub tests_baseline: Option<u32>,
     /// The size of the binary, for the code quality axis.

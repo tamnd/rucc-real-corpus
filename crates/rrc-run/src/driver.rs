@@ -214,8 +214,14 @@ pub fn run(job: &Job<'_>, slot: Slot, baseline: Baseline) -> std::io::Result<Bot
         None
     };
     let graded = grade(job.manifest, &trial, reference.as_ref());
+    let mut under_test = record(job, &trial, graded);
+    // What the cell was actually held to, so the report's baseline column says the number the
+    // grade used rather than a number from the machine the project was admitted on.
+    if let Some(passed) = held_to(job.manifest, reference.as_ref()) {
+        under_test.tests_baseline = Some(passed);
+    }
     Ok(Both {
-        under_test: record(job, &trial, graded),
+        under_test,
         // Graded on its own rather than against itself. What the reference half is for is its
         // seconds, its bytes and its test counts, and a project whose oracle is the differential
         // has no second reference to hold this one up to.
@@ -223,6 +229,20 @@ pub fn run(job: &Job<'_>, slot: Slot, baseline: Baseline) -> std::io::Result<Bot
             .as_ref()
             .map(|trial| record(job, trial, grade(job.manifest, trial, None))),
     })
+}
+
+/// The pass count a suite run was held to, when that was the reference half rather than the manifest.
+///
+/// Only the suite oracle has a count to hold anything to, and only a reference half that got as far
+/// as running the suite has one to offer. Everything else keeps the recorded number the manifest
+/// carries, which is what `record` put there.
+fn held_to(manifest: &Manifest, reference: Option<&Trial>) -> Option<u32> {
+    if manifest.test.oracle != Oracle::Suite {
+        return None;
+    }
+    reference
+        .and_then(|trial| trial.counts)
+        .map(|counts| counts.passed)
 }
 
 /// The reference half of a differential goes in the other slot, so the two trees have the same
@@ -1007,7 +1027,7 @@ pub fn grade(manifest: &Manifest, trial: &Trial, reference: Option<&Trial>) -> G
     }
 
     match declared {
-        Oracle::Suite => grade_suite(manifest, trial, test),
+        Oracle::Suite => grade_suite(manifest, trial, test, reference),
         Oracle::Recorded => grade_recorded(manifest, test),
         Oracle::Differential => grade_differential(test, reference),
         Oracle::SelfChecking => {
@@ -1070,13 +1090,44 @@ fn grade_recorded(manifest: &Manifest, test: &Completed) -> Graded {
 /// `baseline-total` is the third case and it is for a suite the reference compiler itself cannot
 /// get a clean run out of. Then the standard the run is held to is what the reference scored,
 /// both numbers of it, rather than a perfect score no compiler on that host can reach.
-fn grade_suite(manifest: &Manifest, trial: &Trial, test: &Completed) -> Graded {
+///
+/// The reference half of this same run comes before all three of them, because a suite's size is
+/// a property of the machine as often as it is a property of the pin. libuv asks the host about
+/// its network and runs 446 cases where the admission host ran 445, and libgmp's `make check` is
+/// 178 cases on linux x86-64 and 175 on macos arm64. A number written down once cannot be right
+/// on both, and a baseline that is red under a correct compiler catches nothing and teaches
+/// whoever reads the report to skip the row. So when the same pin was built and run with GCC at
+/// the same level on the same machine in the same hour, that is the standard: the run has to have
+/// run at least as many cases and passed at least as many of them. A suite that stopped halfway
+/// is still caught, because halfway is under what GCC got beside it, and a compiler that does
+/// better than GCC on a flaky case is not marked wrong for it. See tamnd/rucc-real-corpus#169.
+fn grade_suite(
+    manifest: &Manifest,
+    trial: &Trial,
+    test: &Completed,
+    reference: Option<&Trial>,
+) -> Graded {
     let Some(counts) = trial.counts else {
         return Graded {
             outcome: Outcome::NotCompared,
             oracle_used: Oracle::SelfChecking,
         };
     };
+    // A build handed itself as its own reference is what the bisection does at its first step and
+    // what the mixed build does when it grades the all reference half, and it is an answer for the
+    // differential oracle and not for this one. A count is always at least itself, so taking it
+    // would say that every suite passed, including the one that stopped a third of the way in.
+    let reference = reference.filter(|other| !std::ptr::eq(*other, trial));
+    if let Some(theirs) = reference.and_then(|trial| trial.counts) {
+        return Graded {
+            outcome: if counts.run >= theirs.run && counts.passed >= theirs.passed {
+                Outcome::Passed
+            } else {
+                Outcome::WrongAnswer
+            },
+            oracle_used: Oracle::Suite,
+        };
+    }
     let met_baseline = manifest
         .test
         .baseline_tests
@@ -1595,6 +1646,133 @@ int main(void){ fprintf(stderr, "error: the thing went wrong\n"); return 1; }
         ));
         let record = graded(&job(&f, &manifest), Slot::A).unwrap();
         assert_eq!(record.outcome, Outcome::WrongAnswer);
+    }
+
+    /// Both halves of a cell, which is the only way to see the reference half do any grading.
+    ///
+    /// The fixture's two compilers are the same binary, so the two halves print the same summary,
+    /// which is exactly the case this is about: a suite whose size is a property of the machine
+    /// rather than of the pin has both compilers agreeing on a number the manifest never saw.
+    fn against_reference(job: &Job<'_>) -> RunRecord {
+        run(job, Slot::A, Baseline::Measure).unwrap().under_test
+    }
+
+    #[test]
+    fn a_suite_that_matches_the_reference_half_passes_whatever_the_manifest_recorded() {
+        // tamnd/rucc-real-corpus#169. libuv's manifest says 445 and server3's suite runs 446, and
+        // libgmp's says 175 of them where linux x86-64 runs 178, so both projects graded red in
+        // every cell while tying gcc case for case. The number beside it on the same machine in
+        // the same hour is the one that answers every question the recorded number was for.
+        let Some(f) = fixture("host-count", &summary(178, 178)) else {
+            return;
+        };
+        let manifest = manifest(&format!("{AUTOMAKE}baseline-tests = 445\n"));
+        let record = against_reference(&job(&f, &manifest));
+        assert_eq!(record.outcome, Outcome::Passed);
+        assert_eq!(
+            record.tests_baseline,
+            Some(178),
+            "the report has to say the number the grade used and not the one from another machine"
+        );
+    }
+
+    /// A trial that got as far as running a suite and came back with a count.
+    ///
+    /// Built by hand rather than compiled, which is what the split between [`Trial`] and
+    /// [`RunRecord`] is for: two halves of a cell that disagree cannot be arranged out of one
+    /// fixture, because the fixture's two compilers are the same binary.
+    fn suite_trial(base: &Path, slot: Slot, run: u32, passed: u32) -> Trial {
+        let sandbox = Sandbox::create(base, slot, "counted", Level::O2).unwrap();
+        let failed = run - passed;
+        Trial {
+            sandbox,
+            phase: Phase::Tested,
+            missing: Vec::new(),
+            build: None,
+            misconfigured: None,
+            test: Some(Completed {
+                ending: Ending::Exited(i32::from(failed > 0)),
+                stdout: format!(
+                    "# TOTAL: {run}\n# PASS:  {passed}\n# SKIP:  0\n# FAIL:  {failed}\n"
+                ),
+                stderr: String::new(),
+                seconds: 0.0,
+                peak_rss: None,
+            }),
+            build_seconds: 0.0,
+            peak_rss: None,
+            test_seconds: 0.0,
+            sizes: Sizes::default(),
+            input: Input::default(),
+            counts: Some(Counts {
+                run,
+                passed,
+                skipped: 0,
+            }),
+            first_diagnostic: None,
+        }
+    }
+
+    #[test]
+    fn a_suite_that_ran_fewer_cases_than_the_reference_half_did_is_a_wrong_answer() {
+        // The hole the recorded number was guarding, and the reference half guards it better: a
+        // suite that stopped a third of the way in passed everything it got to, and what says so
+        // is that gcc got through all of them on the same machine in the same hour.
+        let base = std::env::temp_dir().join("rrc-driver-test-short-reference");
+        std::fs::remove_dir_all(&base).ok();
+        let manifest = manifest(&format!("{AUTOMAKE}baseline-tests = 60\n"));
+        let ours = suite_trial(&base, Slot::A, 60, 60);
+        let theirs = suite_trial(&base, Slot::B, 178, 178);
+        let graded = grade(&manifest, &ours, Some(&theirs));
+        assert_eq!(graded.outcome, Outcome::WrongAnswer);
+        assert_eq!(graded.oracle_used, Oracle::Suite);
+        std::fs::remove_dir_all(&base).ok();
+    }
+
+    #[test]
+    fn a_suite_the_reference_half_beats_by_one_case_is_a_wrong_answer() {
+        let base = std::env::temp_dir().join("rrc-driver-test-worse-reference");
+        std::fs::remove_dir_all(&base).ok();
+        let manifest = manifest(&format!("{AUTOMAKE}baseline-tests = 1\n"));
+        let ours = suite_trial(&base, Slot::A, 178, 177);
+        let theirs = suite_trial(&base, Slot::B, 178, 178);
+        assert_eq!(
+            grade(&manifest, &ours, Some(&theirs)).outcome,
+            Outcome::WrongAnswer
+        );
+        std::fs::remove_dir_all(&base).ok();
+    }
+
+    #[test]
+    fn a_suite_that_beats_the_reference_half_is_not_marked_wrong_for_it() {
+        // libuv at O2 on server3, where gcc lost `closed_fd_events` and rucc did not. A rule that
+        // asked for the two numbers to be equal would call that a miscompilation.
+        let base = std::env::temp_dir().join("rrc-driver-test-better-reference");
+        std::fs::remove_dir_all(&base).ok();
+        let manifest = manifest(&format!("{AUTOMAKE}baseline-tests = 445\n"));
+        let ours = suite_trial(&base, Slot::A, 446, 444);
+        let theirs = suite_trial(&base, Slot::B, 446, 443);
+        assert_eq!(
+            grade(&manifest, &ours, Some(&theirs)).outcome,
+            Outcome::Passed
+        );
+        std::fs::remove_dir_all(&base).ok();
+    }
+
+    #[test]
+    fn a_suite_handed_itself_as_its_own_reference_is_graded_against_the_recorded_number() {
+        // What the bisection does at its first step and what the mixed build does with its all
+        // reference half. A count is always at least itself, so reading it would say every suite
+        // passed, including the one that came back with a third of its cases.
+        let base = std::env::temp_dir().join("rrc-driver-test-self-reference");
+        std::fs::remove_dir_all(&base).ok();
+        let manifest = manifest(&format!("{AUTOMAKE}baseline-tests = 178\n"));
+        let ours = suite_trial(&base, Slot::A, 60, 60);
+        assert_eq!(
+            grade(&manifest, &ours, Some(&ours)).outcome,
+            Outcome::WrongAnswer
+        );
+        std::fs::remove_dir_all(&base).ok();
     }
 
     #[test]
