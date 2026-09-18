@@ -39,7 +39,14 @@ configure = ["-DLIBUV_BUILD_TESTS=ON"]
 # is what libuv's own ctest entry sets, so the suite finds the fixture files and the helper
 # processes it spawns.
 #
-# Four hundred and forty five of four hundred and forty five under gcc 16.2.0.
+# Four hundred and forty five of four hundred and forty five under gcc 16.2.0 on the machine this
+# was admitted on. That number is the fallback and not the standard, because this suite asks the
+# host about its network and is a different size on a different machine: server3 runs 446 cases and
+# a gcc 16.2.0 build there passes 444 of them at five levels and 443 at one, the missing ones being
+# udp_multicast_join and udp_multicast_join6, which time out on a host with no multicast route, and
+# closed_fd_events, which is flaky under both compilers. Document 08.3 is the order, and a run with
+# a reference half grades against what gcc scored beside it rather than against this. See
+# tamnd/rucc-real-corpus#169.
 [test]
 command = ["./build/uv_run_tests_a"]
 oracle = "suite"
