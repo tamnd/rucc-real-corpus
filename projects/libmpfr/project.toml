@@ -47,10 +47,19 @@ parser = "automake"
 baseline-tests = 198
 requires = ["sh"]
 
-# Wider than anything else on this rung because the build limit has to cover two builds. gmp and
-# mpfr together took six hundred and fourteen seconds here and the suite took two hundred and
-# eighty five, so there is room for a host around twice as slow before this starts timing out and
-# getting reported as a compiler that hangs.
+# Wider than anything else on this rung because the build limit has to cover two builds, and wider
+# again on the test side now that the suite runs all the way through rather than stopping at the
+# link. The numbers the old comment carried were from gcc alone and were the wrong ones to size a
+# limit by. Measured on server3 at O2 on 2026-09-19, gmp and mpfr together build in 385 seconds
+# under rucc and 429 under gcc, and the suite takes 249 seconds under gcc and 1044 under rucc.
+#
+# That last ratio is the reason the test limit moves. mpfr's tests are arbitrary precision
+# arithmetic in a loop and are compute bound rather than waiting on anything, so a suite time here
+# is a straight reading of how fast the code the compiler produced runs, and rucc's is a little over
+# four times gcc's. With the old limit of 1800 a host a little under twice as slow as this one would
+# have timed out and been reported as a compiler that hangs, which is exactly the wrong thing to say
+# about a compiler that is only slow. 3600 puts the headroom back where the comment always claimed
+# it was.
 [limits]
-build-seconds = 1800
-test-seconds = 1800
+build-seconds = 2400
+test-seconds = 3600
