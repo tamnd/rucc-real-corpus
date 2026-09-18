@@ -225,10 +225,33 @@ pub fn run(job: &Job<'_>, slot: Slot, baseline: Baseline) -> std::io::Result<Bot
         // Graded on its own rather than against itself. What the reference half is for is its
         // seconds, its bytes and its test counts, and a project whose oracle is the differential
         // has no second reference to hold this one up to.
-        reference: reference
-            .as_ref()
-            .map(|trial| record(job, trial, grade(job.manifest, trial, None))),
+        reference: reference.as_ref().map(|trial| {
+            let mut record = record(job, trial, grade_reference(job.manifest, trial));
+            // Nothing, rather than the number recorded at admission, because the column says what
+            // the row was held to and this row was held to its own output. A reference row is where
+            // the baseline comes from and is not a thing that can miss one.
+            record.tests_baseline = None;
+            record
+        }),
     })
+}
+
+/// Grade the reference half, which is a different question from grading the half under test.
+///
+/// `baseline-tests` and `baseline-total` record what GCC scored on the machine the project was
+/// admitted on, and they exist to hold the compiler under test to something GCC is known to have
+/// reached. Asking them of GCC itself is holding GCC here to what GCC did there, which is the
+/// mistake tamnd/rucc-real-corpus#169 is about pointing the other way: libgmp's `make check` is 178
+/// cases on linux x86-64 and the manifest says 175, so the reference half came back green on every
+/// case it ran and was recorded as a wrong answer. So the numbers come off and the reference half
+/// is asked the one question they were standing in for, which is whether every case it ran passed.
+/// A reference half that fails a case is then a reference half that fails a case, on this machine
+/// and today, and document 11.1's section for exactly that says so.
+fn grade_reference(manifest: &Manifest, trial: &Trial) -> Graded {
+    let mut alone = manifest.clone();
+    alone.test.baseline_tests = None;
+    alone.test.baseline_total = None;
+    grade(&alone, trial, None)
 }
 
 /// The pass count a suite run was held to, when that was the reference half rather than the manifest.
@@ -1757,6 +1780,27 @@ int main(void){ fprintf(stderr, "error: the thing went wrong\n"); return 1; }
             Outcome::Passed
         );
         std::fs::remove_dir_all(&base).ok();
+    }
+
+    #[test]
+    fn the_reference_half_is_not_held_to_what_the_reference_scored_on_another_machine() {
+        // libgmp on server3. `make check` is 178 cases there and the manifest records 175 from the
+        // machine the project was admitted on, so gcc got through every case it ran and the row
+        // came back a wrong answer, which is tamnd/rucc-real-corpus#169 pointing the other way.
+        let Some(f) = fixture("reference-alone", &summary(178, 178)) else {
+            return;
+        };
+        let manifest = manifest(&format!(
+            "{AUTOMAKE}baseline-tests = 173\nbaseline-total = 175\n"
+        ));
+        let both = run(&job(&f, &manifest), Slot::A, Baseline::Measure).unwrap();
+        assert_eq!(both.under_test.outcome, Outcome::Passed);
+        let reference = both.reference.expect("a reference half was asked for");
+        assert_eq!(reference.outcome, Outcome::Passed);
+        assert_eq!(
+            reference.tests_baseline, None,
+            "a reference row is where the baseline comes from and cannot miss one"
+        );
     }
 
     #[test]
