@@ -53,6 +53,20 @@ oracle = "suite"
 parser = "tap"
 baseline-tests = 445
 
+# The machine to itself, for the reason rpmalloc asks for it and not the reason the field was
+# written for. This suite is not many threads wanting many cores, it is four hundred and forty six
+# small network and process cases with timeouts in them, and a timeout is a statement about a
+# machine that is not doing anything else. On server3 with eight cells running at once this cell
+# graded wrong answer at O0, O1 and Os, and the failures were not the same failures on the two
+# halves of the cell: ours lost getsockname_tcp with a listen error, both ipc_send_recv inprocess
+# cases with ENOENT, tcp_write_queue_order and watcher_cross_stop, while gcc's lost poll_oob,
+# poll_unidirectional and readable_on_eof and kept every one of those. Two halves of one cell losing
+# five and three different cases is a loaded machine rather than a compiler, and the halves run one
+# after the other, so what they were loaded by was the other seven cells. Run on its own on the same
+# host with the same two compilers it is 444 of 446 at O0 and at O1 with gcc scoring 444 beside it,
+# and 443 at Os, the one short being closed_fd_events, which the note above already records as flaky
+# under both. See tamnd/rucc-real-corpus#176.
 [limits]
 build-seconds = 1800
 test-seconds = 1800
+cores = "all"
