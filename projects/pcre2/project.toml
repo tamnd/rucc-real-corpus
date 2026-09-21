@@ -39,6 +39,17 @@ parser = "automake"
 baseline-tests = 3
 requires = ["sh"]
 
+# The test limit is sized by what a run actually takes, the way libmpfr's is after #175, and what
+# it has to be sized by here is how slow our own code is rather than how big the suite is. On
+# server2 with six cores and nothing else running, pcre2 10.48 passes 3 of 3 at both levels under
+# both compilers, and the suite takes 15.4 seconds built by gcc 16.2.0 at O0 and 12.4 at O2 against
+# 68.8 and 397.4 built by rucc 0.10.69. Our O2 is thirty two times gcc's O2 and nearly six times
+# our own O0, which is tamnd/rucc#1547 and tamnd/rucc#1548 and is not something this repository can
+# fix. 900 seconds was enough for a quiet host and not for a shared one: this cell was recorded as
+# timed out at O1, O2 and Os in the R2 rung run on server3, with eight cells on eight cores, and
+# passes on its own. 1800 matches the build limit and leaves room for the contention a parallel run
+# has, and it comes back down when #1547 does. Build time is not the problem and is in our favour,
+# 29.1 seconds against gcc's 33.0 at O0 and 139.0 against 162.2 at O2. See #178.
 [limits]
 build-seconds = 1800
-test-seconds = 900
+test-seconds = 1800
