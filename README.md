@@ -101,23 +101,23 @@ Sixteen documents under `spec/`. Start with `spec/00-README.md`.
 
 ## Status
 
-The harness runs and rung zero is green with rucc. Manifests, pinned fetching, the sandbox, the driver, the report and the `rrc` binary are all in, and the corpus holds all twelve rung zero projects plus `libjansson`, which is admitted early out of rung order because it is the smallest project that asks for the atomic builtins. Rung zero is sixty cells, twelve projects at five levels, and rucc passes all fifty six of them that are not on the exclusion register, with the same count of the project own tests as GCC 16.2.0 wherever a suite prints one. The four excluded cells are cells GCC 16 fails on its own, with an issue each. The milestones are RC0 to RC5 in `spec/14-milestones.md`, tracked as issues, and RC5's exit criterion is the compiler's own M5 exit criterion. RC2 is a deliberate decision point: if the ladder turns out not to reach what SQLite needs, it gets cut there and the remaining effort goes straight at the amalgamation.
+The harness runs and rungs zero, one and two are all green with rucc. Manifests, pinned fetching, the sandbox, the driver, the report and the `rrc` binary are all in, and the corpus holds forty six projects: twelve on rung zero, fourteen on rung one and the twenty autoconf and CMake projects that make up rung two. That is a hundred and eighty four cells, forty six projects at four levels, and rucc passes all hundred and seventy six of them that are not on the exclusion register, with nothing failing for any other reason. The eight excluded cells are four that GCC 16 fails on its own and four for libmpfr, which asks for the decimal floating point types that rucc has deferred, and every one of them has an issue behind it. The four cells that pass fewer of a project's own tests than the GCC 16 build does are those same four libmpfr cells. The milestones are RC0 to RC5 in `spec/14-milestones.md`, tracked as issues, and RC5's exit criterion is the compiler's own M5 exit criterion. RC2 is a deliberate decision point: if the ladder turns out not to reach what SQLite needs, it gets cut there and the remaining effort goes straight at the amalgamation.
 
 ## Where it stands
 
 Everything between the two markers below is written by `rrc report --pages` from the records of the last nightly, and CI checks on every pull request that it still matches. Do not edit it by hand, and do edit everything around it.
 
 <!-- rrc:begin -->
-**56 of 60 cells passed.** Run on linux-x86_64, as runner, with rucc 0.10.26 against gcc-16 (GCC) 16.2.0.
+**176 of 184 cells passed.** Run on linux-x86_64, as runner, with rucc 0.10.69 against gcc-16 (Ubuntu 16-20260315-1ubuntu1~24~ppa1) 16.0.1 20260315 (experimental) [trunk r16-8100-g3aca3bae8ee].
 
 | outcome | cells | what it means |
 | --- | ---: | --- |
-| passed | 56 | built, linked, ran its own suite, and the oracle agreed |
-| excluded | 4 | on the exclusion register, with an issue behind it |
+| passed | 176 | built, linked, ran its own suite, and the oracle agreed |
+| excluded | 8 | on the exclusion register, with an issue behind it |
 
-That is 28,171 lines of C across 78 files in the pinned archives, counted before anything is built.
+That is 1,623,505 lines of C across 4,217 files in the pinned archives, counted before anything is built.
 
-Of the 34 cells whose suite prints a count on both compilers, 34 pass exactly as many of the project's own tests as the GCC 16 build does.
+Of the 107 cells whose suite prints a count on both compilers, 103 pass exactly as many of the project's own tests as the GCC 16 build does.
 
 The full report is under [`reports/`](reports/README.md): [what it cost against GCC 16](reports/cost.md), [what failed and why](reports/failures.md), and [one page per project](reports/projects/README.md).
 <!-- rrc:end -->

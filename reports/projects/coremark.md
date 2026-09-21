@@ -10,38 +10,34 @@ The pinned archive is 16 files, 4,543 lines, 125.4 KiB, counted before anything 
 
 | level | outcome | reached | graded by |
 | --- | --- | --- | --- |
-| O0 | passed | tested | recorded output |
 | O1 | passed | tested | recorded output |
 | O2 | passed | tested | recorded output |
+| O0 | passed | tested | recorded output |
 | Os | passed | tested | recorded output |
-| O3 | passed | tested | recorded output |
 
 ## The project's own tests
 
 | level | passed | of | gcc 16 passed | behind gcc |
 | --- | ---: | ---: | ---: | ---: |
-| O0 | not counted | not counted | not counted | not comparable |
 | O1 | not counted | not counted | not counted | not comparable |
 | O2 | not counted | not counted | not counted | not comparable |
+| O0 | not counted | not counted | not counted | not comparable |
 | Os | not counted | not counted | not counted | not comparable |
-| O3 | not counted | not counted | not counted | not comparable |
 
 ## Time and memory
 
 | level | compile | gcc 16 | vs gcc | suite | gcc 16 | vs gcc | build memory | gcc 16 | vs gcc |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| O0 | 0.21s | 0.63s | 0.33x | 3.82s | 4.03s | 0.95x | 8.5 MiB | 30.9 MiB | 0.28x |
-| O1 | 0.22s | 0.93s | 0.23x | 2.78s | 1.33s | 2.10x | 8.4 MiB | 38.4 MiB | 0.22x |
-| O2 | 0.26s | 1.46s | 0.17x | 2.89s | 1.03s | 2.81x | 9.0 MiB | 44.3 MiB | 0.20x |
-| Os | 0.28s | 1.06s | 0.27x | 3.28s | 1.39s | 2.36x | 8.5 MiB | 40.0 MiB | 0.21x |
-| O3 | 0.26s | 1.69s | 0.15x | 2.72s | 1.13s | 2.40x | 8.6 MiB | 42.8 MiB | 0.20x |
+| O1 | 0.42s | 1.24s | 0.34x | 4.12s | 2.58s | 1.60x | 9.6 MiB | 31.6 MiB | 0.30x |
+| O2 | 0.61s | 1.84s | 0.33x | 3.84s | 2.10s | 1.83x | 9.6 MiB | 34.8 MiB | 0.28x |
+| O0 | 0.42s | 0.83s | 0.51x | 4.92s | 6.03s | 0.82x | 9.5 MiB | 27.3 MiB | 0.35x |
+| Os | 0.48s | 1.01s | 0.48x | 3.88s | 1.96s | 1.98x | 9.6 MiB | 30.3 MiB | 0.32x |
 
 ## Size
 
 | level | text and data | gcc 16 | vs gcc | on disk | gcc 16 | vs gcc |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| O0 | 20.1 KiB | 16.2 KiB | 1.24x | 35.6 KiB | 26.0 KiB | 1.37x |
-| O1 | 18.7 KiB | 12.2 KiB | 1.53x | 35.6 KiB | 21.7 KiB | 1.64x |
-| O2 | 18.7 KiB | 16.1 KiB | 1.16x | 35.6 KiB | 29.8 KiB | 1.20x |
-| Os | 17.7 KiB | 10.1 KiB | 1.75x | 31.6 KiB | 21.7 KiB | 1.46x |
-| O3 | 18.7 KiB | 19.2 KiB | 0.97x | 35.6 KiB | 33.8 KiB | 1.06x |
+| O1 | 17.2 KiB | 14.1 KiB | 1.22x | 31.5 KiB | 30.1 KiB | 1.05x |
+| O2 | 17.1 KiB | 17.9 KiB | 0.95x | 31.5 KiB | 30.2 KiB | 1.04x |
+| O0 | 18.2 KiB | 18.3 KiB | 0.99x | 31.5 KiB | 30.2 KiB | 1.04x |
+| Os | 16.4 KiB | 12.4 KiB | 1.32x | 27.5 KiB | 26.1 KiB | 1.05x |

@@ -14,8 +14,6 @@ The pinned archive is 4 files, 4,127 lines, 139.7 KiB, counted before anything i
 | O1 | passed | tested | suite count |
 | O2 | passed | tested | suite count |
 | Os | passed | tested | suite count |
-| O3 | passed | tested | suite count |
-| lto | passed | tested | suite count |
 
 ## The project's own tests
 
@@ -25,27 +23,21 @@ The pinned archive is 4 files, 4,127 lines, 139.7 KiB, counted before anything i
 | O1 | 102 | 102 | 102 | same |
 | O2 | 102 | 102 | 102 | same |
 | Os | 102 | 102 | 102 | same |
-| O3 | 102 | 102 | 102 | same |
-| lto | 102 | 102 | 102 | same |
 
 ## Time and memory
 
 | level | compile | gcc 16 | vs gcc | suite | gcc 16 | vs gcc | build memory | gcc 16 | vs gcc |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| O0 | 0.61s | 1.66s | 0.36x | 16.05s | 16.26s | 0.99x | 12.9 MiB | 41.4 MiB | 0.31x |
-| O1 | 0.67s | 6.38s | 0.10x | 16.20s | 15.47s | 1.05x | 13.5 MiB | 47.1 MiB | 0.29x |
-| O2 | 0.59s | 4.38s | 0.13x | 14.91s | 14.89s | 1.00x | 13.4 MiB | 56.0 MiB | 0.24x |
-| Os | 0.60s | 3.32s | 0.18x | 15.01s | 14.91s | 1.01x | 13.0 MiB | 49.9 MiB | 0.26x |
-| O3 | 0.63s | 4.77s | 0.13x | 14.93s | 15.01s | 1.00x | 13.5 MiB | 58.5 MiB | 0.23x |
-| lto | 0.63s | 3.48s | 0.18x | 15.01s | 14.99s | 1.00x | 13.4 MiB | 51.7 MiB | 0.26x |
+| O0 | 1.24s | 1.13s | 1.10x | 15.04s | 15.02s | 1.00x | 13.9 MiB | 34.5 MiB | 0.40x |
+| O1 | 1.55s | 1.92s | 0.81x | 15.73s | 16.75s | 0.94x | 14.2 MiB | 42.3 MiB | 0.34x |
+| O2 | 0.98s | 3.03s | 0.33x | 16.94s | 14.99s | 1.13x | 14.4 MiB | 48.6 MiB | 0.30x |
+| Os | 0.93s | 2.45s | 0.38x | 15.19s | 15.03s | 1.01x | 14.0 MiB | 45.2 MiB | 0.31x |
 
 ## Size
 
 | level | text and data | gcc 16 | vs gcc | on disk | gcc 16 | vs gcc |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| O0 | 62.8 KiB | 48.9 KiB | 1.29x | 93.0 KiB | 69.2 KiB | 1.34x |
-| O1 | 58.6 KiB | 41.3 KiB | 1.42x | 89.0 KiB | 58.6 KiB | 1.52x |
-| O2 | 57.9 KiB | 47.7 KiB | 1.21x | 89.0 KiB | 66.4 KiB | 1.34x |
-| Os | 57.9 KiB | 32.1 KiB | 1.80x | 89.0 KiB | 50.6 KiB | 1.76x |
-| O3 | 57.9 KiB | 57.7 KiB | 1.00x | 89.0 KiB | 78.1 KiB | 1.14x |
-| lto | 57.9 KiB | 17.9 KiB | 3.24x | 89.0 KiB | 29.9 KiB | 2.97x |
+| O0 | 60.1 KiB | 54.0 KiB | 1.11x | 93.0 KiB | 73.1 KiB | 1.27x |
+| O1 | 55.8 KiB | 45.5 KiB | 1.23x | 85.0 KiB | 62.8 KiB | 1.35x |
+| O2 | 55.2 KiB | 47.7 KiB | 1.16x | 85.0 KiB | 66.5 KiB | 1.28x |
+| Os | 55.1 KiB | 39.2 KiB | 1.40x | 85.0 KiB | 58.8 KiB | 1.45x |

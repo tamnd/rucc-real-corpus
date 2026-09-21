@@ -1,10 +1,10 @@
-# ncompress
+# zstd
 
 [Back to every project](README.md) or [to the report](../README.md).
 
-Rung R1, pinned at `0905f89daa94`, run on linux-x86_64.
+Rung R2, pinned at `eb33e51f49a1`, run on linux-x86_64.
 
-The pinned archive is 2 files, 1,785 lines, 43.5 KiB, counted before anything is built. Every number below is against that.
+The pinned archive is 277 files, 137,191 lines, 5.1 MiB, counted before anything is built. Every number below is against that.
 
 ## What happened
 
@@ -28,16 +28,16 @@ The pinned archive is 2 files, 1,785 lines, 43.5 KiB, counted before anything is
 
 | level | compile | gcc 16 | vs gcc | suite | gcc 16 | vs gcc | build memory | gcc 16 | vs gcc |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| O0 | 0.18s | 0.21s | 0.87x | 0.21s | 0.24s | 0.86x | 12.0 MiB | 32.5 MiB | 0.37x |
-| O1 | 0.32s | 0.38s | 0.84x | 0.25s | 0.20s | 1.25x | 12.3 MiB | 34.6 MiB | 0.36x |
-| O2 | 0.37s | 0.58s | 0.64x | 0.20s | 0.20s | 1.01x | 11.6 MiB | 40.1 MiB | 0.29x |
-| Os | 0.28s | 0.51s | 0.55x | 0.20s | 0.20s | 0.99x | 12.1 MiB | 36.2 MiB | 0.33x |
+| O0 [^cached] | 19.09s | 36.78s | 0.52x | 96s | 135s | 0.71x | 32.8 MiB | 146.0 MiB | 0.22x |
+| O1 [^cached] | 23.85s | 131s | 0.18x | 80s | 168s | 0.48x | 32.7 MiB | 163.7 MiB | 0.20x |
+| O2 [^cached] | 26.05s | 238s | 0.11x | 126s | 123s | 1.03x | 52.3 MiB | 204.8 MiB | 0.26x |
+| Os [^cached] | 35.14s | 127s | 0.28x | 155s | 106s | 1.47x | 84.1 MiB | 158.0 MiB | 0.53x |
 
 ## Size
 
 | level | text and data | gcc 16 | vs gcc | on disk | gcc 16 | vs gcc |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| O0 | 20.8 KiB | 19.5 KiB | 1.07x | 33.5 KiB | 27.3 KiB | 1.23x |
-| O1 | 18.9 KiB | 18.2 KiB | 1.04x | 29.5 KiB | 31.4 KiB | 0.94x |
-| O2 | 18.9 KiB | 18.8 KiB | 1.01x | 29.5 KiB | 31.6 KiB | 0.93x |
-| Os | 18.8 KiB | 16.3 KiB | 1.15x | 29.5 KiB | 31.4 KiB | 0.94x |
+| O0 | not measured | not measured | not measured | not measured | not measured | not measured |
+| O1 | not measured | not measured | not measured | not measured | not measured | not measured |
+| O2 | not measured | not measured | not measured | not measured | not measured | not measured |
+| Os | not measured | not measured | not measured | not measured | not measured | not measured |
