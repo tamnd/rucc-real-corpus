@@ -329,7 +329,17 @@ pub fn cell(
     // time on. A write that does not work is reported rather than swallowed, per the note in
     // `rrc_run::cache`, but it is reported as a warning and does not sink the run: a full disk is
     // a reason to stop caching, not a reason to throw away an hour of records.
+    //
+    // A cell where either compiler ran out of disk is the one failure not kept. It says nothing
+    // about the compilers, and a kept one comes back on every later run as the same failure, or
+    // as a wrong answer when only the reference lost, long after the disk has room again.
+    let out_of_disk = record.ran_out_of_disk()
+        || both
+            .reference
+            .as_ref()
+            .is_some_and(RunRecord::ran_out_of_disk);
     if reuse.writes()
+        && !out_of_disk
         && let Some(key) = key.as_ref()
     {
         let entry = cache::Entry {
