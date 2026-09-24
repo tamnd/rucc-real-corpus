@@ -21,3 +21,10 @@ output = "jtckdint-test"
 [test]
 command = ["./jtckdint-test"]
 oracle = "self-checking"
+
+# The test is one function of about 22000 blocks, one per checked width and operation. gcc builds
+# it in a tenth of a second, but rucc takes minutes at -O1 and -O2 on a busy host, so the default
+# three hundred times it out before the program ever runs. The build time still shows up in the
+# report, so a slow compile stays visible rather than hidden.
+[limits]
+build-seconds = 900
