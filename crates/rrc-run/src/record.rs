@@ -340,6 +340,15 @@ impl RunRecord {
             _ => false,
         }
     }
+
+    /// Whether the cell stopped because the machine ran out of disk, which says nothing about
+    /// either compiler and is gone once somebody makes room.
+    #[must_use]
+    pub fn ran_out_of_disk(&self) -> bool {
+        self.first_diagnostic
+            .as_deref()
+            .is_some_and(|text| text.contains("No space left on device"))
+    }
 }
 
 /// A JSON Lines file that records are appended to as a run proceeds.
@@ -440,6 +449,17 @@ mod tests {
             built_against: Vec::new(),
             reused: false,
         }
+    }
+
+    #[test]
+    fn a_full_disk_is_the_machine_and_not_the_compiler() {
+        let mut record = a_record();
+        assert!(!record.ran_out_of_disk());
+        record.first_diagnostic =
+            Some("inits.c:53:1: fatal error: error closing <tmp> No space left on device".into());
+        assert!(record.ran_out_of_disk());
+        record.first_diagnostic = Some("inits.c:53:1: error: expected expression".into());
+        assert!(!record.ran_out_of_disk());
     }
 
     #[test]
