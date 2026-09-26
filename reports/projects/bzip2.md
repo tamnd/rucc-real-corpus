@@ -28,16 +28,16 @@ The pinned archive is 15 files, 8,127 lines, 232.3 KiB, counted before anything 
 
 | level | compile | gcc 16 | vs gcc | suite | gcc 16 | vs gcc | build memory | gcc 16 | vs gcc |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| O0 | 2.52s | 2.20s | 1.15x | 0.42s | 0.41s | 1.01x | 65.2 MiB | 94.1 MiB | 0.69x |
-| O1 | 2.66s | 4.91s | 0.54x | 0.39s | 0.27s | 1.42x | 100.4 MiB | 56.3 MiB | 1.78x |
-| Os | 2.69s | 6.86s | 0.39x | 0.33s | 0.29s | 1.12x | 15.0 MiB | 48.6 MiB | 0.31x |
-| O2 | 2.94s | 10.28s | 0.29x | 0.24s | 0.28s | 0.86x | 66.2 MiB | 87.9 MiB | 0.75x |
+| O0 | 2.51s | 3.82s | 0.66x | 0.47s | 0.76s | 0.62x | 51.0 MiB | 51.7 MiB | 0.99x |
+| O1 | 4.75s | 7.98s | 0.60x | 0.77s | 0.31s | 2.50x | 51.7 MiB | 62.5 MiB | 0.83x |
+| Os | 4.02s | 9.14s | 0.44x | 0.28s | 0.58s | 0.48x | 30.7 MiB | 54.8 MiB | 0.56x |
+| O2 | 4.22s | 11.93s | 0.35x | 0.34s | 0.40s | 0.84x | 51.7 MiB | 77.8 MiB | 0.66x |
 
 ## Size
 
 | level | text and data | gcc 16 | vs gcc | on disk | gcc 16 | vs gcc |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| O0 | 123.1 KiB | 93.4 KiB | 1.32x | 145.3 KiB | 114.4 KiB | 1.27x |
-| O1 | 106.6 KiB | 55.1 KiB | 1.93x | 128.8 KiB | 77.1 KiB | 1.67x |
-| Os | 104.7 KiB | 39.4 KiB | 2.66x | 126.8 KiB | 61.1 KiB | 2.08x |
-| O2 | 109.4 KiB | 63.5 KiB | 1.72x | 133.0 KiB | 86.7 KiB | 1.53x |
+| O0 | 119.0 KiB | 85.9 KiB | 1.39x | 142.3 KiB | 105.2 KiB | 1.35x |
+| O1 | 111.6 KiB | 53.8 KiB | 2.07x | 133.0 KiB | 73.4 KiB | 1.81x |
+| Os | 109.5 KiB | 38.2 KiB | 2.86x | 130.9 KiB | 57.7 KiB | 2.27x |
+| O2 | 112.4 KiB | 62.2 KiB | 1.81x | 133.7 KiB | 83.9 KiB | 1.59x |
