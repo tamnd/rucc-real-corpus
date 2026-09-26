@@ -1,17 +1,17 @@
-# libgmp
+# janet
 
 [Back to every project](README.md) or [to the report](../README.md).
 
-Rung R2, pinned at `a3c2b80201b8`, run on linux-x86_64.
+Rung R3, pinned at `84dbf7db9c09`, run on linux-x86_64.
 
-The pinned archive is 1,054 files, 212,797 lines, 6.7 MiB, counted before anything is built. Every number below is against that.
+The pinned archive is 65 files, 40,404 lines, 1.4 MiB, counted before anything is built. Every number below is against that.
 
 ## What happened
 
 | level | outcome | reached | graded by |
 | --- | --- | --- | --- |
-| O1 | passed | tested | suite count |
 | O0 | passed | tested | suite count |
+| O1 | passed | tested | suite count |
 | O2 | passed | tested | suite count |
 | Os | passed | tested | suite count |
 
@@ -19,25 +19,25 @@ The pinned archive is 1,054 files, 212,797 lines, 6.7 MiB, counted before anythi
 
 | level | passed | of | gcc 16 passed | behind gcc |
 | --- | ---: | ---: | ---: | ---: |
-| O1 | 177 | 178 | 177 | same |
-| O0 | 177 | 178 | 177 | same |
-| O2 | 177 | 178 | 177 | same |
-| Os | 177 | 178 | 177 | same |
+| O0 | 3795 | 3795 | 3795 | same |
+| O1 | 3795 | 3795 | 3795 | same |
+| O2 | 3795 | 3795 | 3795 | same |
+| Os | 3795 | 3795 | 3795 | same |
 
 ## Time and memory
 
 | level | compile | gcc 16 | vs gcc | suite | gcc 16 | vs gcc | build memory | gcc 16 | vs gcc |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| O1 | 337s | 222s | 1.52x | 137s | 110s | 1.25x | 65.1 MiB | 56.1 MiB | 1.16x |
-| O0 | 348s | 200s | 1.74x | 203s | 115s | 1.77x | 64.0 MiB | 56.1 MiB | 1.14x |
-| O2 | 254s | 221s | 1.15x | 134s | 121s | 1.11x | 64.1 MiB | 56.1 MiB | 1.14x |
-| Os | 141s | 331s | 0.43x | 105s | 139s | 0.76x | 60.0 MiB | 56.2 MiB | 1.07x |
+| O0 | 15.71s | 18.46s | 0.85x | 2.26s | 2.34s | 0.97x | 164.0 MiB | 163.6 MiB | 1.00x |
+| O1 | 25.51s | 23.21s | 1.10x | 1.89s | 1.79s | 1.06x | 197.3 MiB | 197.4 MiB | 1.00x |
+| O2 | 32.03s | 38.24s | 0.84x | 1.68s | 2.81s | 0.60x | 250.0 MiB | 244.6 MiB | 1.02x |
+| Os | 28.94s | 43.88s | 0.66x | 2.14s | 4.05s | 0.53x | 218.9 MiB | 219.2 MiB | 1.00x |
 
 ## Size
 
 | level | text and data | gcc 16 | vs gcc | on disk | gcc 16 | vs gcc |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| O1 | not measured | not measured | not measured | not measured | not measured | not measured |
 | O0 | not measured | not measured | not measured | not measured | not measured | not measured |
+| O1 | not measured | not measured | not measured | not measured | not measured | not measured |
 | O2 | not measured | not measured | not measured | not measured | not measured | not measured |
 | Os | not measured | not measured | not measured | not measured | not measured | not measured |

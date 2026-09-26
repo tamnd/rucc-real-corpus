@@ -1,10 +1,10 @@
-# libyaml
+# chibi-scheme
 
 [Back to every project](README.md) or [to the report](../README.md).
 
-Rung R2, pinned at `c642ae9b75fe`, run on linux-x86_64.
+Rung R3, pinned at `945aff4a5dfc`, run on linux-x86_64.
 
-The pinned archive is 23 files, 16,979 lines, 512.2 KiB, counted before anything is built. Every number below is against that.
+The pinned archive is 47 files, 24,405 lines, 870.1 KiB, counted before anything is built. Every number below is against that.
 
 ## What happened
 
@@ -12,26 +12,26 @@ The pinned archive is 23 files, 16,979 lines, 512.2 KiB, counted before anything
 | --- | --- | --- | --- |
 | O0 | passed | tested | suite count |
 | O1 | passed | tested | suite count |
-| O2 | passed | tested | suite count |
 | Os | passed | tested | suite count |
+| O2 | passed | tested | suite count |
 
 ## The project's own tests
 
 | level | passed | of | gcc 16 passed | behind gcc |
 | --- | ---: | ---: | ---: | ---: |
-| O0 | 2 | 2 | 2 | same |
-| O1 | 2 | 2 | 2 | same |
-| O2 | 2 | 2 | 2 | same |
-| Os | 2 | 2 | 2 | same |
+| O0 | 1227 | 1227 | 1227 | same |
+| O1 | 1227 | 1227 | 1227 | same |
+| Os | 1227 | 1227 | 1227 | same |
+| O2 | 1227 | 1227 | 1227 | same |
 
 ## Time and memory
 
 | level | compile | gcc 16 | vs gcc | suite | gcc 16 | vs gcc | build memory | gcc 16 | vs gcc |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| O0 | 20.98s | 14.24s | 1.47x | 10.64s | 1.02s | 10.42x | 63.7 MiB | 52.6 MiB | 1.21x |
-| O1 | 14.12s | 26.29s | 0.54x | 11.78s | 1.05s | 11.17x | 63.9 MiB | 66.5 MiB | 0.96x |
-| O2 | 18.87s | 28.63s | 0.66x | 14.89s | 1.21s | 12.36x | 62.4 MiB | 79.1 MiB | 0.79x |
-| Os | 16.58s | 26.47s | 0.63x | 11.07s | 1.17s | 9.47x | 63.7 MiB | 75.6 MiB | 0.84x |
+| O0 | 24.80s | 31.36s | 0.79x | 5.78s | 6.60s | 0.88x | 59.3 MiB | 83.5 MiB | 0.71x |
+| O1 | 25.52s | 46.40s | 0.55x | 5.05s | 4.30s | 1.18x | 61.5 MiB | 110.0 MiB | 0.56x |
+| Os | 28.16s | 73s | 0.39x | 5.23s | 7.67s | 0.68x | 59.0 MiB | 133.5 MiB | 0.44x |
+| O2 | 30.46s | 78s | 0.39x | 4.78s | 4.95s | 0.97x | 59.0 MiB | 138.1 MiB | 0.43x |
 
 ## Size
 
@@ -39,5 +39,5 @@ The pinned archive is 23 files, 16,979 lines, 512.2 KiB, counted before anything
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
 | O0 | not measured | not measured | not measured | not measured | not measured | not measured |
 | O1 | not measured | not measured | not measured | not measured | not measured | not measured |
-| O2 | not measured | not measured | not measured | not measured | not measured | not measured |
 | Os | not measured | not measured | not measured | not measured | not measured | not measured |
+| O2 | not measured | not measured | not measured | not measured | not measured | not measured |

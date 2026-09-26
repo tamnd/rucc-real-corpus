@@ -1,37 +1,37 @@
-# libyaml
+# femtolisp
 
 [Back to every project](README.md) or [to the report](../README.md).
 
-Rung R2, pinned at `c642ae9b75fe`, run on linux-x86_64.
+Rung R3, pinned at `a3a50cd092eb`, run on linux-x86_64.
 
-The pinned archive is 23 files, 16,979 lines, 512.2 KiB, counted before anything is built. Every number below is against that.
+The pinned archive is 55 files, 19,287 lines, 544.8 KiB, counted before anything is built. Every number below is against that.
 
 ## What happened
 
 | level | outcome | reached | graded by |
 | --- | --- | --- | --- |
-| O0 | passed | tested | suite count |
-| O1 | passed | tested | suite count |
-| O2 | passed | tested | suite count |
-| Os | passed | tested | suite count |
+| O0 | passed | tested | recorded output |
+| O1 | passed | tested | recorded output |
+| O2 | passed | tested | recorded output |
+| Os | passed | tested | recorded output |
 
 ## The project's own tests
 
 | level | passed | of | gcc 16 passed | behind gcc |
 | --- | ---: | ---: | ---: | ---: |
-| O0 | 2 | 2 | 2 | same |
-| O1 | 2 | 2 | 2 | same |
-| O2 | 2 | 2 | 2 | same |
-| Os | 2 | 2 | 2 | same |
+| O0 | not counted | not counted | not counted | not comparable |
+| O1 | not counted | not counted | not counted | not comparable |
+| O2 | not counted | not counted | not counted | not comparable |
+| Os | not counted | not counted | not counted | not comparable |
 
 ## Time and memory
 
 | level | compile | gcc 16 | vs gcc | suite | gcc 16 | vs gcc | build memory | gcc 16 | vs gcc |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| O0 | 20.98s | 14.24s | 1.47x | 10.64s | 1.02s | 10.42x | 63.7 MiB | 52.6 MiB | 1.21x |
-| O1 | 14.12s | 26.29s | 0.54x | 11.78s | 1.05s | 11.17x | 63.9 MiB | 66.5 MiB | 0.96x |
-| O2 | 18.87s | 28.63s | 0.66x | 14.89s | 1.21s | 12.36x | 62.4 MiB | 79.1 MiB | 0.79x |
-| Os | 16.58s | 26.47s | 0.63x | 11.07s | 1.17s | 9.47x | 63.7 MiB | 75.6 MiB | 0.84x |
+| O0 | 2.96s | 4.46s | 0.66x | 0.48s | 0.46s | 1.04x | 54.8 MiB | 67.9 MiB | 0.81x |
+| O1 | 3.50s | 6.67s | 0.53x | 0.37s | 0.26s | 1.42x | 32.1 MiB | 84.9 MiB | 0.38x |
+| O2 | 3.47s | 11.69s | 0.30x | 0.30s | 0.24s | 1.26x | 34.1 MiB | 119.2 MiB | 0.29x |
+| Os | 3.20s | 9.87s | 0.32x | 0.35s | 0.34s | 1.04x | 31.2 MiB | 98.0 MiB | 0.32x |
 
 ## Size
 
