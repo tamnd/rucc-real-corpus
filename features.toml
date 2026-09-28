@@ -4,11 +4,37 @@
 # a log, so an entry with an empty list is an entry nothing can classify yet, and filling it in is
 # a change worth making the first time rucc prints something for it.
 
+[acle-crc]
+summary = "the CRC32 and CRC32C intrinsics from arm_acle.h, such as __crc32cd, and __ARM_FEATURE_CRC32"
+kind = "gnu-builtin"
+diagnostic = ["`arm_acle.h` file not found", "implicit declaration of function '__crc32c"]
+rucc-issue = "https://github.com/tamnd/rucc/issues/2006"
+standard = "Arm C Language Extensions"
+
 [always-inline]
 summary = "__attribute__((always_inline)) honoured rather than treated as a hint"
 kind = "gnu-extension"
 rucc-issue = "https://github.com/tamnd/rucc/issues/542"
 standard = "GNU extension with no portable spelling"
+
+[avx512-intrinsics]
+summary = "the 512 bit vector and mask types and the AVX-512 intrinsics in immintrin.h, such as _mm512_popcnt_epi64"
+kind = "gnu-builtin"
+diagnostic = ["unknown option `-mavx512", "implicit declaration of function '_mm512_"]
+rucc-issue = "https://github.com/tamnd/rucc/issues/2004"
+standard = "Intel intrinsics, with GCC's header as the definition users expect"
+
+[builtin-setjmp-coff]
+summary = "__builtin_setjmp and __builtin_longjmp on x86_64-windows-gnu, which MinGW builds use in place of sigsetjmp"
+kind = "gnu-builtin"
+rucc-issue = "https://github.com/tamnd/rucc/issues/2008"
+standard = "GNU extension with no portable spelling"
+
+[bundle-loader]
+summary = "-bundle and -bundle_loader on macOS, which link a module whose undefined symbols resolve against an executable"
+kind = "driver"
+diagnostic = ["unknown option `-bundle`", "unknown option `-bundle_loader`"]
+rucc-issue = "https://github.com/tamnd/rucc/issues/2010"
 
 # There is no diagnostic list here and there cannot be one, which is the whole point of the entry.
 # rucc parses the attribute, accepts it without a word at any warning level, and then does not run
@@ -70,6 +96,12 @@ kind = "standard"
 [deep-macros]
 summary = "macros expanding through several layers, including __VA_ARGS__ forwarding"
 kind = "preprocessor"
+
+[dllimport]
+summary = "__declspec(dllimport) on data, read through the __imp_ pointer, and __declspec(dllexport)"
+kind = "abi"
+rucc-issue = "https://github.com/tamnd/rucc/issues/2011"
+standard = "Microsoft extension that MinGW GCC also implements"
 
 [double-formatting]
 summary = "printf and strtod round tripping a double without losing a digit"
@@ -190,9 +222,20 @@ summary = "__builtin_memcpy and __builtin_memset expanded inline at a size the c
 kind = "gnu-builtin"
 standard = "GNU builtin; the portable spelling is a call to memcpy that the compiler is expected to recognise"
 
+[module-undefined-symbols]
+summary = "a loadable module that calls back into the executable that loaded it, linked the way each platform does it"
+kind = "driver"
+rucc-issue = "https://github.com/tamnd/rucc/issues/2009"
+
 [nan-boxing]
 summary = "a double written to a union and read back as a uint64_t, with a pointer and a tag living in the payload of a quiet NaN"
 kind = "standard"
+
+[neon-intrinsics]
+summary = "the arm_neon.h intrinsics a program uses on AArch64, giving the answers GCC's do"
+kind = "gnu-builtin"
+rucc-issue = "https://github.com/tamnd/rucc/issues/2005"
+standard = "Arm C Language Extensions"
 
 # The diagnostic is one string for two different bugs and there is no way to tell them apart from
 # the text, which is worth knowing before anybody trusts the classification. E0694 is printed when
@@ -208,6 +251,14 @@ diagnostic = ["needs an integer type wider than 64 bits for these arguments"]
 rucc-issue = "https://github.com/tamnd/rucc/issues/836"
 standard = "GNU extension; C23 <stdckdint.h> is the portable spelling"
 
+# Split from overflow-builtins because Postgres reaches only this half of it. Its common/int.h
+# checks an int64 against a uint64 result in a few places, which is the mixed signedness form.
+[overflow-builtins-mixed-sign]
+summary = "__builtin_add_overflow and friends with operands and a result that differ in signedness"
+kind = "gnu-builtin"
+rucc-issue = "https://github.com/tamnd/rucc/issues/836"
+standard = "GNU extension; C23 <stdckdint.h> is the portable spelling"
+
 [pointer-arithmetic]
 summary = "arithmetic on object interiors, one past the end comparisons, and pointer differences"
 kind = "standard"
@@ -216,6 +267,12 @@ kind = "standard"
 summary = "recursion deep enough that the frame layout and the tail call decision both matter"
 kind = "standard"
 
+[returns-twice]
+summary = "__attribute__((returns_twice)) on a function the compiler does not know by name, treated the way setjmp is"
+kind = "gnu-extension"
+rucc-issue = "https://github.com/tamnd/rucc/issues/2012"
+standard = "GNU extension with no portable spelling"
+
 [rotate-idioms]
 summary = "a shift left or-ed with a shift right recognised as one rotate instruction"
 kind = "standard"
@@ -223,6 +280,18 @@ kind = "standard"
 [setjmp-longjmp]
 summary = "setjmp and longjmp as an error mechanism, which constrains what the optimizer may keep in a register"
 kind = "standard"
+
+[sigsetjmp-volatile]
+summary = "volatile locals written between sigsetjmp and siglongjmp keep their new values, which is every PG_TRY block"
+kind = "standard"
+rucc-issue = "https://github.com/tamnd/rucc/issues/652"
+
+[sse42-intrinsics]
+summary = "nmmintrin.h and the SSE4.2 CRC32 intrinsics, such as _mm_crc32_u64, and -msse4.2"
+kind = "gnu-builtin"
+diagnostic = ["`nmmintrin.h` file not found", "`smmintrin.h` file not found", "unknown option `-msse4.2`", "implicit declaration of function '_mm_crc32_"]
+rucc-issue = "https://github.com/tamnd/rucc/issues/2003"
+standard = "Intel intrinsics, with GCC's header as the definition users expect"
 
 # Two spellings of one demand, and rucc is missing the same thing under both of them, which is why
 # they are one entry with two needles. A variable length array and a call to alloca both ask the
@@ -249,9 +318,25 @@ standard = "C23"
 summary = "struct offsets, padding and alignment as the ABI states them"
 kind = "abi"
 
+[sve-intrinsics]
+summary = "arm_sve.h and its sizeless vector types"
+kind = "gnu-builtin"
+diagnostic = ["`arm_sve.h` file not found"]
+rucc-issue = "https://github.com/tamnd/rucc/issues/2007"
+standard = "Arm C Language Extensions"
+
 [switch-dispatch]
 summary = "a state machine written as a switch, with deliberate fall through between cases"
 kind = "standard"
+
+# rucc accepts the attribute today and ignores it, so nothing fails to build and there is no
+# diagnostic to list. What goes wrong is that a function marked for SSE4.2 can be inlined into a
+# caller built for less, and the probe says yes where the answer should mean something.
+[target-attribute]
+summary = "__attribute__((target(\"...\"))) giving one function a wider instruction set, and never inlining it into a narrower caller"
+kind = "gnu-extension"
+rucc-issue = "https://github.com/tamnd/rucc/issues/2002"
+standard = "GNU extension with no portable spelling"
 
 [thread-local]
 summary = "_Thread_local and __thread"
