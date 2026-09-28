@@ -30,6 +30,8 @@ pub struct Summary {
     pub unclassified: usize,
     /// Runs whose pass count came in under the recorded GCC baseline.
     pub under_baseline: usize,
+    /// Runs whose suite failed once and passed when it was run again.
+    pub flaky: usize,
 }
 
 impl Summary {
@@ -68,6 +70,7 @@ impl Summary {
                 .filter(|r| r.outcome.is_failure() && r.first_diagnostic.is_none())
                 .count(),
             under_baseline: records.iter().filter(|r| r.missed_baseline()).count(),
+            flaky: records.iter().filter(|r| r.flaked).count(),
         }
     }
 
@@ -154,8 +157,8 @@ impl Summary {
         out.push('\n');
         let _ = writeln!(
             out,
-            "downgraded oracles {}   unclassified diagnostics {}   under baseline {}",
-            self.downgraded_oracles, self.unclassified, self.under_baseline
+            "downgraded oracles {}   unclassified diagnostics {}   under baseline {}   flaky {}",
+            self.downgraded_oracles, self.unclassified, self.under_baseline, self.flaky
         );
         out
     }
@@ -165,6 +168,15 @@ impl Summary {
 mod tests {
     use super::*;
     use crate::tests::record;
+
+    #[test]
+    fn a_suite_that_passed_the_second_time_is_counted_as_flaky() {
+        let mut flaked = record("a", Outcome::Passed);
+        flaked.flaked = true;
+        let summary = Summary::of(&[flaked, record("b", Outcome::Passed)]);
+        assert_eq!(summary.flaky, 1);
+        assert!(summary.render().contains("flaky 1"));
+    }
 
     #[test]
     fn the_commit_is_left_off_the_header_when_there_is_none() {

@@ -150,6 +150,9 @@ pub struct Trial {
     pub counts: Option<Counts>,
     /// The first error, normalized.
     pub first_diagnostic: Option<String>,
+    /// The suite's command, with the first error as it stood before the suite ran, so that the
+    /// suite can be run a second time without building anything.
+    pub again: Option<(Invocation, Option<String>)>,
 }
 
 impl Trial {
@@ -213,8 +216,11 @@ pub fn run(job: &Job<'_>, slot: Slot, baseline: Baseline) -> std::io::Result<Bot
     } else {
         None
     };
+    let mut trial = trial;
     let graded = grade(job.manifest, &trial, reference.as_ref());
+    let (graded, flaked) = again(job, &mut trial, graded, reference.as_ref())?;
     let mut under_test = record(job, &trial, graded);
+    under_test.flaked = flaked;
     // What the cell was actually held to, so the report's baseline column says the number the
     // grade used rather than a number from the machine the project was admitted on.
     if let Some(passed) = held_to(job.manifest, reference.as_ref()) {
@@ -455,6 +461,7 @@ fn attempt_upto(
         input: input::measure(job.extracted),
         counts: None,
         first_diagnostic: None,
+        again: None,
     };
 
     // Asked before the build rather than after it, because a project whose suite needs a tool
@@ -513,8 +520,23 @@ fn attempt_upto(
         return Ok(trial);
     };
     let completed = exec::run(&invocation)?;
+    trial.again = Some((invocation.clone(), trial.first_diagnostic.clone()));
+    suite(job, &mut trial, "test", &invocation, completed)?;
+    Ok(trial)
+}
+
+/// What a finished suite leaves on the trial: its seconds, its log, its counts and, when it
+/// failed, its first error.
+fn suite(
+    job: &Job<'_>,
+    trial: &mut Trial,
+    name: &str,
+    invocation: &Invocation,
+    completed: Completed,
+) -> std::io::Result<()> {
+    let normalizer = Normalizer::rooted_at(trial.sandbox.root());
     trial.test_seconds = completed.seconds;
-    log(&trial.sandbox, "test", &invocation, &completed)?;
+    log(&trial.sandbox, name, invocation, &completed)?;
     trial.phase = Phase::Tested;
     trial.counts = parse::counts(
         job.manifest.test.parser,
@@ -532,7 +554,34 @@ fn attempt_upto(
         trial.first_diagnostic = normalizer.first(&completed.stderr);
     }
     trial.test = Some(completed);
-    Ok(trial)
+    Ok(())
+}
+
+/// Run the suite a second time over the same build, for a half under test that failed it.
+///
+/// Document 08.7 says two consecutive failures or it did not happen, and a suite is the part of a
+/// cell that races: a shell reaping a child, a timer, a port. Only a wrong answer or a crash is
+/// tried again, since a timeout already spent the whole limit once and a build that failed has no
+/// suite to run. The second run is what the cell is graded on either way, and a pass there marks
+/// the record as a flake so the report can count them.
+fn again(
+    job: &Job<'_>,
+    trial: &mut Trial,
+    graded: Graded,
+    reference: Option<&Trial>,
+) -> std::io::Result<(Graded, bool)> {
+    if !matches!(graded.outcome, Outcome::WrongAnswer | Outcome::Crashed) {
+        return Ok((graded, false));
+    }
+    let Some((invocation, diagnostic)) = trial.again.clone() else {
+        return Ok((graded, false));
+    };
+    let completed = exec::run(&invocation)?;
+    trial.first_diagnostic = diagnostic;
+    suite(job, trial, "test-again", &invocation, completed)?;
+    let second = grade(job.manifest, trial, reference);
+    let flaked = second.outcome == Outcome::Passed;
+    Ok((second, flaked))
 }
 
 /// The build steps an extent asks for.
@@ -1250,6 +1299,7 @@ fn record(job: &Job<'_>, trial: &Trial, graded: Graded) -> RunRecord {
         // back, and it does that on the way out rather than here, so a record cannot claim to have
         // been reused because a field was copied from somewhere.
         reused: false,
+        flaked: false,
     }
 }
 
@@ -1761,6 +1811,7 @@ int main(void){ fprintf(stderr, "error: the thing went wrong\n"); return 1; }
                 skipped: 0,
             }),
             first_diagnostic: None,
+            again: None,
         }
     }
 
@@ -1860,6 +1911,31 @@ int main(void){ fprintf(stderr, "error: the thing went wrong\n"); return 1; }
             Phase::Tested,
             "it ran, so the phase is tested and the outcome carries the bad news"
         );
+        assert!(
+            !record.flaked,
+            "it failed both times, so the failure is real"
+        );
+    }
+
+    /// A program that fails the first time it runs and passes every time after, which is what a
+    /// test with a race in it looks like from outside. Spec 08.7 wants two failures in a row.
+    #[test]
+    fn a_suite_that_passes_when_run_again_passes_and_is_marked_flaky() {
+        let marker = std::env::temp_dir().join(format!("rrc-flaky-{}", std::process::id()));
+        let _ = std::fs::remove_file(&marker);
+        let source = format!(
+            "#include <stdio.h>\nint main(void){{ FILE *f = fopen(\"{}\", \"r\"); if (f) return 0; f = fopen(\"{}\", \"w\"); if (f) fclose(f); return 1; }}\n",
+            marker.display(),
+            marker.display()
+        );
+        let Some(f) = fixture("flaky", &source) else {
+            return;
+        };
+        let manifest = manifest("");
+        let record = graded(&job(&f, &manifest), Slot::A).unwrap();
+        let _ = std::fs::remove_file(&marker);
+        assert_eq!(record.outcome, Outcome::Passed);
+        assert!(record.flaked);
     }
 
     /// Calling a function that is not there, which fails at a different place on different hosts.
