@@ -1279,10 +1279,38 @@ pub fn provenance(toolchain: &Toolchain) -> Provenance {
         host: Provenance::host_name(),
         gcc_version: first_line(&toolchain.reference),
         rucc_version: first_line(&toolchain.under_test),
-        rucc_commit: String::new(),
+        rucc_commit: commit_of(&toolchain.under_test),
         tool_prefixes: Vec::new(),
         as_user: String::new(),
     }
+}
+
+/// The commit the compiler under test was built from, or nothing when there is no telling.
+///
+/// rucc does not say its commit in `--version`, so this asks `RRC_RUCC_COMMIT` first, for a binary
+/// copied out of its checkout, and then git in the directory the binary is in, which answers for
+/// one run straight out of `target/release`. A binary that is neither gets an empty string and the
+/// summary leaves the commit off rather than printing a bare `+g`.
+fn commit_of(compiler: &Path) -> String {
+    if let Ok(commit) = std::env::var("RRC_RUCC_COMMIT") {
+        return commit.trim().to_string();
+    }
+    let Some(dir) = std::fs::canonicalize(compiler)
+        .ok()
+        .and_then(|path| path.parent().map(Path::to_path_buf))
+    else {
+        return String::new();
+    };
+    std::process::Command::new("git")
+        .arg("-C")
+        .arg(dir)
+        .args(["rev-parse", "--short=8", "HEAD"])
+        .stderr(std::process::Stdio::null())
+        .output()
+        .ok()
+        .filter(|output| output.status.success())
+        .map(|output| String::from_utf8_lossy(&output.stdout).trim().to_string())
+        .unwrap_or_default()
 }
 
 fn first_line(compiler: &Path) -> String {
