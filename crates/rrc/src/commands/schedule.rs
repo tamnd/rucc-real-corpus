@@ -2156,6 +2156,7 @@ oracle = "self-checking"
             excluded_by: None,
             built_against: Vec::new(),
             reused: false,
+            flaked: false,
         }
     }
 }

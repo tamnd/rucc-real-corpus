@@ -302,6 +302,14 @@ pub struct RunRecord {
     /// record written before there was a cache.
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub reused: bool,
+    /// Whether the suite failed once and passed when it was run again straight after.
+    ///
+    /// Document 08.7 says two consecutive failures or it did not happen, so such a cell is graded
+    /// on the second run, and this is the flake counter the same section asks the report to show.
+    /// bash's `procsub1.sub` is one: it races the shell reaping a process substitution against the
+    /// `wait` for it, and loses about one run in seventy whichever compiler built the shell.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub flaked: bool,
 }
 
 /// What `concurrency` means on a record written before the field existed.
@@ -456,6 +464,7 @@ mod tests {
             excluded_by: None,
             built_against: Vec::new(),
             reused: false,
+            flaked: false,
         }
     }
 
