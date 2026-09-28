@@ -111,13 +111,15 @@ impl Summary {
             } else {
                 format!("  as {}", provenance.as_user)
             };
+            let commit = if provenance.rucc_commit.is_empty() {
+                String::new()
+            } else {
+                format!("+g{}", provenance.rucc_commit)
+            };
             let _ = writeln!(
                 out,
-                "rucc-real-corpus  rucc {}+g{}  gcc {}  {}{user}",
-                provenance.rucc_version,
-                provenance.rucc_commit,
-                provenance.gcc_version,
-                provenance.host
+                "rucc-real-corpus  rucc {}{commit}  gcc {}  {}{user}",
+                provenance.rucc_version, provenance.gcc_version, provenance.host
             );
         }
 
@@ -163,6 +165,16 @@ impl Summary {
 mod tests {
     use super::*;
     use crate::tests::record;
+
+    #[test]
+    fn the_commit_is_left_off_the_header_when_there_is_none() {
+        let with = Summary::of(&[record("a", Outcome::Passed)]).render();
+        assert!(with.contains("rucc 0.5.1+g8f2a1c  gcc"), "{with}");
+        let mut bare = record("a", Outcome::Passed);
+        bare.provenance.rucc_commit = String::new();
+        let without = Summary::of(&[bare]).render();
+        assert!(without.contains("rucc 0.5.1  gcc"), "{without}");
+    }
 
     #[test]
     fn all_eight_outcomes_are_printed_even_when_they_are_zero() {
