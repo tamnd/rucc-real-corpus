@@ -8,17 +8,24 @@ The `files` and `lines` columns are the size of the pinned source, counted befor
 
 | project | rung | files | lines | cells passed | behind gcc on tests |
 | --- | --- | ---: | ---: | ---: | ---: |
+| [bash](bash.md) | R4 | 444 | 203,742 | 4 of 4 | none |
 | [blake2](blake2.md) | R1 | 62 | 65,842 | 4 of 4 | none |
 | [brotli](brotli.md) | R2 | 109 | 42,932 | 4 of 4 | none |
+| [busybox](busybox.md) | R4 | 776 | 297,293 | 4 of 4 | none |
+| [byacc](byacc.md) | R4 | 299 | 118,809 | 4 of 4 | none |
 | [bzip2](bzip2.md) | R1 | 15 | 8,127 | 4 of 4 | none |
 | [c4](c4.md) | R0 | 2 | 535 | 4 of 4 | none |
 | [chibi-scheme](chibi-scheme.md) | R3 | 47 | 24,405 | 4 of 4 | none |
 | [cjson](cjson.md) | R2 | 99 | 22,367 | 4 of 4 | none |
 | [cmocka](cmocka.md) | R2 | 51 | 9,613 | 4 of 4 | none |
 | [coremark](coremark.md) | R0 | 16 | 4,543 | 4 of 4 | none |
+| [diffutils](diffutils.md) | R4 | 870 | 188,884 | 4 of 4 | none |
 | [duktape](duktape.md) | R3 | 351 | 426,097 | 4 of 4 | none |
 | [femtolisp](femtolisp.md) | R3 | 55 | 19,287 | 4 of 4 | none |
+| [flex](flex.md) | R4 | 46 | 26,145 | 4 of 4 | none |
 | [gdbm](gdbm.md) | R2 | 100 | 28,049 | 4 of 4 | none |
+| [grep](grep.md) | R4 | 816 | 183,539 | 4 of 4 | none |
+| [gzip](gzip.md) | R4 | 240 | 60,701 | 4 of 4 | none |
 | [heatshrink](heatshrink.md) | R0 | 11 | 4,458 | 3 of 4 | none |
 | [incbin](incbin.md) | R0 | 3 | 806 | 1 of 4 | none |
 | [janet](janet.md) | R3 | 65 | 40,404 | 4 of 4 | none |
@@ -44,6 +51,7 @@ The `files` and `lines` columns are the size of the pinned source, counted befor
 | [lua](lua.md) | R3 | 69 | 32,378 | 4 of 4 | none |
 | [lua-nojumptable](lua-nojumptable.md) | R3 | 69 | 32,378 | 4 of 4 | none |
 | [lz4](lz4.md) | R1 | 69 | 28,036 | 4 of 4 | none |
+| [mawk](mawk.md) | R4 | 65 | 25,446 | 4 of 4 | none |
 | [micropython](micropython.md) | R3 | 18,879 | 15,320,395 | 4 of 4 | none |
 | [minunit](minunit.md) | R1 | 2 | 477 | 4 of 4 | none |
 | [monocypher](monocypher.md) | R1 | 11 | 23,116 | 4 of 4 | none |
@@ -51,16 +59,22 @@ The `files` and `lines` columns are the size of the pinned source, counted befor
 | [oniguruma](oniguruma.md) | R2 | 89 | 102,240 | 4 of 4 | none |
 | [parson](parson.md) | R0 | 3 | 3,672 | 4 of 4 | none |
 | [pcre2](pcre2.md) | R2 | 85 | 149,512 | 4 of 4 | none |
+| [pdpmake](pdpmake.md) | R4 | 10 | 4,297 | 4 of 4 | none |
 | [picohttpparser](picohttpparser.md) | R0 | 6 | 1,538 | 4 of 4 | none |
 | [quickjs](quickjs.md) | R3 | 35 | 91,003 | 4 of 4 | none |
 | [rpmalloc](rpmalloc.md) | R1 | 10 | 6,823 | 4 of 4 | none |
 | [sds](sds.md) | R0 | 4 | 1,701 | 4 of 4 | none |
+| [sed](sed.md) | R4 | 498 | 107,964 | 4 of 4 | none |
+| [sqlite-shell](sqlite-shell.md) | R4 | 354 | 440,935 | 4 of 4 | none |
+| [tar](tar.md) | R4 | 547 | 145,397 | 4 of 4 | none |
 | [tcc](tcc.md) | R3 | 353 | 134,171 | 4 of 4 | none |
 | [tinf](tinf.md) | R0 | 10 | 4,002 | 4 of 4 | none |
 | [tinycthread](tinycthread.md) | R1 | 4 | 1,363 | 4 of 4 | none |
 | [tinyexpr](tinyexpr.md) | R0 | 9 | 2,496 | 4 of 4 | none |
+| [toybox](toybox.md) | R4 | 302 | 91,072 | 4 of 4 | none |
 | [uzlib](uzlib.md) | R1 | 14 | 1,954 | 4 of 4 | none |
 | [wren](wren.md) | R3 | 67 | 14,811 | 3 of 4 | 1 |
 | [xxhash](xxhash.md) | R1 | 44 | 63,655 | 4 of 4 | none |
+| [xz](xz.md) | R4 | 248 | 64,288 | 4 of 4 | none |
 | [zlib](zlib.md) | R1 | 75 | 42,769 | 4 of 4 | none |
 | [zstd](zstd.md) | R2 | 277 | 137,191 | 4 of 4 | none |

@@ -236,6 +236,62 @@ Read none of it as a quality measurement. These are cheap proxies, collected bec
 | [rpmalloc](projects/rpmalloc.md) | Os | 2.06s | 4.87s | 0.42x | 756s | 725s | 1.04x | 46.2 MiB | 55.4 MiB | 0.83x |
 | [libuv](projects/libuv.md) | O1 | 177s | 209s | 0.85x | 56.79s | 56.33s | 1.01x | 72.9 MiB | 76.1 MiB | 0.96x |
 | [libuv](projects/libuv.md) | O0 | 171s | 181s | 0.95x | 56.49s | 57.31s | 0.99x | 77.1 MiB | 69.8 MiB | 1.11x |
+| [bash](projects/bash.md) | O0 | 84s | 100s | 0.84x | 195s | 190s | 1.03x | 99.8 MiB | 100.0 MiB | 1.00x |
+| [bash](projects/bash.md) | O1 | 98s | 138s | 0.71x | 198s | 181s | 1.09x | 101.6 MiB | 100.0 MiB | 1.02x |
+| [bash](projects/bash.md) | Os | 101s | 181s | 0.55x | 185s | 196s | 0.94x | 99.5 MiB | 104.9 MiB | 0.95x |
+| [bash](projects/bash.md) | O2 | 86s | 197s | 0.43x | 205s | 196s | 1.04x | 99.8 MiB | 117.0 MiB | 0.85x |
+| [busybox](projects/busybox.md) | O0 | 163s | 255s | 0.64x | 297s | 271s | 1.10x | 99.7 MiB | 99.3 MiB | 1.00x |
+| [busybox](projects/busybox.md) | O1 | 285s | 296s | 0.96x | 261s | 479s | 0.54x | 99.8 MiB | 99.3 MiB | 1.00x |
+| [busybox](projects/busybox.md) | O2 | 639s | 406s | 1.58x | 302s | 257s | 1.18x | 99.3 MiB | 100.6 MiB | 0.99x |
+| [byacc](projects/byacc.md) | O0 | 6.36s | 7.93s | 0.80x | 8.45s | 8.85s | 0.95x | 18.7 MiB | 45.9 MiB | 0.41x |
+| [byacc](projects/byacc.md) | O1 | 7.71s | 10.87s | 0.71x | 8.44s | 8.77s | 0.96x | 21.7 MiB | 60.7 MiB | 0.36x |
+| [byacc](projects/byacc.md) | O2 | 7.92s | 14.75s | 0.54x | 7.87s | 8.67s | 0.91x | 24.2 MiB | 72.8 MiB | 0.33x |
+| [byacc](projects/byacc.md) | Os | 8.05s | 16.32s | 0.49x | 9.63s | 9.19s | 1.05x | 20.3 MiB | 64.9 MiB | 0.31x |
+| [busybox](projects/busybox.md) | Os | 419s | 331s | 1.27x | 302s | 218s | 1.38x | 101.9 MiB | 100.6 MiB | 1.01x |
+| [diffutils](projects/diffutils.md) | O0 | 84s | 102s | 0.83x | 137s | 143s | 0.95x | 100.3 MiB | 100.4 MiB | 1.00x |
+| [diffutils](projects/diffutils.md) | O1 | 85s | 113s | 0.75x | 140s | 146s | 0.96x | 100.4 MiB | 100.2 MiB | 1.00x |
+| [diffutils](projects/diffutils.md) | O2 | 88s | 134s | 0.66x | 165s | 162s | 1.01x | 99.1 MiB | 100.3 MiB | 0.99x |
+| [diffutils](projects/diffutils.md) | Os | 91s | 124s | 0.73x | 161s | 167s | 0.97x | 101.1 MiB | 78.3 MiB | 1.29x |
+| [flex](projects/flex.md) | O0 | 23.27s | 33.69s | 0.69x | 59.54s | 74s | 0.80x | 96.6 MiB | 100.3 MiB | 0.96x |
+| [flex](projects/flex.md) | O1 | 27.04s | 38.26s | 0.71x | 69s | 96s | 0.72x | 65.4 MiB | 84.7 MiB | 0.77x |
+| [flex](projects/flex.md) | O2 | 26.56s | 49.72s | 0.53x | 68s | 115s | 0.59x | 96.5 MiB | 78.4 MiB | 1.23x |
+| [flex](projects/flex.md) | Os | 26.85s | 42.37s | 0.63x | 65s | 108s | 0.60x | 75.1 MiB | 74.9 MiB | 1.00x |
+| [grep](projects/grep.md) | O0 | 83s | 103s | 0.80x | 257s | 241s | 1.06x | 100.2 MiB | 100.3 MiB | 1.00x |
+| [grep](projects/grep.md) | O1 | 90s | 112s | 0.80x | 238s | 234s | 1.02x | 100.3 MiB | 100.3 MiB | 1.00x |
+| [grep](projects/grep.md) | O2 | 98s | 124s | 0.78x | 239s | 246s | 0.97x | 100.4 MiB | 100.3 MiB | 1.00x |
+| [grep](projects/grep.md) | Os | 97s | 121s | 0.80x | 233s | 246s | 0.95x | 100.2 MiB | 100.3 MiB | 1.00x |
+| [gzip](projects/gzip.md) | O1 | 46.43s | 99s | 0.47x | 59.96s | 50.28s | 1.19x | 100.5 MiB | 118.8 MiB | 0.85x |
+| [gzip](projects/gzip.md) | O0 | 41.59s | 97s | 0.43x | 89s | 75s | 1.18x | 99.2 MiB | 106.4 MiB | 0.93x |
+| [gzip](projects/gzip.md) | O2 | 59.00s | 95s | 0.62x | 79s | 36.00s | 2.18x | 99.7 MiB | 121.1 MiB | 0.82x |
+| [gzip](projects/gzip.md) | Os | 56.03s | 83s | 0.67x | 92s | 59.11s | 1.55x | 99.7 MiB | 113.0 MiB | 0.88x |
+| [mawk](projects/mawk.md) | O0 | 16.14s | 20.71s | 0.78x | 1.23s | 1.08s | 1.15x | 35.4 MiB | 45.8 MiB | 0.77x |
+| [mawk](projects/mawk.md) | O1 | 16.65s | 31.12s | 0.53x | 0.96s | 0.99s | 0.97x | 37.7 MiB | 51.1 MiB | 0.74x |
+| [mawk](projects/mawk.md) | O2 | 19.14s | 37.40s | 0.51x | 1.20s | 1.20s | 1.00x | 35.3 MiB | 58.2 MiB | 0.61x |
+| [pdpmake](projects/pdpmake.md) | O0 | 1.71s | 2.61s | 0.66x | 1.95s | 1.40s | 1.39x | 14.3 MiB | 38.0 MiB | 0.38x |
+| [pdpmake](projects/pdpmake.md) | O1 | 2.15s | 2.87s | 0.75x | 1.89s | 2.12s | 0.89x | 13.8 MiB | 44.5 MiB | 0.31x |
+| [mawk](projects/mawk.md) | Os | 14.90s | 33.31s | 0.45x | 0.78s | 0.95s | 0.82x | 36.0 MiB | 54.1 MiB | 0.67x |
+| [pdpmake](projects/pdpmake.md) | O2 | 1.73s | 6.08s | 0.28x | 2.10s | 2.33s | 0.90x | 15.2 MiB | 49.7 MiB | 0.31x |
+| [pdpmake](projects/pdpmake.md) | Os | 1.25s | 4.02s | 0.31x | 1.82s | 2.88s | 0.63x | 12.4 MiB | 46.4 MiB | 0.27x |
+| [sed](projects/sed.md) | O0 | 69s | 78s | 0.88x | 118s | 100s | 1.18x | 98.7 MiB | 99.2 MiB | 1.00x |
+| [sed](projects/sed.md) | O1 | 72s | 83s | 0.87x | 119s | 100s | 1.19x | 99.3 MiB | 99.5 MiB | 1.00x |
+| [sed](projects/sed.md) | O2 | 53.19s | 83s | 0.64x | 95s | 103s | 0.92x | 99.6 MiB | 99.6 MiB | 1.00x |
+| [sed](projects/sed.md) | Os | 57.64s | 83s | 0.70x | 89s | 99s | 0.90x | 101.0 MiB | 99.6 MiB | 1.01x |
+| [sqlite-shell](projects/sqlite-shell.md) | O0 | 43.80s | 75s | 0.58x | 12.07s | 10.93s | 1.10x | 258.0 MiB | 338.3 MiB | 0.76x |
+| [sqlite-shell](projects/sqlite-shell.md) | O1 | 68s | 136s | 0.50x | 10.95s | 9.56s | 1.15x | 248.6 MiB | 338.0 MiB | 0.74x |
+| [sqlite-shell](projects/sqlite-shell.md) | O2 | 71s | 232s | 0.31x | 10.96s | 8.26s | 1.33x | 268.8 MiB | 362.0 MiB | 0.74x |
+| [sqlite-shell](projects/sqlite-shell.md) | Os | 62s | 180s | 0.35x | 10.12s | 9.14s | 1.11x | 251.2 MiB | 361.9 MiB | 0.69x |
+| [tar](projects/tar.md) | O0 | 78s | 112s | 0.70x | 508s | 320s | 1.59x | 100.6 MiB | 100.6 MiB | 1.00x |
+| [tar](projects/tar.md) | O1 | 84s | 128s | 0.66x | 508s | 296s | 1.72x | 100.6 MiB | 100.7 MiB | 1.00x |
+| [tar](projects/tar.md) | O2 | 59.59s | 94s | 0.63x | 274s | 276s | 0.99x | 100.7 MiB | 100.7 MiB | 1.00x |
+| [tar](projects/tar.md) | Os | 61s | 91s | 0.67x | 269s | 277s | 0.97x | 100.8 MiB | 100.7 MiB | 1.00x |
+| [toybox](projects/toybox.md) | O0 | 10.97s | 10.93s | 1.00x | 155s | 155s | 1.00x | 50.4 MiB | 50.0 MiB | 1.01x |
+| [toybox](projects/toybox.md) | O1 | 12.45s | 13.85s | 0.90x | 150s | 150s | 1.00x | 50.4 MiB | 56.1 MiB | 0.90x |
+| [toybox](projects/toybox.md) | O2 | 11.74s | 19.12s | 0.61x | 158s | 189s | 0.84x | 50.0 MiB | 64.0 MiB | 0.78x |
+| [toybox](projects/toybox.md) | Os | 11.62s | 28.15s | 0.41x | 157s | 182s | 0.87x | 50.5 MiB | 59.2 MiB | 0.85x |
+| [xz](projects/xz.md) | O0 | 49.81s | 80s | 0.62x | 28.38s | 30.17s | 0.94x | 99.9 MiB | 121.6 MiB | 0.82x |
+| [xz](projects/xz.md) | O1 | 51.57s | 93s | 0.56x | 29.17s | 28.37s | 1.03x | 99.9 MiB | 129.1 MiB | 0.77x |
+| [xz](projects/xz.md) | O2 | 51.60s | 99s | 0.52x | 28.65s | 31.63s | 0.91x | 100.0 MiB | 135.6 MiB | 0.74x |
+| [xz](projects/xz.md) | Os | 51.26s | 94s | 0.54x | 28.59s | 29.20s | 0.98x | 100.0 MiB | 132.3 MiB | 0.76x |
 
 ## Size
 
@@ -467,6 +523,62 @@ Read none of it as a quality measurement. These are cheap proxies, collected bec
 | [rpmalloc](projects/rpmalloc.md) | Os | 71.7 KiB | 38.2 KiB | 1.88x | 96.5 KiB | 60.0 KiB | 1.61x |
 | [libuv](projects/libuv.md) | O1 | not measured | not measured | not measured | not measured | not measured | not measured |
 | [libuv](projects/libuv.md) | O0 | not measured | not measured | not measured | not measured | not measured | not measured |
+| [bash](projects/bash.md) | O0 | 1.8 MiB | 1.4 MiB | 1.30x | 2.2 MiB | 1.6 MiB | 1.35x |
+| [bash](projects/bash.md) | O1 | 1.6 MiB | 1.2 MiB | 1.35x | 1.9 MiB | 1.4 MiB | 1.40x |
+| [bash](projects/bash.md) | Os | 1.6 MiB | 1005.3 KiB | 1.66x | 1.9 MiB | 1.2 MiB | 1.68x |
+| [bash](projects/bash.md) | O2 | 1.6 MiB | 1.3 MiB | 1.24x | 1.9 MiB | 1.5 MiB | 1.31x |
+| [busybox](projects/busybox.md) | O0 | 1.8 MiB | 1.6 MiB | 1.12x | 1.8 MiB | 1.6 MiB | 1.12x |
+| [busybox](projects/busybox.md) | O1 | 1.6 MiB | 1.1 MiB | 1.40x | 1.6 MiB | 1.1 MiB | 1.40x |
+| [busybox](projects/busybox.md) | O2 | 1.6 MiB | 1.2 MiB | 1.41x | 1.6 MiB | 1.2 MiB | 1.40x |
+| [byacc](projects/byacc.md) | O0 | 209.3 KiB | 163.3 KiB | 1.28x | 290.7 KiB | 193.0 KiB | 1.51x |
+| [byacc](projects/byacc.md) | O1 | 190.5 KiB | 132.1 KiB | 1.44x | 270.1 KiB | 159.0 KiB | 1.70x |
+| [byacc](projects/byacc.md) | O2 | 190.8 KiB | 143.0 KiB | 1.33x | 270.1 KiB | 166.6 KiB | 1.62x |
+| [byacc](projects/byacc.md) | Os | 189.3 KiB | 110.9 KiB | 1.71x | 270.2 KiB | 139.1 KiB | 1.94x |
+| [busybox](projects/busybox.md) | Os | 1.6 MiB | 975.8 KiB | 1.66x | 1.6 MiB | 981.5 KiB | 1.66x |
+| [diffutils](projects/diffutils.md) | O0 | 192.5 KiB | 149.2 KiB | 1.29x | 240.1 KiB | 186.0 KiB | 1.29x |
+| [diffutils](projects/diffutils.md) | O1 | 175.6 KiB | 122.4 KiB | 1.43x | 222.4 KiB | 153.3 KiB | 1.45x |
+| [diffutils](projects/diffutils.md) | O2 | 177.8 KiB | 132.5 KiB | 1.34x | 226.4 KiB | 162.1 KiB | 1.40x |
+| [diffutils](projects/diffutils.md) | Os | 172.0 KiB | 98.3 KiB | 1.75x | 214.5 KiB | 130.3 KiB | 1.65x |
+| [flex](projects/flex.md) | O0 | 455.8 KiB | 331.0 KiB | 1.38x | 655.1 KiB | 364.3 KiB | 1.80x |
+| [flex](projects/flex.md) | O1 | 444.6 KiB | 297.1 KiB | 1.50x | 638.5 KiB | 327.3 KiB | 1.95x |
+| [flex](projects/flex.md) | O2 | 444.6 KiB | 322.6 KiB | 1.38x | 638.5 KiB | 351.5 KiB | 1.82x |
+| [flex](projects/flex.md) | Os | 443.0 KiB | 269.8 KiB | 1.64x | 638.6 KiB | 299.4 KiB | 2.13x |
+| [grep](projects/grep.md) | O0 | 218.9 KiB | 182.8 KiB | 1.20x | 272.8 KiB | 225.2 KiB | 1.21x |
+| [grep](projects/grep.md) | O1 | 194.3 KiB | 138.0 KiB | 1.41x | 241.6 KiB | 174.1 KiB | 1.39x |
+| [grep](projects/grep.md) | O2 | 194.4 KiB | 160.2 KiB | 1.21x | 241.7 KiB | 194.7 KiB | 1.24x |
+| [grep](projects/grep.md) | Os | 191.6 KiB | 113.7 KiB | 1.68x | 237.9 KiB | 147.4 KiB | 1.61x |
+| [gzip](projects/gzip.md) | O1 | 92.7 KiB | 83.1 KiB | 1.11x | 121.5 KiB | 176.8 KiB | 0.69x |
+| [gzip](projects/gzip.md) | O0 | 105.2 KiB | 94.0 KiB | 1.12x | 134.7 KiB | 191.1 KiB | 0.70x |
+| [gzip](projects/gzip.md) | O2 | 95.0 KiB | 86.8 KiB | 1.09x | 121.5 KiB | 180.6 KiB | 0.67x |
+| [gzip](projects/gzip.md) | Os | 92.2 KiB | 69.3 KiB | 1.33x | 117.4 KiB | 164.7 KiB | 0.71x |
+| [mawk](projects/mawk.md) | O0 | 232.0 KiB | 196.9 KiB | 1.18x | 270.6 KiB | 224.8 KiB | 1.20x |
+| [mawk](projects/mawk.md) | O1 | 199.4 KiB | 158.4 KiB | 1.26x | 237.5 KiB | 186.9 KiB | 1.27x |
+| [mawk](projects/mawk.md) | O2 | 200.7 KiB | 169.9 KiB | 1.18x | 237.5 KiB | 198.2 KiB | 1.20x |
+| [pdpmake](projects/pdpmake.md) | O0 | 54.6 KiB | 44.1 KiB | 1.24x | 75.8 KiB | 58.4 KiB | 1.30x |
+| [pdpmake](projects/pdpmake.md) | O1 | 47.8 KiB | 36.8 KiB | 1.30x | 71.3 KiB | 53.5 KiB | 1.33x |
+| [mawk](projects/mawk.md) | Os | 198.6 KiB | 132.5 KiB | 1.50x | 237.5 KiB | 158.9 KiB | 1.49x |
+| [pdpmake](projects/pdpmake.md) | O2 | 47.8 KiB | 39.4 KiB | 1.21x | 71.3 KiB | 53.2 KiB | 1.34x |
+| [pdpmake](projects/pdpmake.md) | Os | 47.7 KiB | 31.3 KiB | 1.53x | 71.3 KiB | 45.4 KiB | 1.57x |
+| [sed](projects/sed.md) | O0 | 153.5 KiB | 131.8 KiB | 1.16x | 190.8 KiB | 165.5 KiB | 1.15x |
+| [sed](projects/sed.md) | O1 | 137.8 KiB | 104.0 KiB | 1.32x | 172.9 KiB | 133.0 KiB | 1.30x |
+| [sed](projects/sed.md) | O2 | 138.4 KiB | 113.5 KiB | 1.22x | 172.9 KiB | 141.2 KiB | 1.22x |
+| [sed](projects/sed.md) | Os | 132.9 KiB | 84.0 KiB | 1.58x | 169.1 KiB | 109.6 KiB | 1.54x |
+| [sqlite-shell](projects/sqlite-shell.md) | O0 | 2.1 MiB | 1.8 MiB | 1.19x | 2.4 MiB | 1.9 MiB | 1.25x |
+| [sqlite-shell](projects/sqlite-shell.md) | O1 | 1.9 MiB | 1.4 MiB | 1.34x | 2.2 MiB | 1.5 MiB | 1.41x |
+| [sqlite-shell](projects/sqlite-shell.md) | O2 | 1.9 MiB | 1.6 MiB | 1.16x | 2.2 MiB | 1.7 MiB | 1.26x |
+| [sqlite-shell](projects/sqlite-shell.md) | Os | 1.9 MiB | 1.1 MiB | 1.68x | 2.2 MiB | 1.2 MiB | 1.73x |
+| [tar](projects/tar.md) | O0 | 604.7 KiB | 484.6 KiB | 1.25x | 735.3 KiB | 566.2 KiB | 1.30x |
+| [tar](projects/tar.md) | O1 | 546.0 KiB | 393.1 KiB | 1.39x | 671.6 KiB | 462.1 KiB | 1.45x |
+| [tar](projects/tar.md) | O2 | 543.0 KiB | 408.0 KiB | 1.33x | 667.7 KiB | 473.3 KiB | 1.41x |
+| [tar](projects/tar.md) | Os | 537.0 KiB | 304.2 KiB | 1.77x | 660.1 KiB | 375.6 KiB | 1.76x |
+| [toybox](projects/toybox.md) | O0 | 746.5 KiB | 584.9 KiB | 1.28x | 757.5 KiB | 593.6 KiB | 1.28x |
+| [toybox](projects/toybox.md) | O1 | 657.4 KiB | 519.9 KiB | 1.26x | 669.4 KiB | 529.5 KiB | 1.26x |
+| [toybox](projects/toybox.md) | O2 | 670.1 KiB | 555.0 KiB | 1.21x | 681.4 KiB | 565.5 KiB | 1.21x |
+| [toybox](projects/toybox.md) | Os | 653.4 KiB | 446.3 KiB | 1.46x | 665.5 KiB | 453.5 KiB | 1.47x |
+| [xz](projects/xz.md) | O0 | 106.6 KiB | 88.9 KiB | 1.20x | 148.6 KiB | 117.6 KiB | 1.26x |
+| [xz](projects/xz.md) | O1 | 99.7 KiB | 83.2 KiB | 1.20x | 135.3 KiB | 108.3 KiB | 1.25x |
+| [xz](projects/xz.md) | O2 | 100.1 KiB | 85.5 KiB | 1.17x | 139.3 KiB | 112.0 KiB | 1.24x |
+| [xz](projects/xz.md) | Os | 98.9 KiB | 72.1 KiB | 1.37x | 135.3 KiB | 100.4 KiB | 1.35x |
 
 ## The project's own tests
 
@@ -698,3 +810,59 @@ The last column is the one to read. Everything else on this page is a proxy; thi
 | [rpmalloc](projects/rpmalloc.md) | Os | not counted | not counted | not counted | not comparable |
 | [libuv](projects/libuv.md) | O1 | 444 | 446 | 444 | same |
 | [libuv](projects/libuv.md) | O0 | 444 | 446 | 444 | same |
+| [bash](projects/bash.md) | O0 | 75 | 86 | 75 | same |
+| [bash](projects/bash.md) | O1 | 75 | 86 | 75 | same |
+| [bash](projects/bash.md) | Os | 75 | 86 | 75 | same |
+| [bash](projects/bash.md) | O2 | 75 | 86 | 75 | same |
+| [busybox](projects/busybox.md) | O0 | 1011 | 1020 | 1011 | same |
+| [busybox](projects/busybox.md) | O1 | 1011 | 1020 | 1011 | same |
+| [busybox](projects/busybox.md) | O2 | 1011 | 1020 | 1011 | same |
+| [byacc](projects/byacc.md) | O0 | 344 | 344 | 344 | same |
+| [byacc](projects/byacc.md) | O1 | 344 | 344 | 344 | same |
+| [byacc](projects/byacc.md) | O2 | 344 | 344 | 344 | same |
+| [byacc](projects/byacc.md) | Os | 344 | 344 | 344 | same |
+| [busybox](projects/busybox.md) | Os | 1011 | 1020 | 1011 | same |
+| [diffutils](projects/diffutils.md) | O0 | 307 | 377 | 307 | same |
+| [diffutils](projects/diffutils.md) | O1 | 307 | 377 | 307 | same |
+| [diffutils](projects/diffutils.md) | O2 | 307 | 377 | 307 | same |
+| [diffutils](projects/diffutils.md) | Os | 307 | 377 | 307 | same |
+| [flex](projects/flex.md) | O0 | 114 | 114 | 114 | same |
+| [flex](projects/flex.md) | O1 | 114 | 114 | 114 | same |
+| [flex](projects/flex.md) | O2 | 114 | 114 | 114 | same |
+| [flex](projects/flex.md) | Os | 114 | 114 | 114 | same |
+| [grep](projects/grep.md) | O0 | 366 | 443 | 366 | same |
+| [grep](projects/grep.md) | O1 | 366 | 443 | 366 | same |
+| [grep](projects/grep.md) | O2 | 366 | 443 | 366 | same |
+| [grep](projects/grep.md) | Os | 366 | 443 | 366 | same |
+| [gzip](projects/gzip.md) | O1 | 30 | 30 | 30 | same |
+| [gzip](projects/gzip.md) | O0 | 30 | 30 | 30 | same |
+| [gzip](projects/gzip.md) | O2 | 58 | 60 | 30 | 28 more |
+| [gzip](projects/gzip.md) | Os | 30 | 30 | 30 | same |
+| [mawk](projects/mawk.md) | O0 | 50 | 50 | 50 | same |
+| [mawk](projects/mawk.md) | O1 | 50 | 50 | 50 | same |
+| [mawk](projects/mawk.md) | O2 | 50 | 50 | 50 | same |
+| [pdpmake](projects/pdpmake.md) | O0 | 66 | 66 | 66 | same |
+| [pdpmake](projects/pdpmake.md) | O1 | 66 | 66 | 66 | same |
+| [mawk](projects/mawk.md) | Os | 50 | 50 | 50 | same |
+| [pdpmake](projects/pdpmake.md) | O2 | 66 | 66 | 66 | same |
+| [pdpmake](projects/pdpmake.md) | Os | 66 | 66 | 66 | same |
+| [sed](projects/sed.md) | O0 | 213 | 260 | 213 | same |
+| [sed](projects/sed.md) | O1 | 213 | 260 | 213 | same |
+| [sed](projects/sed.md) | O2 | 213 | 260 | 213 | same |
+| [sed](projects/sed.md) | Os | 213 | 260 | 213 | same |
+| [sqlite-shell](projects/sqlite-shell.md) | O0 | 475 | 475 | 475 | same |
+| [sqlite-shell](projects/sqlite-shell.md) | O1 | 475 | 475 | 475 | same |
+| [sqlite-shell](projects/sqlite-shell.md) | O2 | 475 | 475 | 475 | same |
+| [sqlite-shell](projects/sqlite-shell.md) | Os | 475 | 475 | 475 | same |
+| [tar](projects/tar.md) | O0 | 217 | 217 | 217 | same |
+| [tar](projects/tar.md) | O1 | 217 | 217 | 217 | same |
+| [tar](projects/tar.md) | O2 | 217 | 217 | 217 | same |
+| [tar](projects/tar.md) | Os | 217 | 217 | 217 | same |
+| [toybox](projects/toybox.md) | O0 | 1572 | 1572 | 1572 | same |
+| [toybox](projects/toybox.md) | O1 | 1572 | 1572 | 1572 | same |
+| [toybox](projects/toybox.md) | O2 | 1572 | 1572 | 1572 | same |
+| [toybox](projects/toybox.md) | Os | 1572 | 1572 | 1572 | same |
+| [xz](projects/xz.md) | O0 | 19 | 19 | 19 | same |
+| [xz](projects/xz.md) | O1 | 19 | 19 | 19 | same |
+| [xz](projects/xz.md) | O2 | 19 | 19 | 19 | same |
+| [xz](projects/xz.md) | Os | 19 | 19 | 19 | same |
