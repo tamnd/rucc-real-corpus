@@ -349,6 +349,14 @@ impl RunRecord {
             .as_deref()
             .is_some_and(|text| text.contains("No space left on device"))
     }
+
+    /// Whether the cell stopped because the manifest's time limit ran out, which says as much
+    /// about how busy the machine was as about the compiler. xz's suite takes twelve seconds on its
+    /// own and ran past three hundred on a machine with a load of sixty.
+    #[must_use]
+    pub fn timed_out(&self) -> bool {
+        self.outcome == Outcome::TimedOut
+    }
 }
 
 /// A JSON Lines file that records are appended to as a run proceeds.
@@ -460,6 +468,14 @@ mod tests {
         assert!(record.ran_out_of_disk());
         record.first_diagnostic = Some("inits.c:53:1: error: expected expression".into());
         assert!(!record.ran_out_of_disk());
+    }
+
+    #[test]
+    fn running_out_of_time_is_the_machine_too() {
+        let mut record = a_record();
+        assert!(!record.timed_out());
+        record.outcome = Outcome::TimedOut;
+        assert!(record.timed_out());
     }
 
     #[test]
