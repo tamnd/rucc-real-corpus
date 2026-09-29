@@ -116,19 +116,19 @@ Read none of it as a quality measurement. These are cheap proxies, collected bec
 | [libsir](projects/libsir.md) | O2 | 6.28s | 8.25s | 0.76x | 3.23s | 3.21s | 1.01x | 57.0 MiB | 60.9 MiB | 0.94x |
 | [libsir](projects/libsir.md) | Os | 5.50s | 7.96s | 0.69x | 3.18s | 3.20s | 0.99x | 37.0 MiB | 57.5 MiB | 0.64x |
 | [libmpfr](projects/libmpfr.md) | Os | 662s | 462s | 1.43x | 846s | 252s | 3.35x | 64.9 MiB | 56.7 MiB | 1.15x |
-| [libsodium](projects/libsodium.md) | O1 | 80s | 185s | 0.43x | 193s | 86s | 2.25x | 217.1 MiB | 122.8 MiB | 1.77x |
-| [libsodium](projects/libsodium.md) | O0 | 72s | 201s | 0.36x | 267s | 91s | 2.95x | 104.5 MiB | 130.7 MiB | 0.80x |
+| [libsodium](projects/libsodium.md) | O1 | 126s | 133s | 0.95x | 198s | 66s | 2.98x | 146.4 MiB | 121.4 MiB | 1.21x |
+| [libsodium](projects/libsodium.md) | O0 | 93s | 113s | 0.82x | 212s | 96s | 2.22x | 179.8 MiB | 128.5 MiB | 1.40x |
 | [libtommath](projects/libtommath.md) | O0 | 9.41s | 14.56s | 0.65x | 27.27s | 31.02s | 0.88x | 59.6 MiB | 52.9 MiB | 1.13x |
 | [libtommath](projects/libtommath.md) | O1 | 12.06s | 17.68s | 0.68x | 20.13s | 15.51s | 1.30x | 52.9 MiB | 53.3 MiB | 0.99x |
 | [libtommath](projects/libtommath.md) | O2 | 10.31s | 22.82s | 0.45x | 20.70s | 11.47s | 1.80x | 52.9 MiB | 58.8 MiB | 0.90x |
 | [libtommath](projects/libtommath.md) | Os | 9.70s | 17.93s | 0.54x | 25.64s | 14.81s | 1.73x | 58.8 MiB | 51.6 MiB | 1.14x |
-| [libsodium](projects/libsodium.md) | O2 | 170s | 135s | 1.26x | 263s | 66s | 4.01x | 218.5 MiB | 127.7 MiB | 1.71x |
+| [libsodium](projects/libsodium.md) | O2 | 114s | 128s | 0.90x | 134s | 80s | 1.67x | 149.5 MiB | 128.1 MiB | 1.17x |
 | [libyaml](projects/libyaml.md) | O0 | 20.98s | 14.24s | 1.47x | 10.64s | 1.02s | 10.42x | 63.7 MiB | 52.6 MiB | 1.21x |
 | [libyaml](projects/libyaml.md) | O1 | 14.12s | 26.29s | 0.54x | 11.78s | 1.05s | 11.17x | 63.9 MiB | 66.5 MiB | 0.96x |
 | [libyaml](projects/libyaml.md) | O2 | 18.87s | 28.63s | 0.66x | 14.89s | 1.21s | 12.36x | 62.4 MiB | 79.1 MiB | 0.79x |
 | [libyaml](projects/libyaml.md) | Os | 16.58s | 26.47s | 0.63x | 11.07s | 1.17s | 9.47x | 63.7 MiB | 75.6 MiB | 0.84x |
 | [linenoise](projects/linenoise.md) | O0 | 0.71s | 1.03s | 0.69x | 15.00s | 15.02s | 1.00x | 16.0 MiB | 40.7 MiB | 0.39x |
-| [libsodium](projects/libsodium.md) | Os | 102s | 134s | 0.76x | 219s | 58.12s | 3.77x | 215.0 MiB | 125.3 MiB | 1.72x |
+| [libsodium](projects/libsodium.md) | Os | 109s | 135s | 0.81x | 156s | 73s | 2.15x | 106.2 MiB | 125.4 MiB | 0.85x |
 | [linenoise](projects/linenoise.md) | O1 | 0.89s | 3.01s | 0.29x | 15.25s | 14.89s | 1.02x | 56.9 MiB | 47.0 MiB | 1.21x |
 | [llama2.c](projects/llama2.c.md) | O0 | 0.31s | 0.35s | 0.90x | 0.06s | 0.05s | 1.13x | 19.9 MiB | 31.6 MiB | 0.63x |
 | [llama2.c](projects/llama2.c.md) | O1 | 0.33s | 0.57s | 0.59x | 0.08s | 0.03s | not measured | 15.1 MiB | 46.4 MiB | 0.32x |
@@ -212,10 +212,10 @@ Read none of it as a quality measurement. These are cheap proxies, collected bec
 | [uzlib](projects/uzlib.md) | Os | 0.74s | 3.68s | 0.20x | 0.08s | 0.08s | 0.98x | 54.5 MiB | 40.0 MiB | 1.36x |
 | [tcc](projects/tcc.md) | O2 | 24.22s | 52.06s | 0.47x | 70s | 65s | 1.07x | 58.3 MiB | 94.6 MiB | 0.62x |
 | [tcc](projects/tcc.md) | Os | 23.32s | 35.98s | 0.65x | 61s | 70s | 0.88x | 61.2 MiB | 83.3 MiB | 0.73x |
-| [wren](projects/wren.md) | O0 | 6.76s | 12.73s | 0.53x | 30.42s | 33.64s | 0.90x | 60.7 MiB | 52.5 MiB | 1.16x |
-| [wren](projects/wren.md) | O1 | 7.70s | 19.87s | 0.39x | 27.89s | 28.46s | 0.98x | 60.4 MiB | 57.5 MiB | 1.05x |
-| [wren](projects/wren.md) | O2 | 7.83s | 26.84s | 0.29x | 28.81s | 26.40s | 1.09x | 54.6 MiB | 65.7 MiB | 0.83x |
-| [wren](projects/wren.md) | Os | 8.98s | 28.50s | 0.32x | 31.91s | 27.46s | 1.16x | 55.2 MiB | 63.4 MiB | 0.87x |
+| [wren](projects/wren.md) | O0 | 2.62s | 5.94s | 0.44x | 15.89s | 15.70s | 1.01x | 23.4 MiB | 52.8 MiB | 0.44x |
+| [wren](projects/wren.md) | O1 | 2.76s | 8.55s | 0.32x | 14.02s | 11.81s | 1.19x | 23.0 MiB | 57.3 MiB | 0.40x |
+| [wren](projects/wren.md) | O2 | 3.00s | 16.53s | 0.18x | 13.20s | 10.81s | 1.22x | 23.4 MiB | 65.1 MiB | 0.36x |
+| [wren](projects/wren.md) | Os | 3.70s | 12.89s | 0.29x | 12.64s | 9.51s | 1.33x | 22.9 MiB | 62.8 MiB | 0.36x |
 | [xxhash](projects/xxhash.md) | O0 | 4.91s | 5.00s | 0.98x | 34.59s | 17.38s | 1.99x | 53.9 MiB | 52.3 MiB | 1.03x |
 | [xxhash](projects/xxhash.md) | O1 | 10.71s | 22.09s | 0.48x | 35.91s | 17.34s | 2.07x | 57.4 MiB | 57.8 MiB | 0.99x |
 | [xxhash](projects/xxhash.md) | Os | 8.23s | 12.90s | 0.64x | 33.66s | 16.59s | 2.03x | 59.3 MiB | 50.7 MiB | 1.17x |
@@ -507,10 +507,10 @@ Read none of it as a quality measurement. These are cheap proxies, collected bec
 | [uzlib](projects/uzlib.md) | Os | 13.4 KiB | 8.9 KiB | 1.51x | 20.2 KiB | 21.6 KiB | 0.93x |
 | [tcc](projects/tcc.md) | O2 | not measured | not measured | not measured | not measured | not measured | not measured |
 | [tcc](projects/tcc.md) | Os | not measured | not measured | not measured | not measured | not measured | not measured |
-| [wren](projects/wren.md) | O0 | 218.8 KiB | 190.4 KiB | 1.15x | 283.0 KiB | 227.7 KiB | 1.24x |
-| [wren](projects/wren.md) | O1 | 205.2 KiB | 139.5 KiB | 1.47x | 270.2 KiB | 174.5 KiB | 1.55x |
-| [wren](projects/wren.md) | O2 | 206.7 KiB | 159.2 KiB | 1.30x | 271.8 KiB | 193.6 KiB | 1.40x |
-| [wren](projects/wren.md) | Os | 203.5 KiB | 123.8 KiB | 1.64x | 268.6 KiB | 158.8 KiB | 1.69x |
+| [wren](projects/wren.md) | O0 | 222.1 KiB | 190.4 KiB | 1.17x | 288.3 KiB | 227.7 KiB | 1.27x |
+| [wren](projects/wren.md) | O1 | 198.1 KiB | 139.5 KiB | 1.42x | 266.8 KiB | 174.5 KiB | 1.53x |
+| [wren](projects/wren.md) | O2 | 199.6 KiB | 159.2 KiB | 1.25x | 266.8 KiB | 193.6 KiB | 1.38x |
+| [wren](projects/wren.md) | Os | 197.0 KiB | 123.8 KiB | 1.59x | 266.8 KiB | 158.8 KiB | 1.68x |
 | [xxhash](projects/xxhash.md) | O0 | 37.1 KiB | 23.0 KiB | 1.61x | 55.6 KiB | 36.0 KiB | 1.54x |
 | [xxhash](projects/xxhash.md) | O1 | 138.9 KiB | 26.3 KiB | 5.28x | 179.9 KiB | 34.8 KiB | 5.18x |
 | [xxhash](projects/xxhash.md) | Os | 31.7 KiB | 9.0 KiB | 3.53x | 49.7 KiB | 17.7 KiB | 2.81x |
@@ -706,19 +706,19 @@ The last column is the one to read. Everything else on this page is a proxy; thi
 | [libsir](projects/libsir.md) | O2 | 36 | 36 | 36 | same |
 | [libsir](projects/libsir.md) | Os | 36 | 36 | 36 | same |
 | [libmpfr](projects/libmpfr.md) | Os | 196 | 198 | 198 | 2 fewer |
-| [libsodium](projects/libsodium.md) | O1 | 0 | 80 | 80 | 80 fewer |
+| [libsodium](projects/libsodium.md) | O1 | 80 | 80 | 80 | same |
 | [libsodium](projects/libsodium.md) | O0 | 80 | 80 | 80 | same |
 | [libtommath](projects/libtommath.md) | O0 | 42 | 42 | 42 | same |
 | [libtommath](projects/libtommath.md) | O1 | 42 | 42 | 42 | same |
 | [libtommath](projects/libtommath.md) | O2 | 42 | 42 | 42 | same |
 | [libtommath](projects/libtommath.md) | Os | 42 | 42 | 42 | same |
-| [libsodium](projects/libsodium.md) | O2 | 0 | 80 | 80 | 80 fewer |
+| [libsodium](projects/libsodium.md) | O2 | 80 | 80 | 80 | same |
 | [libyaml](projects/libyaml.md) | O0 | 2 | 2 | 2 | same |
 | [libyaml](projects/libyaml.md) | O1 | 2 | 2 | 2 | same |
 | [libyaml](projects/libyaml.md) | O2 | 2 | 2 | 2 | same |
 | [libyaml](projects/libyaml.md) | Os | 2 | 2 | 2 | same |
 | [linenoise](projects/linenoise.md) | O0 | 102 | 102 | 102 | same |
-| [libsodium](projects/libsodium.md) | Os | 0 | 80 | 80 | 80 fewer |
+| [libsodium](projects/libsodium.md) | Os | 80 | 80 | 80 | same |
 | [linenoise](projects/linenoise.md) | O1 | 102 | 102 | 102 | same |
 | [llama2.c](projects/llama2.c.md) | O0 | not counted | not counted | not counted | not comparable |
 | [llama2.c](projects/llama2.c.md) | O1 | not counted | not counted | not counted | not comparable |
@@ -805,7 +805,7 @@ The last column is the one to read. Everything else on this page is a proxy; thi
 | [wren](projects/wren.md) | O0 | 866 | 866 | 866 | same |
 | [wren](projects/wren.md) | O1 | 866 | 866 | 866 | same |
 | [wren](projects/wren.md) | O2 | 866 | 866 | 866 | same |
-| [wren](projects/wren.md) | Os | 865 | 865 | 866 | 1 fewer |
+| [wren](projects/wren.md) | Os | 866 | 866 | 866 | same |
 | [xxhash](projects/xxhash.md) | O0 | not counted | not counted | not counted | not comparable |
 | [xxhash](projects/xxhash.md) | O1 | not counted | not counted | not counted | not comparable |
 | [xxhash](projects/xxhash.md) | Os | not counted | not counted | not counted | not comparable |

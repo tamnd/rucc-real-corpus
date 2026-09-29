@@ -1,6 +1,6 @@
 # The run report
 
-**276 of 288 cells passed.** Run on linux-x86_64, as runner, with rucc 0.11.6 against gcc-16 (GCC) 16.2.0.
+**280 of 288 cells passed.** Run on linux-x86_64, as runner, with rucc 0.11.6 against gcc-16 (GCC) 16.2.0.
 
 Every number on these pages comes from one run of `rrc run`, and every one of them is paired with the same number from a GCC 16 build of the same pinned source on the same machine. Nothing here is averaged across projects, for the reason `spec/11-reporting.md` section 11.3 gives.
 
@@ -18,8 +18,7 @@ Every number on these pages comes from one run of `rrc run`, and every one of th
 
 | outcome | cells | what it means |
 | --- | ---: | --- |
-| passed | 276 | built, linked, ran its own suite, and the oracle agreed |
-| wrong answer | 4 | it built and ran and produced the wrong answer |
+| passed | 280 | built, linked, ran its own suite, and the oracle agreed |
 | excluded | 8 | on the exclusion register, with an issue behind it |
 
 ## By rung
@@ -30,8 +29,8 @@ The rungs are the ladder of `spec/05-project-list.md`. A failure low on it is a 
 | --- | ---: | ---: | ---: |
 | R0 | 48 | 44 | 4 |
 | R1 | 56 | 56 | 0 |
-| R2 | 80 | 73 | 7 |
-| R3 | 40 | 39 | 1 |
+| R2 | 80 | 76 | 4 |
+| R3 | 40 | 40 | 0 |
 | R4 | 60 | 60 | 0 |
 | R5 | 4 | 4 | 0 |
 
@@ -42,26 +41,22 @@ This run covered 4 levels, `O0`, `O1`, `O2` and `Os`, and each of them is a diff
 | level | cells | passed | still to do |
 | --- | ---: | ---: | ---: |
 | O0 | 72 | 70 | 2 |
-| O1 | 72 | 69 | 3 |
-| O2 | 72 | 69 | 3 |
-| Os | 72 | 68 | 4 |
+| O1 | 72 | 70 | 2 |
+| O2 | 72 | 70 | 2 |
+| Os | 72 | 70 | 2 |
 
 ## The project's own tests
 
-Of the 199 cells whose suite prints a count on both compilers, 190 pass exactly as many of the project's own tests as the GCC 16 build does.
+Of the 199 cells whose suite prints a count on both compilers, 194 pass exactly as many of the project's own tests as the GCC 16 build does.
 
 This is the number that a build outcome cannot show you. A cell that compiles, links, runs the suite and quietly passes forty fewer of the project's own tests than GCC does is a worse result than a cell that failed to build, and it counts as a pass everywhere except here.
 
 | project | level | passed | gcc 16 passed |
 | --- | --- | ---: | ---: |
-| [libsodium](projects/libsodium.md) | O1 | 0 | 80 |
-| [libsodium](projects/libsodium.md) | O2 | 0 | 80 |
-| [libsodium](projects/libsodium.md) | Os | 0 | 80 |
 | [libmpfr](projects/libmpfr.md) | O0 | 196 | 198 |
 | [libmpfr](projects/libmpfr.md) | O1 | 196 | 198 |
 | [libmpfr](projects/libmpfr.md) | O2 | 196 | 198 |
 | [libmpfr](projects/libmpfr.md) | Os | 196 | 198 |
-| [wren](projects/wren.md) | Os | 865 | 866 |
 | [gzip](projects/gzip.md) | O2 | 58 | 30 |
 
 ## How much code this is
@@ -102,7 +97,7 @@ Added up rather than averaged, and it is a bill rather than a score. A corpus fi
 | | compile seconds |
 | --- | ---: |
 | under test | 14060 |
-| gcc 16 | 21082 |
+| gcc 16 | 20891 |
 
 ## Every project
 
