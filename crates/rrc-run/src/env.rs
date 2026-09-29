@@ -9,6 +9,7 @@
 //! The environment is built rather than inherited. Whatever is in the shell that started the
 //! run is not in the environment the build sees unless it is named here.
 
+use rrc_manifest::Target;
 use rrc_manifest::axes::Level;
 use rrc_manifest::manifest::HostCc;
 use std::collections::BTreeMap;
@@ -147,6 +148,24 @@ pub fn environment(plan: &EnvPlan<'_>) -> BTreeMap<String, String> {
         );
     }
 
+    // A cross run, which needs three things a native one does not. rucc finds the Windows headers
+    // and libraries in its cache directory, which it looks for under HOME, and HOME is the sandbox
+    // here, so the caller's cache is named outright. Wine keeps a prefix under HOME as well, which
+    // is the right place for it: every cell gets a fresh one and it goes when the sandbox does.
+    // Its debug channels are switched off and so are the two installers it offers on first use,
+    // because a suite whose output has Wine's fixme lines in it is a suite no parser can count.
+    if plan.toolchain.target.is_cross() {
+        if let Some(cache) = rucc_cache_dir() {
+            env.insert("RUCC_CACHE_DIR".into(), display(&cache));
+        }
+        env.insert("WINEDEBUG".into(), "-all".into());
+        env.insert(
+            "WINEPREFIX".into(),
+            display(&plan.sandbox.home().join(".wine")),
+        );
+        env.insert("WINEDLLOVERRIDES".into(), "mscoree,mshtml=".into());
+    }
+
     // The manifest goes last and can override everything above it. That is on purpose: it is
     // one file, it is reviewed, and a project that genuinely needs a different `LC_ALL` should
     // be able to say so in the one place that gets read.
@@ -184,6 +203,48 @@ fn path_for(plan: &EnvPlan<'_>) -> String {
         .map(|dir| dir.to_string_lossy().into_owned())
         .collect::<Vec<_>>()
         .join(":")
+}
+
+/// Where rucc keeps its sysroots for the person running the harness, resolved the way rucc
+/// resolves it, so that a build whose HOME is the sandbox still finds the same one.
+#[must_use]
+pub fn rucc_cache_dir() -> Option<PathBuf> {
+    if let Some(dir) = std::env::var_os("RUCC_CACHE_DIR").filter(|dir| !dir.is_empty()) {
+        return Some(PathBuf::from(dir));
+    }
+    if let Some(dir) = std::env::var_os("XDG_CACHE_HOME").filter(|dir| !dir.is_empty()) {
+        return Some(PathBuf::from(dir).join("rucc"));
+    }
+    std::env::var_os("HOME").map(|home| PathBuf::from(home).join(".cache").join("rucc"))
+}
+
+/// Whether this machine runs a Windows program when it is executed like any other.
+///
+/// A suite runs its test programs by name, from make or from ctest, so the only way to get them
+/// under Wine without editing somebody's Makefile is the kernel's `binfmt_misc` table, with an
+/// entry that hands anything starting `MZ` to Wine. The Windows row checks for that entry before
+/// it builds anything, because without it every suite fails with an exec format error that reads
+/// like a broken build.
+#[must_use]
+pub fn runs_windows_programs() -> bool {
+    let Ok(dir) = std::fs::read_dir("/proc/sys/fs/binfmt_misc") else {
+        return false;
+    };
+    dir.flatten().any(|entry| {
+        std::fs::read_to_string(entry.path()).is_ok_and(|text| {
+            text.lines().next() == Some("enabled")
+                && text.lines().any(|line| line.trim() == "magic 4d5a")
+        })
+    })
+}
+
+/// Whether a target's programs can be run here at all.
+#[must_use]
+pub fn can_run(target: Target) -> bool {
+    match target {
+        Target::Native => true,
+        Target::WindowsGnu => runs_windows_programs(),
+    }
 }
 
 fn display(path: &Path) -> String {
@@ -226,6 +287,7 @@ mod tests {
         let toolchain = Toolchain {
             under_test,
             reference,
+            target: Target::Native,
         };
         let sandbox = Sandbox::create(&root, Slot::A, "jsmn", Level::O2).unwrap();
         let shim = Shim::create(&sandbox.bin(), &toolchain).unwrap();

@@ -13,7 +13,14 @@
 //! differential in `spec/08-oracles.md` section 8.8 and an issue against the compiler's driver.
 //! It is not a flag added here. Papering over driver behaviour in the shim would destroy the
 //! data that answers open question one.
+//!
+//! The one exception is the target. A run for `x86_64-windows-gnu` has to tell rucc which target
+//! it is building for, and rucc reads that from `--target` and from nothing else, so on a cross
+//! run `cc` and `gcc` are a script that puts that one flag in front. It says what is being built
+//! rather than how, and MinGW GCC, which is the reference there, is still a symlink because its
+//! name already says the target.
 
+use rrc_manifest::Target;
 use rrc_manifest::manifest::HostCc;
 use std::path::{Component, Path, PathBuf};
 
@@ -24,6 +31,35 @@ pub struct Toolchain {
     pub under_test: PathBuf,
     /// The real GCC, which produces the baseline and builds host tools by default.
     pub reference: PathBuf,
+    /// What both of them build for.
+    pub target: Target,
+}
+
+impl Toolchain {
+    /// The flag the compiler under test needs to be told the target, when it needs one.
+    ///
+    /// None natively, and none when the compiler under test is the reference, which is how the
+    /// reference half of a cell is built and how a cross GCC is compared with itself. A cross GCC
+    /// knows its target from its name and does not take the flag.
+    #[must_use]
+    pub fn target_flag(&self) -> Option<&'static str> {
+        if self.under_test == self.reference {
+            return None;
+        }
+        self.target.rucc_flag()
+    }
+
+    /// The compiler that builds programs meant to run on this machine during a cross build.
+    ///
+    /// The reference is a cross compiler there, and a generator it built would be a Windows
+    /// program the build then tries to run on Linux, so this is the native GCC instead.
+    #[must_use]
+    pub fn native_host(&self) -> Option<PathBuf> {
+        if !self.target.is_cross() {
+            return Some(self.reference.clone());
+        }
+        on_path("gcc").or_else(|| on_path("cc"))
+    }
 }
 
 /// One name in the shim directory and what it points at.
@@ -57,6 +93,9 @@ pub enum EntryKind {
     /// through. The rule the shim exists to protect is that no flag is added anywhere, and a
     /// dispatcher that only chooses `argv[0]` does not break it.
     Dispatcher,
+    /// A two line script that execs the compiler under test with the target flag in front, on a
+    /// cross run only. See the module comment for why this is the one flag that is allowed.
+    TargetWrapper,
 }
 
 /// The two files a mixed build reads and writes, from `spec/08-oracles.md` section 8.6.
@@ -125,6 +164,13 @@ impl Shim {
         std::fs::create_dir_all(dir)?;
         let mut entries = Vec::new();
 
+        let flag = toolchain.target_flag();
+        if split.is_some() && flag.is_some() {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::Unsupported,
+                "a mixed build is not written for a cross target yet, because the dispatcher would have to add the target flag to half of the compiles",
+            ));
+        }
         for name in ["cc", "gcc"] {
             let entry = ShimEntry {
                 name: name.to_string(),
@@ -133,15 +179,16 @@ impl Shim {
                 } else {
                     toolchain.under_test.clone()
                 },
-                kind: if split.is_some() {
-                    EntryKind::Dispatcher
-                } else {
-                    EntryKind::Symlink
+                kind: match (split, flag) {
+                    (Some(_), _) => EntryKind::Dispatcher,
+                    (None, Some(_)) => EntryKind::TargetWrapper,
+                    (None, None) => EntryKind::Symlink,
                 },
             };
-            match split {
-                Some(split) => write_dispatcher(dir, &entry, toolchain, split)?,
-                None => write_symlink(dir, &entry)?,
+            match (split, flag) {
+                (Some(split), _) => write_dispatcher(dir, &entry, toolchain, split)?,
+                (None, Some(flag)) => write_wrapper(dir, &entry, &[flag])?,
+                (None, None) => write_symlink(dir, &entry)?,
             }
             entries.push(entry);
         }
@@ -155,15 +202,31 @@ impl Shim {
             },
             kind: EntryKind::PreprocessorWrapper,
         };
-        write_preprocessor(dir, &cpp)?;
+        write_preprocessor(dir, &cpp, flag)?;
         entries.push(cpp);
 
         // `ld` and `ar` are pinned to whatever they resolve to now, rather than left to be
         // found later. It changes nothing about which tool runs, and it means the record can
         // say which linker and which archiver a result was produced with. When the compiler
         // under test grows its own, these move over and that move is one diff.
-        for name in ["ld", "ar", "ranlib"] {
-            if let Some(target) = on_path(name) {
+        //
+        // On a cross run they are the target's binutils rather than the machine's, under the plain
+        // names, because an archive of Windows objects indexed by the host ranlib is an archive
+        // the linker cannot read. A cmake or a Makefile that finds `ar` gets the right one without
+        // being told the triple.
+        let binutils: &[&str] = if toolchain.target.is_cross() {
+            &[
+                "ld", "ar", "ranlib", "strip", "nm", "objdump", "windres", "dlltool",
+            ]
+        } else {
+            &["ld", "ar", "ranlib"]
+        };
+        for name in binutils {
+            let wanted = toolchain
+                .target
+                .triple()
+                .map_or_else(|| (*name).to_string(), |triple| format!("{triple}-{name}"));
+            if let Some(target) = on_path(&wanted) {
                 let entry = ShimEntry {
                     name: name.to_string(),
                     target,
@@ -203,8 +266,16 @@ impl Shim {
     /// The default is the real GCC, because a host compiler is usually a variable nobody meant
     /// to introduce: a generator that miscompiles produces wrong generated source, and the
     /// failure then looks like a code generation bug three files away from its cause.
+    ///
+    /// On a cross run it is the native GCC either way, because the compiler under test is building
+    /// for another machine there and a host tool it built would not run on this one.
     #[must_use]
     pub fn host_cc(&self, toolchain: &Toolchain, choice: HostCc) -> PathBuf {
+        if toolchain.target.is_cross() {
+            return toolchain
+                .native_host()
+                .unwrap_or_else(|| PathBuf::from("/usr/bin/gcc"));
+        }
         match choice {
             HostCc::Reference => toolchain.reference.clone(),
             HostCc::UnderTest => self.cc(),
@@ -305,12 +376,26 @@ fn quote(path: &Path) -> String {
     format!("'{}'", path.display().to_string().replace('\'', r"'\''"))
 }
 
-fn write_preprocessor(dir: &Path, entry: &ShimEntry) -> std::io::Result<()> {
+fn write_preprocessor(dir: &Path, entry: &ShimEntry, flag: Option<&str>) -> std::io::Result<()> {
+    let path = dir.join(&entry.name);
+    std::fs::remove_file(&path).ok();
+    let target = flag.map_or_else(String::new, |flag| format!(" {flag}"));
+    let script = format!(
+        "#!/bin/sh\n# cpp means preprocess only. Nothing else is added here but the target.\nexec {}{target} -E \"$@\"\n",
+        quote(&entry.target)
+    );
+    std::fs::write(&path, script)?;
+    make_executable(&path)
+}
+
+/// The cross run's `cc`, which is the compiler under test told its target and nothing else.
+fn write_wrapper(dir: &Path, entry: &ShimEntry, flags: &[&str]) -> std::io::Result<()> {
     let path = dir.join(&entry.name);
     std::fs::remove_file(&path).ok();
     let script = format!(
-        "#!/bin/sh\n# cpp means preprocess only. Nothing else is added here.\nexec {} -E \"$@\"\n",
-        entry.target.display()
+        "#!/bin/sh\n# The target this run builds for. Nothing else is added here.\nexec {} {} \"$@\"\n",
+        quote(&entry.target),
+        flags.join(" ")
     );
     std::fs::write(&path, script)?;
     make_executable(&path)
@@ -383,6 +468,7 @@ mod tests {
         Toolchain {
             under_test,
             reference,
+            target: Target::Native,
         }
     }
 
@@ -428,6 +514,41 @@ mod tests {
             .filter(|word| word.starts_with('-') && *word != "-E")
             .collect();
         assert!(added.is_empty(), "the shim added {added:?}");
+        std::fs::remove_dir_all(&root).ok();
+    }
+
+    #[test]
+    fn a_cross_run_tells_the_compiler_under_test_its_target_and_nothing_else() {
+        let root = scratch("cross");
+        let mut tools = toolchain(&root);
+        tools.target = Target::WindowsGnu;
+        let bin = root.join("bin");
+        let shim = Shim::create(&bin, &tools).unwrap();
+        for name in ["cc", "gcc"] {
+            let entry = shim.entries().iter().find(|e| e.name == name).unwrap();
+            assert_eq!(entry.kind, EntryKind::TargetWrapper);
+            let script = std::fs::read_to_string(bin.join(name)).unwrap();
+            let added: Vec<&str> = script
+                .split_whitespace()
+                .filter(|word| word.starts_with('-'))
+                .collect();
+            assert_eq!(added, ["--target=x86_64-windows-gnu"]);
+        }
+        let cpp = std::fs::read_to_string(bin.join("cpp")).unwrap();
+        assert!(cpp.contains("--target=x86_64-windows-gnu -E \"$@\""));
+        std::fs::remove_dir_all(&root).ok();
+    }
+
+    #[test]
+    fn the_reference_half_of_a_cross_run_is_still_a_symlink() {
+        let root = scratch("cross-reference");
+        let mut tools = toolchain(&root);
+        tools.target = Target::WindowsGnu;
+        tools.under_test = tools.reference.clone();
+        let shim = Shim::create(&root.join("bin"), &tools).unwrap();
+        let cc = shim.entries().iter().find(|e| e.name == "cc").unwrap();
+        assert_eq!(cc.kind, EntryKind::Symlink);
+        assert_eq!(cc.target, tools.reference);
         std::fs::remove_dir_all(&root).ok();
     }
 
@@ -503,6 +624,7 @@ mod tests {
         let tools = Toolchain {
             under_test: PathBuf::from("gcc-16"),
             reference: PathBuf::from("gcc-16"),
+            target: Target::Native,
         };
         let failed = Shim::create(&root.join("bin"), &tools).expect_err(
             "a bare name was accepted, so `cc` is a dangling symlink and the next `cc` on PATH does the build",

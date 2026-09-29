@@ -170,6 +170,13 @@ pub struct Provenance {
     /// everything else in here would otherwise look like a compiler difference.
     #[serde(default, skip_serializing_if = "String::is_empty")]
     pub as_user: String,
+    /// What the run built for, empty for the machine it ran on.
+    ///
+    /// Empty rather than `native` so that every record written before there was a second target
+    /// reads the same as it did. A Windows record and a Linux record of the same project at the
+    /// same level are different measurements, and this is the field that says so.
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub target: String,
 }
 
 impl Provenance {
@@ -433,6 +440,7 @@ mod tests {
             rung: Rung::R0,
             level: Level::O2,
             provenance: Provenance {
+                target: String::new(),
                 host: "linux-x86_64".into(),
                 gcc_version: "16.2.0".into(),
                 rucc_version: "0.5.0".into(),

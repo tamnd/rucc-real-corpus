@@ -518,6 +518,7 @@ mod tests {
         let toolchain = Toolchain {
             under_test: PathBuf::from("/bin/false"),
             reference: PathBuf::from("/bin/true"),
+            target: rrc_manifest::Target::Native,
         };
         let script = check_script(
             &toolchain,

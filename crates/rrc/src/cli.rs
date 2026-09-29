@@ -10,6 +10,7 @@
 //! runs what the per commit budget in section 12.1 admits, which is rungs 0 and 1 at four
 //! levels. The cheap thing is the default and the expensive thing is a decision somebody typed.
 
+use rrc_manifest::Target;
 use rrc_manifest::axes::{Level, Rung};
 use rrc_run::driver::Baseline;
 use std::path::PathBuf;
@@ -326,6 +327,9 @@ pub struct Options {
     /// Here so that a machine which cannot open its paths up to another user can still get a run,
     /// with the counts that come with that, rather than getting no run at all.
     pub as_root: bool,
+    /// What the run builds for. Natively unless `--target` says otherwise, and a cross target
+    /// narrows the corpus to the projects whose manifest has a table for it.
+    pub target: Target,
 }
 
 impl Default for Options {
@@ -336,6 +340,7 @@ impl Default for Options {
             reference: PathBuf::from("gcc"),
             as_user: None,
             as_root: false,
+            target: Target::Native,
         }
     }
 }
@@ -357,6 +362,7 @@ pub struct Invocation {
 pub fn parse(args: &[String]) -> Result<Invocation, String> {
     let mut options = Options::default();
     let mut rest = Vec::new();
+    let mut named_gcc = false;
 
     let mut index = 0;
     while index < args.len() {
@@ -364,12 +370,21 @@ pub fn parse(args: &[String]) -> Result<Invocation, String> {
         match arg {
             "--corpus" => options.corpus = value(args, &mut index, "--corpus")?.into(),
             "--rucc" => options.under_test = value(args, &mut index, "--rucc")?.into(),
-            "--gcc" => options.reference = value(args, &mut index, "--gcc")?.into(),
+            "--gcc" => {
+                options.reference = value(args, &mut index, "--gcc")?.into();
+                named_gcc = true;
+            }
+            "--target" => options.target = value(args, &mut index, "--target")?.parse()?,
             "--as-user" => options.as_user = Some(value(args, &mut index, "--as-user")?),
             "--as-root" => options.as_root = true,
             _ => rest.push(arg.to_string()),
         }
         index += 1;
+    }
+    // The reference follows the target unless it was named. A Windows row graded against the
+    // host GCC would be comparing a Windows program with nothing at all.
+    if !named_gcc {
+        options.reference = options.target.default_reference().into();
     }
 
     let command = command(&rest)?;
@@ -873,6 +888,8 @@ Options that apply to all of them:
                   it a root harness picks the first of rrc, runner or nobody that exists
   --as-root       stay root even when there is somebody to drop to, which grades several suites
                   wrong and is here for a machine that cannot open its paths up to another user
+  --target NAME   build for x86_64-windows-gnu and run the suites under Wine, which covers the
+                  projects with a [windows] table and makes the reference x86_64-w64-mingw32-gcc
 
 Options for run:
 

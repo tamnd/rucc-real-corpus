@@ -57,6 +57,7 @@ mod tests {
             rung,
             level: Level::O2,
             provenance: Provenance {
+                target: String::new(),
                 host: "linux-x86_64".to_string(),
                 gcc_version: "16.0.1".to_string(),
                 rucc_version: "0.5.1".to_string(),

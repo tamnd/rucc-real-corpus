@@ -11,6 +11,7 @@
 //! - `localization.toml`, how long each failure took to name a file, in [`localization`].
 //! - `sqlite.toml`, what the amalgamation was measured to demand, in [`sqlite`].
 //! - the axes every one of those files grades a project on, in [`axes`].
+//! - the target a run builds for, and the `[windows]` table of a manifest, in [`target`].
 //!
 //! [`lint`] is the pass that catches the manifests that parse and still mean nothing. It is a
 //! separate step because a schema alone cannot say that a suite oracle needs a baseline to
@@ -26,6 +27,7 @@ pub mod localization;
 pub mod lockfile;
 pub mod manifest;
 pub mod sqlite;
+pub mod target;
 
 pub use axes::{BuildSystem, Level, Oracle, Requirement, Rung, SuiteParser};
 pub use exclusions::{Exclusion, Exclusions};
@@ -38,3 +40,4 @@ pub use manifest::{
     Test,
 };
 pub use sqlite::{Measured, Sqlite};
+pub use target::{Target, Windows};

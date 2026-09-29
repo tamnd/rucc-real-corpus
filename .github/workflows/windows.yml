@@ -1,0 +1,121 @@
+# The Windows row: the projects with a [windows] table, cross built on Linux for
+# x86_64-windows-gnu and graded by their own suites under Wine, against x86_64-w64-mingw32-gcc.
+#
+# Weekly and on demand rather than nightly. Every configure probe and every test program starts
+# Wine, so this row is slow for the handful of projects in it, and the thing it answers, whether
+# the Windows target still builds real code, does not move every day.
+#
+# rucc is built from source here rather than taken from a release. The Windows target needs the
+# MinGW sysroot rucc fetches and the builtins archive it builds for the target, and neither is in
+# a release archive yet. Both steps are the ones tamnd/rucc documents for the target.
+#
+# Nothing here commits and nothing opens an issue. The records and the rendered report are an
+# artifact, and reports/windows.md is updated by hand from one of them when the row changes.
+
+name: windows
+
+on:
+  schedule:
+    - cron: "41 7 * * 1"
+  workflow_dispatch:
+    inputs:
+      rucc:
+        description: which rucc ref to build, or nothing for main
+        default: ""
+        required: false
+
+concurrency:
+  group: windows
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: 0
+
+jobs:
+  run:
+    name: x86_64-windows-gnu under wine
+    runs-on: ubuntu-24.04
+    timeout-minutes: 300
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/checkout@v7.0.1
+        with:
+          repository: tamnd/rucc
+          ref: ${{ inputs.rucc || 'main' }}
+          path: rucc
+      - uses: Swatinem/rust-cache@v2.9.2
+        with:
+          key: windows
+          workspaces: |
+            .
+            rucc
+
+      - name: the archive cache
+        uses: actions/cache@v6.1.0
+        with:
+          path: ~/.cache/rrc/archives
+          key: rrc-archives-windows-${{ hashFiles('projects/**/project.toml') }}
+          restore-keys: |
+            rrc-archives-windows-
+
+      # MinGW GCC is the reference, wine runs the suites, lld is the linker rucc drives for this
+      # target, and cmake is for the projects that build with it.
+      - name: the tools
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y wine64 lld gcc-mingw-w64-x86-64 cmake make
+          x86_64-w64-mingw32-gcc --version | head -1
+
+      # A suite runs its test programs by name, so the kernel has to hand anything starting MZ to
+      # wine. rrc refuses to start the row without this.
+      - name: wine for MZ binaries
+        run: |
+          set -euo pipefail
+          wine=$(command -v wine64 || echo /usr/lib/wine/wine64)
+          if ! grep -qs '^magic 4d5a' /proc/sys/fs/binfmt_misc/*; then
+            echo ":wine:M::MZ::$wine:" | sudo tee /proc/sys/fs/binfmt_misc/register >/dev/null
+          fi
+          grep -ls '^magic 4d5a' /proc/sys/fs/binfmt_misc/*
+
+      - name: rucc for x86_64-windows-gnu
+        working-directory: rucc
+        run: |
+          set -euo pipefail
+          cargo build --release
+          ./target/release/rucc --fetch x86_64-windows-gnu
+          cargo xtask builtins --target x86_64-windows-gnu
+          ./target/release/rucc --version | head -1
+          echo "RRC_RUCC_COMMIT=$(git rev-parse --short=8 HEAD)" >> "$GITHUB_ENV"
+
+      - name: cargo build
+        run: cargo build --release -p rrc
+
+      - name: the run
+        run: |
+          set +e
+          cargo run --release -p rrc -- \
+            --rucc "$GITHUB_WORKSPACE/rucc/target/release/rucc" --target x86_64-windows-gnu \
+            run --rung 0,1,2,3,4,5 --out runs/windows --refresh
+          echo "the run exited $?"
+
+      - name: the report
+        if: always()
+        run: |
+          set -euo pipefail
+          mkdir -p out
+          cargo run --release -p rrc -- --target x86_64-windows-gnu \
+            report --format markdown --input runs/windows/records.jsonl > out/windows.md || true
+          cp runs/windows/*.jsonl out/ 2>/dev/null || true
+          cat out/windows.md >> "$GITHUB_STEP_SUMMARY" || true
+
+      - uses: actions/upload-artifact@v7.0.1
+        if: always()
+        with:
+          name: windows
+          path: out
+          retention-days: 30

@@ -459,8 +459,10 @@ oracle = "self-checking"
         let toolchain = crate::shim::Toolchain {
             under_test: cc.clone(),
             reference: cc,
+            target: rrc_manifest::Target::Native,
         };
         let provenance = crate::record::Provenance {
+            target: String::new(),
             host: crate::record::Provenance::host_name(),
             gcc_version: "test".to_string(),
             rucc_version: "test".to_string(),

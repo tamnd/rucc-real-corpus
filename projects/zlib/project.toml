@@ -66,3 +66,24 @@ why = "example.c sits in test and includes zlib.h by bare name, so it wants the 
 [[abi.flags]]
 flag = "-DHAVE_UNISTD_H"
 why = "configure edits this into the zconf.h it generates, and without it the gz functions call lseek with no declaration, which GCC 16 rejects"
+
+# The Windows row, built with zlib's own CMakeLists.txt rather than configure. configure only
+# recognises MinGW by asking the compiler whether it is gcc, so it takes a different branch for
+# each compiler and the two builds are not the same tree. cmake decides from CMAKE_SYSTEM_NAME
+# instead. Its two tests, example and example64, are the same self checking programs make
+# teststatic runs. ctest looks for them without the .exe, so each one gets a link to its own name
+# first. MinGW GCC 13 under Wine 9 passes both.
+[windows]
+why = "cmake rather than configure, because configure picks its MinGW branch by asking whether the compiler is gcc"
+system = "cmake"
+configure = ["-DCMAKE_SYSTEM_NAME=Windows", "-DCMAKE_POLICY_VERSION_MINIMUM=3.5"]
+binary = "build/libzlibstatic.a"
+command = [
+  "sh",
+  "-c",
+  "cd build && for f in *.exe; do ln -sf \"$f\" \"${f%.exe}\"; done && exec ctest --output-on-failure --no-tests=error",
+]
+requires = ["sh"]
+levels = ["O2"]
+build-seconds = 1800
+test-seconds = 900

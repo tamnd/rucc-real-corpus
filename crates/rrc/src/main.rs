@@ -102,5 +102,16 @@ fn dispatch(invocation: Invocation) -> Result<Done, String> {
 /// Find the corpus root and read it.
 fn open(options: &cli::Options) -> Result<corpus::Loaded, String> {
     let root = corpus::find(&options.corpus)?;
-    corpus::load(&root)
+    let mut loaded = corpus::load(&root)?;
+    // A cross target sees each manifest as its table makes it and nothing else, so everything
+    // downstream reads an ordinary manifest and a project with no table is simply not there.
+    if options.target.is_cross() {
+        loaded.corpus.manifests = loaded
+            .corpus
+            .manifests
+            .iter()
+            .filter_map(|manifest| options.target.manifest(manifest))
+            .collect();
+    }
+    Ok(loaded)
 }

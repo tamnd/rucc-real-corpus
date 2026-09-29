@@ -28,3 +28,12 @@ oracle = "suite"
 parser = "custom-regex"
 regex = "Tests passed: (\\d+)"
 baseline-tests = 349
+
+# The Windows row. The program is named with its .exe, because MinGW GCC adds one to a name that
+# has none and rucc does not yet (tamnd/rucc#2152), and a test command can only name one of the
+# two. MinGW GCC 13 under Wine 9 passes all 349.
+[windows]
+why = "the output is named with .exe so that both compilers write the same file"
+output = "parson-tests.exe"
+command = ["./parson-tests.exe"]
+levels = ["O2"]

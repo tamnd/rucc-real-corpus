@@ -76,10 +76,35 @@ fn check_manifest(manifest: &Manifest, corpus: &Corpus, findings: &mut Vec<Findi
     check_abi(manifest, &mut what);
     check_test(manifest, &mut what);
     check_levels_and_limits(manifest, &mut what);
+    check_windows(manifest, &mut what);
     findings.extend(what.into_iter().map(|what| Finding {
         where_: manifest.project.name.clone(),
         what,
     }));
+}
+
+/// The `[windows]` table, checked by checking what it produces. The overlay is an ordinary
+/// manifest, so the build, test and level rules that hold natively hold there too, and a finding
+/// from them is prefixed so it is clear which of the two builds it is about.
+fn check_windows(manifest: &Manifest, say: &mut Vec<String>) {
+    let Some(table) = &manifest.windows else {
+        return;
+    };
+    if table.why.trim().is_empty() {
+        say.push("the windows table has no why, so nobody can tell what had to change".into());
+    }
+    if !manifest.build.needs.is_empty() {
+        say.push("the windows table is on a project with needs, and the Windows row cannot build a dependency for it yet".into());
+    }
+    let windows = table.overlay(manifest);
+    let mut what = Vec::new();
+    check_build(&windows, &mut what);
+    check_test(&windows, &mut what);
+    check_levels_and_limits(&windows, &mut what);
+    say.extend(
+        what.into_iter()
+            .map(|finding| format!("on x86_64-windows-gnu, {finding}")),
+    );
 }
 
 fn check_project(manifest: &Manifest, corpus: &Corpus, say: &mut Vec<String>) {
@@ -715,6 +740,18 @@ fn check_exclusions(corpus: &Corpus, findings: &mut Vec<Finding>) {
                 ),
             });
         }
+        if let Some(target) = &entry.target
+            && !crate::target::Target::ALL
+                .iter()
+                .any(|known| known.is_cross() && known.name() == target)
+        {
+            findings.push(Finding {
+                where_: where_.clone(),
+                what: format!(
+                    "names the target `{target}`, which is not a cross target this corpus builds for, so this entry matches nothing and the failure it describes still counts"
+                ),
+            });
+        }
         if entry.why.trim().is_empty() {
             findings.push(Finding {
                 where_,
@@ -1233,6 +1270,7 @@ kind = "standard"
             .exclusions
             .entries
             .push(crate::exclusions::Exclusion {
+                target: None,
                 project: "not-here".into(),
                 case: "not-here".into(),
                 level: "*".into(),
@@ -1759,6 +1797,7 @@ kind = "standard"
             .exclusions
             .entries
             .push(crate::exclusions::Exclusion {
+                target: None,
                 project: name,
                 case: "some_failing_test".into(),
                 level: "O0".into(),
@@ -1782,6 +1821,7 @@ kind = "standard"
             .exclusions
             .entries
             .push(crate::exclusions::Exclusion {
+                target: None,
                 project: name,
                 case: corpus.manifests[0].project.name.clone(),
                 level: "O0".into(),
