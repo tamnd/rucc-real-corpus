@@ -501,12 +501,17 @@ Each of these is a project worth admitting, or an argument that the demand is no
 
 These rows are why the residue above can be believed. A list that only records what it found cannot be told apart from a list nobody finished, so what was searched for and missing is written down too.
 
+- `acle-crc`: no arm_acle.h, no __crc32 intrinsic and no __ARM_FEATURE_CRC32 test anywhere in sqlite3.c, and the checksums it does compute, in the WAL and the page format, are written out in plain C
 - `autoconf-probes`: the amalgamation is one translation unit compiled directly, so nothing interrogates the compiler before the build
+- `avx512-intrinsics`: no _mm512 name, no __m512 type and no mention of AVX-512, and the only intrinsics header the amalgamation includes is intrin.h, which is behind _MSC_VER and so never reached by a GCC compatible compiler
+- `builtin-setjmp-coff`: there is no setjmp of any spelling in sqlite3.c, so there is nothing for a MinGW build to swap for __builtin_setjmp
+- `bundle-loader`: the amalgamation is compiled directly with no build system in front of it, and a loadable extension reaches SQLite through the sqlite3_api_routines table it is handed rather than by resolving symbols against the executable, so nothing ever has to be linked with -bundle_loader
 - `char-signedness`: sqlite3.c spells the signedness it wants rather than asking for a flag, 392 uses of unsigned char and an explicit signed char on the operand fields of the VDBE opcode struct and on INT8_TYPE, so a build that changed the sign of a plain char would not change what the amalgamation means
 - `cleanup-attribute`: no __attribute__((cleanup)) anywhere, and the 132 places the word cleanup appears are all identifiers and comments, which is what a library that has to build on every compiler in the world looks like: libjansson can use it because it is a library for people who have gcc or clang, and SQLite cannot
 - `cmake-probes`: same reason as autoconf, there is no configure step of any kind in front of the amalgamation
 - `computed-goto`: no labels as values anywhere, which is worth knowing because the bytecode interpreter is exactly the shape that usually has them and SQLite uses a plain switch instead
 - `constant-time`: the phrase appears twice in comments about algorithmic complexity and there is no cryptographic constant time requirement in the file
+- `dllimport`: no dllimport anywhere, and the six __declspec(dllexport) lines, on the init functions of fts3, rtree, icu, fts5 twice and stmt, are each inside a block that only compiles when SQLITE_CORE is undefined, which the amalgamation defines on line 26, so none of them survives preprocessing on any target
 - `driver-passthrough`: neither -Wp, nor -Wa, appears anywhere in the 269,649 lines, which is the expected answer twice over: both are written by a build system onto a compile line rather than by a program into its own source, and the amalgamation has no build system in front of it, so the only flags it is ever compiled with are the ones the harness itself writes
 - `driver-print-dirs`: the amalgamation is compiled directly and has no build system in front of it, so nothing asks the driver where it keeps anything
 - `driver-stdin-input`: the amalgamation is one file handed to the compiler by name, and there is no configure step in front of it piping programs into the compiler to find out what the machine has
@@ -518,11 +523,19 @@ These rows are why the residue above can be believed. A list that only records w
 - `long-double`: no long double and no LDBL_ macros, since the whole value system is double
 - `lto`: nothing in the amalgamation asks for it, because whether the program is built across a translation unit boundary is the builder's decision and the amalgamation is one translation unit, which is exactly why the level is staged rather than run on everything
 - `meson-probes`: same reason again, the amalgamation is compiled with no meson.build or any other build system in front of it
+- `module-undefined-symbols`: SQLite loads extensions with dlopen but hands each one a pointer to the sqlite3_api_routines table through SQLITE_EXTENSION_INIT2, so an extension calls back through that table rather than through symbols left undefined for the executable to resolve, which is the design this tag describes the absence of
 - `nan-boxing`: sqlite3.c reinterprets a double as a 64 bit integer and back in sixteen places, all of them through memcpy rather than through a union, and a value's type is carried in the flags field of the Mem struct beside the number rather than in the payload of a quiet NaN, so the demand this tag names is one it does not make
+- `neon-intrinsics`: no arm_neon.h, no __ARM_NEON test and no NEON intrinsic, since every byte swap and bit count goes through the GNU builtins or plain C
+- `overflow-builtins-mixed-sign`: the three overflow builtins are the ones counted under overflow-builtins, and in all three the operands and the result are i64, so the signedness never differs
+- `returns-twice`: no returns_twice attribute; the seven __attribute__ uses in the file are aligned twice, always_inline, fallthrough twice, no_sanitize_thread and noinline
 - `rotate-idioms`: no rotate written as a shift pair and no rotate helper
 - `setjmp-longjmp`: no setjmp and no longjmp, since errors are returned as codes all the way up
+- `sigsetjmp-volatile`: no sigsetjmp and no siglongjmp, for the same reason there is no setjmp: errors are returned as codes all the way up
+- `sse42-intrinsics`: no nmmintrin.h, no smmintrin.h, no _mm_crc32 and no mention of SSE4.2, and nothing on the compile line asks for -msse4.2
 - `stack-allocation`: there are five calls to alloca in sqlite3.c and every one of them is behind SQLITE_USE_ALLOCA, which the amalgamation does not define, so the default build takes sqlite3DbMallocRaw instead and no variable length array appears anywhere in the file
 - `stdckdint`: the checked arithmetic goes through the GNU overflow builtins rather than the C23 header
+- `sve-intrinsics`: no arm_sve.h and no sizeless vector type anywhere in the file
+- `target-attribute`: no target attribute on any function, since the amalgamation never picks an instruction set per function and the seven __attribute__ uses in it are all the kinds listed under returns-twice
 - `thread-local`: no _Thread_local and no __thread, because thread state is passed in the connection handle rather than kept in the compiler's storage
 - `transparent-union`: the amalgamation opens no sockets and declares no union of its own with the attribute, so the one place glibc uses it, the sockaddr argument of bind and its relatives, is never reached from sqlite3.c
 - `visibility-attributes`: the amalgamation controls its exports with SQLITE_API and static rather than with a visibility attribute
