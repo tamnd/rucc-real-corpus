@@ -610,12 +610,16 @@ Result: PASS
         // The third script was named and the harness killed prove before it finished, so there is
         // no verdict for it, no summary and no Result line.
         let text = "t/001_a.pl .. ok\nt/002_b.pl .. ok\nt/003_c.pl .. 2/9 ";
-        let counts = counts(SuiteParser::TapScripts, None, text).unwrap();
-        assert_eq!(counts, Counts::of(3, 2));
+        assert_eq!(
+            counts(SuiteParser::TapScripts, None, text).unwrap(),
+            Counts::of(3, 2)
+        );
         // And a run whose summary says it ran more scripts than it printed verdicts for.
         let text = "t/001_a.pl .. ok\nFiles=4, Tests=10\nResult: FAIL\n";
-        let counts = counts(SuiteParser::TapScripts, None, text).unwrap();
-        assert_eq!(counts, Counts::of(4, 1));
+        assert_eq!(
+            counts(SuiteParser::TapScripts, None, text).unwrap(),
+            Counts::of(4, 1)
+        );
     }
 
     #[test]
