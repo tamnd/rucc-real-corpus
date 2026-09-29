@@ -28,10 +28,10 @@ The pinned archive is 100 files, 28,049 lines, 685.5 KiB, counted before anythin
 
 | level | compile | gcc 16 | vs gcc | suite | gcc 16 | vs gcc | build memory | gcc 16 | vs gcc |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| O0 | 26.20s | 31.57s | 0.83x | 37.70s | 24.45s | 1.54x | 58.8 MiB | 44.4 MiB | 1.33x |
-| O1 | 25.70s | 34.56s | 0.74x | 39.01s | 23.87s | 1.63x | 58.7 MiB | 49.4 MiB | 1.19x |
-| O2 | 25.73s | 38.69s | 0.66x | 39.64s | 24.48s | 1.62x | 63.8 MiB | 58.0 MiB | 1.10x |
-| Os | 24.97s | 39.43s | 0.63x | 36.76s | 22.91s | 1.60x | 63.9 MiB | 53.6 MiB | 1.19x |
+| O0 [^cached] | 66s | 31.57s | 2.08x | 49.47s | 24.45s | 2.02x | 64.0 MiB | 44.4 MiB | 1.44x |
+| O1 [^cached] | 70s | 34.56s | 2.02x | 44.74s | 23.87s | 1.87x | 64.4 MiB | 49.4 MiB | 1.30x |
+| O2 [^cached] | 62s | 38.69s | 1.59x | 43.26s | 24.48s | 1.77x | 65.9 MiB | 58.0 MiB | 1.14x |
+| Os [^cached] | 59.56s | 39.43s | 1.51x | 46.03s | 22.91s | 2.01x | 62.2 MiB | 53.6 MiB | 1.16x |
 
 ## Size
 
