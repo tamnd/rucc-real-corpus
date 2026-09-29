@@ -869,24 +869,15 @@ fn build_steps(job: &Job<'_>, env: &BTreeMap<String, String>, workdir: &Path) ->
             ),
             at("make", Phase::Linked, "make", make()),
         ],
-        BuildSystem::Cmake => {
-            let mut configure = vec![
-                "-S".to_string(),
-                ".".to_string(),
-                "-B".to_string(),
-                "build".to_string(),
-            ];
-            configure.extend(build.configure.clone());
-            vec![
-                at("cmake", Phase::Configured, "cmake", configure),
-                at(
-                    "build",
-                    Phase::Linked,
-                    "cmake",
-                    vec!["--build".to_string(), "build".to_string()],
-                ),
-            ]
-        }
+        BuildSystem::Cmake => vec![
+            at("cmake", Phase::Configured, "cmake", cmake_configure(build)),
+            at(
+                "build",
+                Phase::Linked,
+                "cmake",
+                strings(&["--build", "build"]),
+            ),
+        ],
         BuildSystem::Meson => vec![
             at(
                 "meson",
@@ -897,6 +888,18 @@ fn build_steps(job: &Job<'_>, env: &BTreeMap<String, String>, workdir: &Path) ->
             at("build", Phase::Linked, "meson", meson_compile(build)),
         ],
     }
+}
+
+/// The arguments to the `cmake` configure step, which puts the build tree in `build`.
+fn cmake_configure(build: &Build) -> Vec<String> {
+    let mut args = strings(&["-S", ".", "-B", "build"]);
+    args.extend(build.configure.iter().cloned());
+    args
+}
+
+/// Owned copies of a fixed argument list.
+fn strings(args: &[&str]) -> Vec<String> {
+    args.iter().map(ToString::to_string).collect()
 }
 
 /// The arguments to `meson setup`, which configures into `build` under the source tree.
