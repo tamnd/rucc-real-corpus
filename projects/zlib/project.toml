@@ -72,7 +72,8 @@ why = "configure edits this into the zconf.h it generates, and without it the gz
 # each compiler and the two builds are not the same tree. cmake decides from CMAKE_SYSTEM_NAME
 # instead. Its two tests, example and example64, are the same self checking programs make
 # teststatic runs. ctest looks for them without the .exe, so each one gets a link to its own name
-# first. MinGW GCC 13 under Wine 9 passes both.
+# first, unless the name already finds it, which it does on Windows where MSYS2 adds the .exe the
+# way Windows does. MinGW GCC 13 under Wine 9 passes both.
 [windows]
 why = "cmake rather than configure, because configure picks its MinGW branch by asking whether the compiler is gcc"
 system = "cmake"
@@ -81,7 +82,7 @@ binary = "build/libzlibstatic.a"
 command = [
   "sh",
   "-c",
-  "cd build && for f in *.exe; do ln -sf \"$f\" \"${f%.exe}\"; done && exec ctest --output-on-failure --no-tests=error",
+  "cd build && for f in *.exe; do [ -e \"${f%.exe}\" ] || ln -s \"$f\" \"${f%.exe}\"; done && exec ctest --output-on-failure --no-tests=error",
 ]
 requires = ["sh"]
 levels = ["O2"]

@@ -15,6 +15,7 @@ use rrc_manifest::manifest::HostCc;
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
+use crate::host;
 use crate::sandbox::Sandbox;
 use crate::shim::{Shim, Toolchain};
 
@@ -30,6 +31,18 @@ pub const SOURCE_DATE_EPOCH: &str = "1735689600";
 /// shells produce the same environment, and so that a tool nobody declared cannot be picked up
 /// silently and then be missing on somebody else's machine.
 pub const SYSTEM_PATH: [&str; 4] = ["/usr/bin", "/bin", "/usr/sbin", "/sbin"];
+
+/// The system directories on this host, which on Windows are the Windows directory and its
+/// `System32` rather than [`SYSTEM_PATH`]. MSYS2's own directories are not here but in
+/// [`discover_extra_path`], so that the record says where they were.
+#[must_use]
+pub fn system_path() -> Vec<PathBuf> {
+    if host::WINDOWS {
+        host::windows_dirs()
+    } else {
+        SYSTEM_PATH.iter().map(PathBuf::from).collect()
+    }
+}
 
 /// Everything that varies between one build and the next.
 #[derive(Debug)]
@@ -154,16 +167,41 @@ pub fn environment(plan: &EnvPlan<'_>) -> BTreeMap<String, String> {
     // is the right place for it: every cell gets a fresh one and it goes when the sandbox does.
     // Its debug channels are switched off and so are the two installers it offers on first use,
     // because a suite whose output has Wine's fixme lines in it is a suite no parser can count.
-    if plan.toolchain.target.is_cross() {
-        if let Some(cache) = rucc_cache_dir() {
-            env.insert("RUCC_CACHE_DIR".into(), display(&cache));
-        }
+    //
+    // On a Windows host there is no Wine, and the cache directory is given in Windows spelling,
+    // because the program reading it is rucc and not the shell.
+    if plan.toolchain.target.is_cross()
+        && let Some(cache) = rucc_cache_dir()
+    {
+        env.insert(
+            "RUCC_CACHE_DIR".into(),
+            cache.to_string_lossy().into_owned(),
+        );
+    }
+    if plan.toolchain.target.is_cross() && !host::WINDOWS {
         env.insert("WINEDEBUG".into(), "-all".into());
         env.insert(
             "WINEPREFIX".into(),
             display(&plan.sandbox.home().join(".wine")),
         );
         env.insert("WINEDLLOVERRIDES".into(), "mscoree,mshtml=".into());
+    }
+
+    // A Windows host, where a handful of variables are the operating system's rather than
+    // anybody's choice and are passed through, and the temporary directory is said under the two
+    // names Windows programs read as well as the one POSIX ones do. MSYSTEM makes the shell the
+    // MINGW64 one, so that `uname` and config.guess name the machine the way the MinGW GCC the row
+    // is graded against does.
+    if host::WINDOWS {
+        for name in host::PASSED_THROUGH {
+            if let Some(value) = std::env::var_os(name) {
+                env.insert(name.into(), value.to_string_lossy().into_owned());
+            }
+        }
+        let tmp = plan.sandbox.tmp().to_string_lossy().into_owned();
+        env.insert("TMP".into(), tmp.clone());
+        env.insert("TEMP".into(), tmp);
+        env.insert("MSYSTEM".into(), "MINGW64".into());
     }
 
     // The manifest goes last and can override everything above it. That is on purpose: it is
@@ -198,11 +236,8 @@ fn path_for(plan: &EnvPlan<'_>) -> String {
     // `build.needs` exists rather than a note in the readme saying which packages to install.
     dirs.extend(plan.prefix.map(|prefix| prefix.join("bin")));
     dirs.extend(plan.extra_path.iter().cloned());
-    dirs.extend(SYSTEM_PATH.iter().map(PathBuf::from));
-    dirs.iter()
-        .map(|dir| dir.to_string_lossy().into_owned())
-        .collect::<Vec<_>>()
-        .join(":")
+    dirs.extend(system_path());
+    host::join(&dirs)
 }
 
 /// Where rucc keeps its sysroots for the person running the harness, resolved the way rucc
@@ -211,6 +246,12 @@ fn path_for(plan: &EnvPlan<'_>) -> String {
 pub fn rucc_cache_dir() -> Option<PathBuf> {
     if let Some(dir) = std::env::var_os("RUCC_CACHE_DIR").filter(|dir| !dir.is_empty()) {
         return Some(PathBuf::from(dir));
+    }
+    // rucc's own order on Windows, where the platform's place comes before anything under HOME.
+    if host::WINDOWS
+        && let Some(dir) = std::env::var_os("LOCALAPPDATA").filter(|dir| !dir.is_empty())
+    {
+        return Some(PathBuf::from(dir).join("rucc").join("cache"));
     }
     if let Some(dir) = std::env::var_os("XDG_CACHE_HOME").filter(|dir| !dir.is_empty()) {
         return Some(PathBuf::from(dir).join("rucc"));
@@ -238,25 +279,33 @@ pub fn runs_windows_programs() -> bool {
     })
 }
 
-/// Whether a target's programs can be run here at all.
+/// Whether a target's programs can be run here at all, which for Windows programs is always true
+/// on Windows.
 #[must_use]
 pub fn can_run(target: Target) -> bool {
     match target {
         Target::Native => true,
-        Target::WindowsGnu => runs_windows_programs(),
+        Target::WindowsGnu => host::WINDOWS || runs_windows_programs(),
     }
 }
 
+/// A path in the environment, spelled the way the shell that reads it spells paths.
 fn display(path: &Path) -> String {
-    path.to_string_lossy().into_owned()
+    host::spelled(path)
 }
 
 /// The directories worth adding to `PATH` on this machine, discovered once.
 ///
 /// This is the one place a host difference is allowed in, and it is a list of prefixes rather
 /// than an inherited `PATH`, so that what got added is visible and can go in the record.
+///
+/// On Windows the prefixes are MSYS2's, its MinGW toolchain and then its own tools, because that
+/// is where the shell, make and the reference compiler all are.
 #[must_use]
 pub fn discover_extra_path() -> Vec<PathBuf> {
+    if host::WINDOWS {
+        return host::msys2_dirs();
+    }
     ["/opt/homebrew/bin", "/usr/local/bin", "/opt/local/bin"]
         .iter()
         .map(PathBuf::from)

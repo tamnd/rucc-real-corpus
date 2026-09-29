@@ -992,10 +992,7 @@ pub(crate) fn resolve(program: &str, env: &BTreeMap<String, String>, workdir: &P
         return workdir.join(program);
     }
     let path = env.get("PATH").cloned().unwrap_or_default();
-    path.split(':')
-        .map(|dir| Path::new(dir).join(program))
-        .find(|candidate| candidate.is_file())
-        .unwrap_or_else(|| PathBuf::from(program))
+    crate::host::find_on(&path, program).unwrap_or_else(|| PathBuf::from(program))
 }
 
 /// `HOSTCC=<the host compiler>` on the make command line, which is the only place it survives.

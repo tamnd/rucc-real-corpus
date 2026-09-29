@@ -11,11 +11,12 @@
 
 use std::collections::BTreeMap;
 use std::io::{PipeReader, Read};
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::process::{Child, Command, Stdio};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
+use crate::host;
 use crate::memory;
 
 /// How often the timeout loop looks at the child.
@@ -200,9 +201,8 @@ fn spawn(invocation: &Invocation) -> std::io::Result<Started> {
     hand_pipes_over(invocation.as_user, &out_reader, &out_writer)?;
     hand_pipes_over(invocation.as_user, &err_reader, &err_writer)?;
 
-    let mut command = Command::new(&invocation.program);
+    let mut command = command_for(invocation);
     command
-        .args(&invocation.args)
         .current_dir(&invocation.cwd)
         .env_clear()
         .envs(&invocation.env)
@@ -217,6 +217,53 @@ fn spawn(invocation: &Invocation) -> std::io::Result<Started> {
         stdout: out_reader,
         stderr: err_reader,
     })
+}
+
+/// The program and its arguments, started the way a shell on this host would start them.
+///
+/// Windows starts an `.exe` and nothing else, and a configure script, every entry in the shim and
+/// half of what a suite runs are `sh` scripts. So on that host an `.exe` is started as it is and
+/// anything else is handed to MSYS2's `sh` as the script to run, which is what the kernel does
+/// with a `#!/bin/sh` line anywhere else. The shell is the one on the invocation's own `PATH`,
+/// which is the MSYS2 the environment names.
+///
+/// Every argument is quoted on the command line, whatever is in it. A program built on the MSYS2
+/// runtime splits its command line itself and expands a `*` it finds outside quotes, which a Unix
+/// exec would have left alone, and quoting everything is how an argument reaches it as it was.
+fn command_for(invocation: &Invocation) -> Command {
+    if !host::WINDOWS {
+        let mut command = Command::new(&invocation.program);
+        command.args(&invocation.args);
+        return command;
+    }
+    let is_exe = invocation
+        .program
+        .extension()
+        .is_some_and(|ext| ext.eq_ignore_ascii_case("exe"));
+    let mut command;
+    if is_exe {
+        command = Command::new(&invocation.program);
+    } else {
+        let path = invocation.env.get("PATH").cloned().unwrap_or_default();
+        let sh = host::find_on(&path, "sh").unwrap_or_else(|| PathBuf::from("sh"));
+        command = Command::new(sh);
+        raw_arg(&mut command, &host::spelled(&invocation.program));
+    }
+    for arg in &invocation.args {
+        raw_arg(&mut command, arg);
+    }
+    command
+}
+
+#[cfg(windows)]
+fn raw_arg(command: &mut Command, arg: &str) {
+    use std::os::windows::process::CommandExt;
+    command.raw_arg(host::quoted(arg));
+}
+
+#[cfg(not(windows))]
+fn raw_arg(command: &mut Command, arg: &str) {
+    command.arg(arg);
 }
 
 /// Give a pipe to the user the child will become, so the child can reopen it by name.
@@ -431,9 +478,7 @@ impl Drain {
 /// build.
 #[must_use]
 pub fn exists_on(path: &str, command: &str) -> bool {
-    path.split(':')
-        .map(|dir| Path::new(dir).join(command))
-        .any(|candidate| candidate.is_file())
+    host::find_on(path, command).is_some()
 }
 
 #[cfg(test)]
