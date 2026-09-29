@@ -1,6 +1,6 @@
 # The projects
 
-Seventy two entries across six rungs, which is the first time that sentence has been true of all six. Each row states the version the list starts at, the build system class from document 03.1 axis A, the oracle class from axis D, and the one to three things the project is on the list *for*.
+Seventy two entries across six rungs, which is the first time that sentence has been true of all six, and PostgreSQL on a seventh rung above them. Each row states the version the list starts at, the build system class from document 03.1 axis A, the oracle class from axis D, and the one to three things the project is on the list *for*.
 
 Two rules about reading this table.
 
@@ -223,7 +223,7 @@ The suite is thirty shell scripts under automake's parallel harness, which print
 |---|---|---|---|---|---|
 | `sqlite` | `3.53.4` | blessing | A2 | D3/E3 | the library with every extension compiled in, graded by the three hundred and ninety four thousand assertions the project ships for it |
 
-One row, and it is the whole rung. The ladder exists to make this project reachable and there is nothing above it, so the rung does not need a second row to be honest about what it is measuring.
+One row, and it is the whole rung. The ladder exists to make this project reachable and the milestone ends with it, so the rung does not need a second row to be honest about what it is measuring.
 
 **It is the same tarball as `sqlite-shell` and it has to be.** The amalgamation zip is four files and no build system and no tests. The autoconf tarball has a configure and no test target. The Tcl suite is in the source distribution and nowhere else, which is what section 7.10 of document 07 already said when `sqlite-shell` was admitted one rung below. So the two rows fetch one archive between them and the cache pays for it once.
 
@@ -245,7 +245,15 @@ One row, and it is the whole rung. The ladder exists to make this project reacha
 
 ## 5.7 Reserved, not run
 
-Parent document 14's rungs 2 through 4 name projects this ladder stops below: PostgreSQL, the Linux kernel, FFmpeg, OpenSSL, QEMU, CPython, curl, musl. They are listed here with their intended rung so that the growth is planned, and they are not in `projects/`, are not fetched, and are not counted in any number.
+Parent document 14's rungs 2 through 4 name projects this ladder stops below: the Linux kernel, FFmpeg, OpenSSL, QEMU, CPython, curl, musl. They are listed here with their intended rung so that the growth is planned, and they are not in `projects/`, are not fetched, and are not counted in any number.
+
+PostgreSQL was on that list and has moved in, as R6, which is the rung document 14.6 always gave it.
+
+| project | pin | licence | A | D/E | demands |
+|---|---|---|---|---|---|
+| `postgresql` | `18.6` | PostgreSQL | A5 | D3/E2 | a server that `dlopen`s `regress.so` and `plpgsql.so` and lets them call back into it, `PG_TRY` on every error path, and computed goto in the expression interpreter |
+
+It runs `make check` and nothing else, which is the main `pg_regress` suite of 231 tests from `src/test/regress/parallel_schedule` against a temporary instance, and not `check-world`. The configuration is the minimal one from `tamnd/rucc-postgres` without `--enable-tap-tests`, and `pg_regress` prints TAP of its own, so the row is graded by the `tap` parser. The baseline is counted from the schedule in the pinned tree rather than from a gcc run, and the manifest says how. Its weight in the feature map is zero, because six minus the rung is zero here, and that is the rule working rather than failing: the map ranks work toward SQLite and this row is above it.
 
 The rule for moving one in is parent document 17's milestone gate, not this repository's judgement: a project enters when the milestone that needs it starts.
 
@@ -275,10 +283,10 @@ Kept so the argument is not had twice. Each entry names the criterion from docum
 
 ## 5.9 What the list does not cover, and what covers it instead
 
-Three demands that matter and that no project below R5 makes, recorded so that the gap is deliberate:
+Three demands that matter and that no project up to R5 makes, recorded so that the gap is deliberate:
 
 **Inline assembly at volume.** `libgmp` is the only real B4 entry and it is one project. Parent document 13 and `rucc-compat`'s `tcc` corpus cover the construct; volume waits for parent rung 2.
 
-**Shared objects loaded by `dlopen`.** Nothing here builds a plugin and loads it. `libpng` and `libgmp` build shared libraries, which exercises `-fPIC` and visibility, but nothing exercises the runtime loader finding our symbols. Parent document 14.4 puts that at PostgreSQL and this ladder accepts the gap.
+**Shared objects loaded by `dlopen`.** Nothing here builds a plugin and loads it. `libpng` and `libgmp` build shared libraries, which exercises `-fPIC` and visibility, but nothing below R6 exercises the runtime loader finding our symbols. Parent document 14.4 puts that at PostgreSQL, and the R6 row in section 5.7 is where it is now measured.
 
 **A second toolchain in the link.** Document 08.5 covers it with the archive cross-link at R1, which is weaker than PostgreSQL's extension test and is the strongest thing available at this scale.

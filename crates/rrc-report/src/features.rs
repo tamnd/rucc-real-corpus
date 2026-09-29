@@ -87,6 +87,10 @@ impl Reacher {
     /// project, because the eleven are cheaper to verify and unblocking them is what makes the
     /// next run informative. Six minus the rung gives R0 six and R5 one, so the whole ladder still
     /// counts for something and the bottom of it counts for six times as much as the top.
+    ///
+    /// R6 gets nothing, and that is the same rule and not an exception to it. PostgreSQL is above
+    /// SQLite, which is where the milestone this map serves ends, so a feature only it demands is
+    /// listed with it as a reacher and adds nothing to what to do next.
     #[must_use]
     pub const fn weight(&self) -> u32 {
         6 - self.rung.as_u8() as u32
@@ -615,10 +619,25 @@ diagnostic = ["block_addr"]
             2 => Rung::R2,
             3 => Rung::R3,
             4 => Rung::R4,
-            _ => Rung::R5,
+            5 => Rung::R5,
+            _ => Rung::R6,
         };
         manifest.project.demands = demands.iter().map(ToString::to_string).collect();
         manifest
+    }
+
+    #[test]
+    fn the_weight_runs_from_six_at_the_bottom_to_nothing_above_sqlite() {
+        let at = |rung| Reacher {
+            project: "p".to_string(),
+            rung,
+            how: How::Declared,
+            outcome: None,
+            demands: 1,
+        };
+        assert_eq!(at(Rung::R0).weight(), 6);
+        assert_eq!(at(Rung::R5).weight(), 1);
+        assert_eq!(at(Rung::R6).weight(), 0);
     }
 
     #[test]

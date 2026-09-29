@@ -118,7 +118,7 @@ This ladder stops at SQLite because parent document 17 stops M5 at SQLite. What 
 | M6 | nothing new. Everything is CI. The list does not grow. |
 | M7 | document 05.6's reserved projects for parent rung 2 are admitted: `curl`, `musl`, `openssl`, and the mid-tier the parent names |
 | M8 | nothing new; the corpus is regression protection while the compiler works on quality |
-| M9 | PostgreSQL is admitted as R6, which brings `dlopen` and a second toolchain in the link, the two gaps document 05.8 names |
+| M9 | PostgreSQL is admitted as R6, which brings `dlopen` and a second toolchain in the link, the two gaps document 05.9 names. The row is in already, running `make check` only, and M9 is where it grows toward `check-world` |
 
 **A rung, once climbed, is CI.** Parent document 14 says it and it is the reason M6 and M8 have empty rows: the value of a climbed rung is that nobody thinks about it again.
 

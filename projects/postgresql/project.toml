@@ -1,0 +1,100 @@
+[project]
+name = "postgresql"
+rung = 6
+upstream = "https://www.postgresql.org"
+licence = "PostgreSQL"
+licence-file = "COPYRIGHT"
+description = "the database server, graded by the main pg_regress suite that make check runs against a temporary instance"
+# The first R6 row. Two of its tags are carried by no other row, which is what a rung above SQLite
+# is for, and they are two of the tags added for Postgres in tamnd/rucc-real-corpus#187.
+#
+# module-undefined-symbols is why it is here at all, and it is the dlopen gap
+# spec/05-the-projects.md section 5.9 names. make check loads regress.so and plpgsql.so into a
+# running server with dlopen, and both are linked with their calls into the server left undefined,
+# to be resolved against the postgres executable that loaded them. So the suite fails when the
+# driver links a module the wrong way for the platform, whatever the code generator did.
+#
+# sigsetjmp-volatile is every PG_TRY block. An error inside one is a siglongjmp back to the
+# sigsetjmp that opened it, the locals the block changed are declared volatile so that they keep
+# their new values, and the suite raises errors on purpose all through its schedule.
+#
+# computed-goto is the expression interpreter. execExprInterp.c dispatches with labels as values
+# when configure finds them, and every query in the suite goes through it. When the probe says no
+# the same file falls back to a switch, so the answer is held below in expect-configure. Without
+# that check a compiler that fails the probe would build the fallback and pass without anybody
+# knowing.
+demands = ["module-undefined-symbols", "sigsetjmp-volatile", "computed-goto"]
+
+# The release tarball, 18.6, which is the pin the sibling repository tamnd/rucc-postgres uses. Since
+# PostgreSQL 17 the release tarball no longer ships the bison and flex output, so the build has to
+# generate the parser and scanner itself, and that is where bison, flex and perl in test.requires
+# come from, with m4 because flex runs it to expand its skeleton.
+[source]
+url = "https://ftp.postgresql.org/pub/source/v18.6/postgresql-18.6.tar.bz2"
+sha256 = "555610c24d53e4316da5b7d3fc25c279d96856d5e0e23ee308c328c5fa881d9f"
+strip-components = 1
+
+# The minimal configuration from tamnd/rucc-postgres, configs/minimal.toml, with one difference. No
+# ICU, readline, zlib, LLVM or NLS, so the build does not depend on which libraries a host happens
+# to have, and assertions off. --enable-debug is kept because the sibling keeps it, and it puts -g
+# after the level configure takes from CFLAGS.
+#
+# --enable-tap-tests is left out. It makes configure insist on the IPC::Run perl module, and the one
+# suite this row runs is pg_regress, which prove plays no part in. A row that ran check-world would
+# need it, and would be graded by the tap-scripts parser.
+#
+# The build is the default target, which is everything under src and nothing under contrib. That
+# already includes pg_regress and regress.so, because src/test/regress is one of the directories the
+# default target walks, so the compile lands in the build time. make check then installs the tree
+# into tmp_install, runs initdb once for a template and starts a server from it, and none of that
+# compiles anything.
+[build]
+system = "configure"
+configure = [
+    "--without-icu",
+    "--without-readline",
+    "--without-zlib",
+    "--without-llvm",
+    "--disable-nls",
+    "--disable-cassert",
+    "--enable-debug",
+]
+expect-configure = ["checking for computed goto support... yes"]
+binary = "src/backend/postgres"
+
+# make check, which is pg_regress running src/test/regress/parallel_schedule against a temporary
+# instance, and not check-world. Since PostgreSQL 16 pg_regress prints TAP itself, one line per test
+# such as `ok 1 - test_setup 311 ms`, with a `+` in place of the `-` for a test run in a parallel
+# group, then the plan, and then `# All 231 tests passed.` as a comment. So the tap parser reads it
+# as it is. The plan comes last because pg_regress prints it after the last test, so it counts what
+# ran rather than what the schedule names, and a short run is caught by baseline-tests rather than
+# by the plan.
+#
+# 231 is counted from the pinned tree and not from a gcc run. It is the number of test names on the
+# test: lines of src/test/regress/parallel_schedule in 18.6, which is what this prints:
+#
+#     awk '/^test:/ { n += NF - 1 } END { print n }' src/test/regress/parallel_schedule
+#
+# There are 28 of those lines, test_setup alone on the first, and no name is on two of them.
+# pg_regress runs every test the schedule names and has no way to skip one, so every test counted is
+# a test that runs.
+#
+# initdb will not run as root, which is one more reason the harness drops privileges before a suite.
+# pg_regress starts the server with listen_addresses empty and talks to it over a Unix socket in a
+# temporary directory, so the suite needs no network.
+[test]
+command = ["make", "check"]
+oracle = "suite"
+parser = "tap"
+baseline-tests = 231
+requires = ["sh", "perl", "bison", "flex", "m4"]
+
+# The build limit is sqlite's. The schedule runs up to twenty tests at once as separate backends,
+# which is --max-concurrent-tests=20 in src/test/regress/GNUmakefile. That is a suite that scales
+# itself to the machine, so the cell takes all of it rather than one slot. The test limit leaves
+# room for a server built at -O0 by a young compiler to be slow without being wrong, the same
+# argument sqlite's manifest makes.
+[limits]
+build-seconds = 5400
+test-seconds = 1800
+cores = "all"

@@ -1,6 +1,6 @@
-# The ladder: six rungs
+# The ladder: six rungs, and one above it
 
-Parent document 14 has five rungs and a gap between rung 0 and rung 1 that is the whole of M5. This document fills the gap with six rungs of its own, R0 to R5, where R5 *is* the parent's rung 1 and everything below it is new.
+Parent document 14 has five rungs and a gap between rung 0 and rung 1 that is the whole of M5. This document fills the gap with six rungs of its own, R0 to R5, where R5 *is* the parent's rung 1 and everything below it is new. R6 sits above them and holds PostgreSQL, which section 4.9 explains.
 
 The numbering is deliberately separate from the parent's so that a sentence naming a rung is unambiguous about which ladder it means.
 
@@ -97,6 +97,7 @@ Parent document 14.2, unchanged, restated as the top of this ladder so that the 
 | R3 | yes | yes | yes | yes | yes | yes |
 | R4 | yes | yes | yes | yes | yes | yes |
 | R5 | yes | yes | yes | yes | yes | yes |
+| R6 | yes | yes | yes | yes | yes | yes |
 
 `-O3` used to start at R3 and now starts at R0. The staging was a cost decision and this section was honest about being one, so the change has to be argued on cost and on what the level buys, in that order.
 
@@ -126,7 +127,9 @@ A project's rung is a claim about what it demands, and claims can be wrong.
 
 ## 4.9 What the ladder deliberately excludes
 
-**PostgreSQL, the kernel, FFmpeg, QEMU, CPython, OpenSSL.** These are parent document 14's rungs 2, 3 and 4 and they belong on that ladder, not this one. This repository stops at SQLite because parent document 17 stops M5 at SQLite, and a corpus that reaches past its compiler's milestone is a corpus that is mostly red for reasons nobody is working on.
+**The kernel, FFmpeg, QEMU, CPython, OpenSSL.** These are parent document 14's rungs 2, 3 and 4 and they belong on that ladder, not this one. This repository stops at SQLite because parent document 17 stops M5 at SQLite, and a corpus that reaches past its compiler's milestone is a corpus that is mostly red for reasons nobody is working on.
+
+**PostgreSQL is the exception, and it is R6.** Document 14.6 always had it arriving as R6, and it is admitted now with a narrow oracle so that the two demands document 05.9 names as gaps, a module loaded with `dlopen` that calls back into the executable and error handling by `sigsetjmp`, are measured rather than assumed. It runs `make check`, the main `pg_regress` suite, and not `check-world`, which is most of the value for a small part of the cost. It is at every level, like R5. It weighs nothing in the feature map, because six minus the rung is zero, so it can say what it needs without reordering the work that SQLite needs.
 
 The list of projects this repository will grow into at M7 and M9 is in document 05.6, marked as reserved, so that the growth is planned rather than improvised. It is not run and it is not counted.
 

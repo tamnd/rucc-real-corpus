@@ -145,7 +145,7 @@ pub struct RunPlan {
     /// this rather than the path, so that the file is read once at the top of the run instead of
     /// once per project.
     pub only: Vec<(String, Level)>,
-    /// Whether to also build each R4 and R5 project with a fixed tenth of its files ours.
+    /// Whether to also build each project from R4 up with a fixed tenth of its files ours.
     ///
     /// Off by default and on in the nightly, which is where `spec/12-ci-and-cost.md` puts the four
     /// hours this needs. It is a flag rather than something the rung turns on by itself because the
@@ -895,7 +895,7 @@ Options for run:
 
   --project NAME  one project by name, repeatable, and it walks every rung
   --twice         build everything twice into two roots and compare the bytes
-  --mixed         also build each R4 and R5 project with a fixed tenth of its files ours and the
+  --mixed         also build each project from R4 up with a fixed tenth of its files ours and the
                   rest gcc's, which says whether a failure is in code generation or in the build
   --jobs N        run N cells at once, or auto for one per core, defaulting to 1
   --no-baseline   skip the gcc half of every cell, which halves the run and empties every
