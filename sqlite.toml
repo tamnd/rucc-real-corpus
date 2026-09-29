@@ -202,6 +202,11 @@ sites = 0
 evidence = "same reason as autoconf, there is no configure step of any kind in front of the amalgamation"
 
 [[measured]]
+tag = "meson-probes"
+sites = 0
+evidence = "same reason again, the amalgamation is compiled with no meson.build or any other build system in front of it"
+
+[[measured]]
 tag = "nan-boxing"
 sites = 0
 evidence = "sqlite3.c reinterprets a double as a 64 bit integer and back in sixteen places, all of them through memcpy rather than through a union, and a value's type is carried in the flags field of the Mem struct beside the number rather than in the payload of a quiet NaN, so the demand this tag names is one it does not make"
@@ -245,3 +250,68 @@ evidence = "there are five calls to alloca in sqlite3.c and every one of them is
 tag = "driver-passthrough"
 sites = 0
 evidence = "neither -Wp, nor -Wa, appears anywhere in the 269,649 lines, which is the expected answer twice over: both are written by a build system onto a compile line rather than by a program into its own source, and the amalgamation has no build system in front of it, so the only flags it is ever compiled with are the ones the harness itself writes"
+
+[[measured]]
+tag = "acle-crc"
+sites = 0
+evidence = "no arm_acle.h, no __crc32 intrinsic and no __ARM_FEATURE_CRC32 test anywhere in sqlite3.c, and the checksums it does compute, in the WAL and the page format, are written out in plain C"
+
+[[measured]]
+tag = "avx512-intrinsics"
+sites = 0
+evidence = "no _mm512 name, no __m512 type and no mention of AVX-512, and the only intrinsics header the amalgamation includes is intrin.h, which is behind _MSC_VER and so never reached by a GCC compatible compiler"
+
+[[measured]]
+tag = "builtin-setjmp-coff"
+sites = 0
+evidence = "there is no setjmp of any spelling in sqlite3.c, so there is nothing for a MinGW build to swap for __builtin_setjmp"
+
+[[measured]]
+tag = "bundle-loader"
+sites = 0
+evidence = "the amalgamation is compiled directly with no build system in front of it, and a loadable extension reaches SQLite through the sqlite3_api_routines table it is handed rather than by resolving symbols against the executable, so nothing ever has to be linked with -bundle_loader"
+
+[[measured]]
+tag = "dllimport"
+sites = 0
+evidence = "no dllimport anywhere, and the six __declspec(dllexport) lines, on the init functions of fts3, rtree, icu, fts5 twice and stmt, are each inside a block that only compiles when SQLITE_CORE is undefined, which the amalgamation defines on line 26, so none of them survives preprocessing on any target"
+
+[[measured]]
+tag = "module-undefined-symbols"
+sites = 0
+evidence = "SQLite loads extensions with dlopen but hands each one a pointer to the sqlite3_api_routines table through SQLITE_EXTENSION_INIT2, so an extension calls back through that table rather than through symbols left undefined for the executable to resolve, which is the design this tag describes the absence of"
+
+[[measured]]
+tag = "neon-intrinsics"
+sites = 0
+evidence = "no arm_neon.h, no __ARM_NEON test and no NEON intrinsic, since every byte swap and bit count goes through the GNU builtins or plain C"
+
+[[measured]]
+tag = "overflow-builtins-mixed-sign"
+sites = 0
+evidence = "the three overflow builtins are the ones counted under overflow-builtins, and in all three the operands and the result are i64, so the signedness never differs"
+
+[[measured]]
+tag = "returns-twice"
+sites = 0
+evidence = "no returns_twice attribute; the seven __attribute__ uses in the file are aligned twice, always_inline, fallthrough twice, no_sanitize_thread and noinline"
+
+[[measured]]
+tag = "sigsetjmp-volatile"
+sites = 0
+evidence = "no sigsetjmp and no siglongjmp, for the same reason there is no setjmp: errors are returned as codes all the way up"
+
+[[measured]]
+tag = "sse42-intrinsics"
+sites = 0
+evidence = "no nmmintrin.h, no smmintrin.h, no _mm_crc32 and no mention of SSE4.2, and nothing on the compile line asks for -msse4.2"
+
+[[measured]]
+tag = "sve-intrinsics"
+sites = 0
+evidence = "no arm_sve.h and no sizeless vector type anywhere in the file"
+
+[[measured]]
+tag = "target-attribute"
+sites = 0
+evidence = "no target attribute on any function, since the amalgamation never picks an instruction set per function and the seven __attribute__ uses in it are all the kinds listed under returns-twice"

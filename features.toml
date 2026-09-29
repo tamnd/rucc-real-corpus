@@ -222,6 +222,10 @@ summary = "__builtin_memcpy and __builtin_memset expanded inline at a size the c
 kind = "gnu-builtin"
 standard = "GNU builtin; the portable spelling is a call to memcpy that the compiler is expected to recognise"
 
+[meson-probes]
+summary = "the compiler is one meson's detection recognises from its --version and predefined macros, and it answers meson's has_function, has_header and compiles probes the way meson expects"
+kind = "driver"
+
 [module-undefined-symbols]
 summary = "a loadable module that calls back into the executable that loaded it, linked the way each platform does it"
 kind = "driver"

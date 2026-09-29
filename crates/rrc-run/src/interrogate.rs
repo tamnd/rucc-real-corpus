@@ -22,7 +22,13 @@
 //! header in the build tree that was not in the pinned source is one configure wrote. That covers
 //! `config.h`, `pcre2_config.h`, `expat_config.h` and everything else autoconf and cmake have been
 //! talked into naming it, without a manifest field that somebody has to remember to set and that
-//! is wrong the moment upstream renames the file.
+//! is wrong the moment upstream renames the file. Meson writes its headers under `build/`, which is
+//! inside the tree and was not in the pin, so the same walk finds them there without being told.
+//!
+//! Meson's probes come from two places rather than one. Setup prints its conclusions as it goes,
+//! and it also writes every one of them to `build/meson-logs/meson-log.txt` with the compile
+//! commands and their output in between. Both are read, the log second, so that a conclusion is
+//! only missing when meson never reached it.
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
@@ -132,6 +138,8 @@ struct Patterns {
     define: Regex,
     checking: Regex,
     cmake: Regex,
+    meson: Regex,
+    colour: Regex,
 }
 
 fn patterns() -> &'static Patterns {
@@ -170,6 +178,25 @@ fn patterns() -> &'static Patterns {
         .unwrap(),
         checking: Regex::new(r"^checking (.+?)\.\.\. (.*)$").unwrap(),
         cmake: Regex::new(r"^-- (?:Performing Test |Looking for |Check )(.+?) - (.*)$").unwrap(),
+        // The conclusions meson prints during setup, which are all a subject, a colon and an
+        // answer. `Checking for function "strdup" : YES`, `Checking if "atomics" compiles: YES`,
+        // `Compiler for C supports arguments -Wall: YES`, `Has header "stdlib.h" : YES`,
+        // `Header "time.h" has symbol "clock_gettime" : YES`, `Checking for size of "long" : 8`,
+        // `Fetching value of define "__x86_64__" : 1` and `Library m found: YES`. Only the lines
+        // that start with one of those subjects, because the log also carries every command meson
+        // ran and whatever the compiler said back, and a compiler's own message can contain a
+        // colon anywhere.
+        //
+        // The subject is greedy so that the answer is whatever follows the last colon, since a
+        // subject can hold a colon of its own and an answer never does. `(cached)` is dropped off
+        // the end, because meson says it on the second time it answers the same question in one
+        // setup, and a question answered from the cache on one side and afresh on the other is
+        // the same answer.
+        meson: Regex::new(
+            r"^((?:Checking |Compiler for \w+ supports |Has header |Header |Fetching value of define |Library ).+)\s*:\s+(\S.*?)(?:\s+\(cached\))?\s*$",
+        )
+        .unwrap(),
+        colour: Regex::new(r"\x1b\[[0-9;]*m").unwrap(),
     })
 }
 
@@ -186,7 +213,7 @@ pub fn compare(
     names: &Names,
 ) -> std::io::Result<Vec<Divergence>> {
     let mut found = headers(ours, theirs, pristine, subdir, names)?;
-    found.extend(probes(ours, theirs, names));
+    found.extend(probes(ours, theirs, subdir, names));
     found.sort_by(|a, b| (&a.file, &a.key).cmp(&(&b.file, &b.key)));
     Ok(found)
 }
@@ -232,9 +259,13 @@ fn headers(
 /// transcript, every command line and every snippet, so nearly all of it differs between two
 /// compilers for reasons nobody wants reported. The `checking ... ` lines are the part of it that
 /// is a conclusion, and they are the part the person running configure was shown.
-fn probes(ours: &Trial, theirs: &Trial, names: &Names) -> Vec<Divergence> {
-    let mine = answers(ours, names);
-    let yours = answers(theirs, names);
+///
+/// Meson is the exception to reading only what was printed, and only because its log holds the
+/// same lines in the same words. The log is where meson puts the conclusions of a setup that died
+/// halfway, which is the case where the two sides are most worth comparing.
+fn probes(ours: &Trial, theirs: &Trial, subdir: Option<&Path>, names: &Names) -> Vec<Divergence> {
+    let mine = answers(ours, subdir, names);
+    let yours = answers(theirs, subdir, names);
     let keys: BTreeSet<&String> = mine.keys().chain(yours.keys()).collect();
     keys.into_iter()
         .filter(|key| mine.get(*key) != yours.get(*key))
@@ -320,24 +351,38 @@ fn macros(path: &Path, names: &Names) -> BTreeMap<String, String> {
 
 /// Every question configure asked and the answer it settled on.
 ///
-/// Both dialects, because the corpus has autoconf projects and cmake projects and section 8.8
-/// covers both. When a question is asked twice, which happens when a configure re-probes after
-/// changing a flag, the last answer wins, since that is the one the build was configured with.
-fn answers(trial: &Trial, names: &Names) -> BTreeMap<String, String> {
+/// All three dialects, because the corpus has autoconf, cmake and meson projects and section 8.8
+/// covers all of them. When a question is asked twice, which happens when a configure re-probes
+/// after changing a flag, the last answer wins, since that is the one the build was configured
+/// with.
+fn answers(trial: &Trial, subdir: Option<&Path>, names: &Names) -> BTreeMap<String, String> {
     let mut found = BTreeMap::new();
-    let Some(said) = &trial.build else {
-        return found;
-    };
-    for line in said.stdout.lines() {
+    if let Some(said) = &trial.build {
+        read_answers(&said.stdout, names, &mut found);
+    }
+    let log = build_root(trial, subdir).join(MESON_LOG);
+    if let Ok(text) = std::fs::read_to_string(log) {
+        read_answers(&text, names, &mut found);
+    }
+    found
+}
+
+/// Where `meson setup build` writes its log, relative to the directory it ran in.
+const MESON_LOG: &str = "build/meson-logs/meson-log.txt";
+
+/// The probe lines in one piece of text, in whichever dialect each of them is in.
+fn read_answers(text: &str, names: &Names, found: &mut BTreeMap<String, String>) {
+    for line in text.lines() {
+        let line = patterns().colour.replace_all(line, "");
         let caught = patterns()
             .checking
-            .captures(line)
-            .or_else(|| patterns().cmake.captures(line));
+            .captures(&line)
+            .or_else(|| patterns().cmake.captures(&line))
+            .or_else(|| patterns().meson.captures(&line));
         if let Some(caught) = caught {
             found.insert(names.clean(&caught[1]), names.clean(&caught[2]));
         }
     }
-    found
 }
 
 /// The lines a report prints for one project, or nothing when the two configures agreed.
@@ -427,16 +472,7 @@ mod tests {
     fn both_configure_dialects_are_read() {
         let text = "checking for __atomic_load_8... yes\n-- Performing Test HAVE_BUILTIN_CLZ - Success\nnot a probe line\n";
         let mut found = BTreeMap::new();
-        let names = names();
-        for line in text.lines() {
-            if let Some(caught) = patterns()
-                .checking
-                .captures(line)
-                .or_else(|| patterns().cmake.captures(line))
-            {
-                found.insert(names.clean(&caught[1]), names.clean(&caught[2]));
-            }
-        }
+        read_answers(text, &names(), &mut found);
         assert_eq!(found["for __atomic_load_8"], "yes");
         assert_eq!(found["HAVE_BUILTIN_CLZ"], "Success");
         assert_eq!(
@@ -491,5 +527,147 @@ mod tests {
             names.clean("whether cc accepts -g"),
             "whether cc accepts -g"
         );
+    }
+
+    /// The part of a meson log that matters, from fribidi's setup under gcc, with a stretch of the
+    /// command transcript left in between so the reader has to skip it.
+    const MESON_LOG_TEXT: &str = r#"Build started at 2026-09-29T10:12:01.118404
+Main binary: /usr/bin/python3
+Build Options: -Dbuildtype=plain -Dwrap_mode=nodownload -Ddocs=false
+Python system: Linux
+The Meson build system
+Version: 1.9.1
+Source dir: /w/b/src
+Build dir: /w/b/src/build
+Build type: native build
+Project name: fribidi
+Project version: 1.0.17
+Detecting compiler via: `/w/b/bin/cc --version` -> 0
+stdout:
+gcc-16 (GCC) 16.2.0
+C compiler for the host machine: /w/b/bin/cc (gcc 16.2.0 "gcc-16 (GCC) 16.2.0")
+C linker for the host machine: /w/b/bin/cc ld.bfd 2.42
+Running compile:
+Working directory:  /w/b/src/build/meson-private/tmpa1b2c3
+Code:
+ #include <string.h>
+int main(void) { return 0; }
+Command line: `/w/b/bin/cc /w/b/src/build/meson-private/tmpa1b2c3/testfile.c -o /w/b/src/build/meson-private/tmpa1b2c3/output.exe -O0` -> 0
+stderr:
+warning: unused variable: 'x'
+Checking for function "memmove" : YES
+Checking for function "strdup" : YES
+Has header "stdlib.h" : YES
+Has header "memory.h" : YES
+Has header "strings.h" : YES
+Has header "sys/times.h" : YES
+Has header "stdlib.h" : YES (cached)
+Checking if "atomic builtins" links: YES
+Compiler for C supports arguments -Wno-unused-parameter: YES
+Header "time.h" has symbol "clock_gettime" : YES
+Checking for size of "long" : 8
+Fetching value of define "__SIZEOF_INT128__" : 16
+Library m found: YES
+Configuring config.h using configuration
+Build targets in project: 14
+"#;
+
+    #[test]
+    fn meson_probes_are_read_from_its_log_and_nothing_else_is() {
+        let mut found = BTreeMap::new();
+        read_answers(MESON_LOG_TEXT, &names(), &mut found);
+        assert_eq!(found[r#"Checking for function "strdup""#], "YES");
+        assert_eq!(found[r#"Has header "sys/times.h""#], "YES");
+        assert_eq!(
+            found[r#"Has header "stdlib.h""#], "YES",
+            "a cached answer is the same answer"
+        );
+        assert_eq!(found[r#"Checking if "atomic builtins" links"#], "YES");
+        assert_eq!(
+            found["Compiler for C supports arguments -Wno-unused-parameter"],
+            "YES"
+        );
+        assert_eq!(
+            found[r#"Header "time.h" has symbol "clock_gettime""#],
+            "YES"
+        );
+        assert_eq!(found[r#"Checking for size of "long""#], "8");
+        assert_eq!(
+            found[r#"Fetching value of define "__SIZEOF_INT128__""#],
+            "16"
+        );
+        assert_eq!(found["Library m found"], "YES");
+        assert_eq!(
+            found.len(),
+            12,
+            "the compiler identification, the command lines and the compiler's own output are not probes: {found:?}"
+        );
+    }
+
+    #[test]
+    fn a_meson_probe_that_went_the_other_way_is_one_difference() {
+        // The same log from the other side, where rucc's answer to the int128 define and to the
+        // flag probe differ and everything that differs only by where the tree was does not.
+        let theirs = MESON_LOG_TEXT;
+        let ours = MESON_LOG_TEXT
+            .replace("/w/b/", "/w/a/")
+            .replace("gcc 16.2.0", "rucc 0.11.6")
+            .replace(
+                r#"Fetching value of define "__SIZEOF_INT128__" : 16"#,
+                r#"Fetching value of define "__SIZEOF_INT128__" : "#,
+            )
+            .replace("-Wno-unused-parameter: YES", "-Wno-unused-parameter: NO");
+        let names = Names {
+            versions: vec!["16.2.0".into(), "0.11.6".into()],
+        };
+        let (mut mine, mut yours) = (BTreeMap::new(), BTreeMap::new());
+        read_answers(&ours, &names, &mut mine);
+        read_answers(theirs, &names, &mut yours);
+        let differ: Vec<&String> = mine
+            .keys()
+            .chain(yours.keys())
+            .collect::<BTreeSet<_>>()
+            .into_iter()
+            .filter(|key| mine.get(*key) != yours.get(*key))
+            .collect();
+        assert_eq!(
+            differ,
+            vec![
+                "Compiler for C supports arguments -Wno-unused-parameter",
+                r#"Fetching value of define "__SIZEOF_INT128__""#,
+            ]
+        );
+    }
+
+    #[test]
+    fn the_meson_log_is_read_out_of_the_tree_the_setup_ran_in() {
+        // The configured tree is laid out the way the driver leaves it, with the log under
+        // `build/meson-logs` and the header meson wrote under `build`, and both of them are found
+        // without the manifest naming either.
+        let root = std::env::temp_dir().join("rrc-interrogate-meson");
+        std::fs::remove_dir_all(&root).ok();
+        let pristine = root.join("pin");
+        written(&pristine, "config.h.in", "#undef HAVE_MEMMOVE\n");
+        let built = root.join("built");
+        written(
+            &built.join("build/meson-logs"),
+            "meson-log.txt",
+            MESON_LOG_TEXT,
+        );
+        written(&built.join("build"), "config.h", "#define HAVE_MEMMOVE 1\n");
+
+        let shipped = shipped_headers(&pristine).unwrap();
+        assert_eq!(
+            generated(&built, &shipped)
+                .unwrap()
+                .into_iter()
+                .collect::<Vec<_>>(),
+            vec!["build/config.h".to_string()]
+        );
+        let log = std::fs::read_to_string(built.join(MESON_LOG)).unwrap();
+        let mut found = BTreeMap::new();
+        read_answers(&log, &names(), &mut found);
+        assert_eq!(found[r#"Checking for function "memmove""#], "YES");
+        std::fs::remove_dir_all(&root).ok();
     }
 }

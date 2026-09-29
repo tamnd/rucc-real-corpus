@@ -121,7 +121,7 @@ pub struct Windows {
     /// The build system, when the Windows build uses a different one of the project's own.
     #[serde(default)]
     pub system: Option<BuildSystem>,
-    /// Arguments to `configure` or `cmake`, replacing the native ones.
+    /// Arguments to `configure`, `cmake` or `meson setup`, replacing the native ones.
     #[serde(default)]
     pub configure: Option<Vec<String>>,
     /// Make targets, replacing the native ones.
