@@ -16,7 +16,7 @@ A project's position on the ladder is a function of six independent demands. The
 | A1 | a hand-written `Makefile` honouring `CC` and `CFLAGS` | nothing beyond A0 |
 | A2 | a project-specific `configure` script, not autoconf | `-o`, exit statuses, and the driver not lying about what it supports |
 | A3 | autoconf, libtool, `pkg-config` | feature probes decided by whether a compile fails, `-fPIC`, `-shared`, `-Wl,`, and `-print-search-dirs` |
-| A4 | CMake or Meson | a compiler-ID table with a row for us, or a toolchain file, and the standard-flag mapping |
+| A4 | CMake or Meson | a compiler-ID table with a row for us, or a toolchain file, and the standard-flag mapping; Meson has no toolchain file to fall back on and has to recognise the compiler from `--version` and its predefined macros |
 | A5 | recursive make with generated sources, a build-time host compiler, or a two-pass link | everything above, plus `CC_FOR_BUILD`, plus determinism |
 
 A3 is the step where a compiler stops being tested and starts being *interrogated*, because `configure` decides what the program is from our diagnostics. Parent document 14.3 already names it and it is the reason autoconf projects are a rung of their own rather than sprinkled through the list.

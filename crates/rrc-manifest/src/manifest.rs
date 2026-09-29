@@ -208,7 +208,7 @@ pub struct Build {
     /// dependent build pointed at that prefix. `spec/07-harness.md` section 7.11.
     #[serde(default, rename = "needs")]
     pub needs: Vec<Need>,
-    /// Arguments passed to `configure` or to `cmake`.
+    /// Arguments passed to `configure`, to `cmake`, or to `meson setup` after the directory.
     #[serde(default)]
     pub configure: Vec<String>,
     /// Sentences that have to appear in what configure prints, one per line the answer matters

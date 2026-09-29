@@ -39,7 +39,7 @@ Parent document 20.10's taxonomy, adopted verbatim rather than reinvented, becau
 
 ## 8.3 Grading a suite
 
-`test.parser` names how the suite's output becomes a count, from a closed set: `automake` (the `# PASS:` block), `tap`, `ctest`, `lua` (the trailing `final OK` and its case count), `custom-regex` with the pattern in the manifest, or `exit-status` for D2.
+`test.parser` names how the suite's output becomes a count, from a closed set: `automake` (the `# PASS:` block), `tap`, `ctest`, `meson` (one result line per test from `meson test`, so one per script or program, which is how Postgres and every other meson project count), `lua` (the trailing `final OK` and its case count), `custom-regex` with the pattern in the manifest, or `exit-status` for D2.
 
 A parser that cannot find a count in output the suite produced yields `not compared`, never `passed`. This is the same rule as document 06.5's and for the same reason: silent oracle weakening is the failure mode this whole document exists to prevent.
 
@@ -125,6 +125,8 @@ Document 04.3's rung 2 has a failure mode the other rungs do not: the build succ
 Autoconf decides what the program is by compiling snippets and looking at whether they fail. If rucc rejects a probe GCC accepts, the project takes a portable fallback path and everything passes, and we have learned nothing except that the fallback works. If rucc accepts a probe GCC rejects, the project takes a path GCC's users never take and any failure that follows is our fault twice over.
 
 **The mechanism.** For every A3 and A4 project the harness runs `configure` twice, once with rucc and once with GCC 16, into separate trees, and diffs the resulting `config.h` and `config.log` conclusion lines. Differences are normalized for the compiler's own name and version and then reported.
+
+For a Meson project the configure step is `meson setup build`, with `CC` pointing at the compiler under test, and the conclusion lines are the ones setup prints and also writes to `build/meson-logs/meson-log.txt`: `Checking for function "strdup" : YES`, `Checking if "..." compiles: YES`, `Compiler for C supports arguments -Wx: YES`, `Has header "x.h" : YES` and the rest of that family. Both are read, so a setup that died halfway still has its conclusions compared. The headers are found the way every other build system's are, as the headers in the configured tree that the pin did not ship, and for Meson that means everything it wrote under `build/`.
 
 **The verdict.** A non-empty diff is reported at every run, and is a finding even when both builds pass and both suites pass. Each difference is either an issue against rucc's driver or preprocessor, or an entry in document 09's register with a reason. It is never allowed to be neither, because an unexplained `config.h` difference means we do not know what we compiled.
 

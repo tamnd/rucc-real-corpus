@@ -10,7 +10,7 @@
 //! diff somebody can argue with.
 
 use rrc_manifest::axes::{BuildSystem, Level, Oracle, Requirement};
-use rrc_manifest::manifest::{Manifest, Program};
+use rrc_manifest::manifest::{Build, Manifest, Program};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
@@ -887,7 +887,66 @@ fn build_steps(job: &Job<'_>, env: &BTreeMap<String, String>, workdir: &Path) ->
                 ),
             ]
         }
+        BuildSystem::Meson => vec![
+            at(
+                "meson",
+                Phase::Configured,
+                "meson",
+                meson_setup(build, job.level),
+            ),
+            at("build", Phase::Linked, "meson", meson_compile(build)),
+        ],
     }
+}
+
+/// The arguments to `meson setup`, which configures into `build` under the source tree.
+///
+/// Meson reads `CC`, `CFLAGS`, `CPPFLAGS` and `LDFLAGS` once, at setup, and bakes them into the
+/// ninja file, so the environment the harness already writes is enough to put the compiler under
+/// test in charge and nothing is repeated on the command line. Three things are added in front of
+/// the manifest's own arguments.
+///
+/// `--buildtype=plain` is the one that matters. Meson's default is `debug`, which puts `-O0 -g` on
+/// every compile line ahead of `CFLAGS`, and the level would then only win because it comes later
+/// on the line. Plain adds no optimization flag at all, so the level in `CFLAGS` is the only one
+/// the compiler ever sees, the same as it is for a Makefile.
+///
+/// `--wrap-mode=nodownload` because a subproject meson fetched off the network in the middle of a
+/// build would be code nobody pinned. A project that needs one gets it from the tarball or does not
+/// build.
+///
+/// `-Db_lto=true` at the one level that needs it. A Makefile hands `CFLAGS` to the link as well,
+/// so `-flto` reaches the linker there without anybody asking. Meson links with `LDFLAGS` and not
+/// `CFLAGS`, so without this every object would be compiled for a link time optimization that the
+/// link then never does, and the level would be measuring something other than its name.
+fn meson_setup(build: &Build, level: Level) -> Vec<String> {
+    let mut args = vec![
+        "setup".to_string(),
+        "build".to_string(),
+        "--buildtype=plain".to_string(),
+        "--wrap-mode=nodownload".to_string(),
+    ];
+    if level == Level::Lto {
+        args.push("-Db_lto=true".to_string());
+    }
+    args.extend(build.configure.clone());
+    args
+}
+
+/// The arguments to `meson compile`, which runs ninja over the tree setup wrote.
+///
+/// One job unless the manifest says the build may run in parallel, for the reason `build.parallel`
+/// is off everywhere else: ninja uses every core by default, and with several compiles failing at
+/// once the first diagnostic in the log is whichever of them lost the race.
+fn meson_compile(build: &Build) -> Vec<String> {
+    let jobs = if build.parallel { "4" } else { "1" };
+    vec![
+        "compile".to_string(),
+        "-C".to_string(),
+        "build".to_string(),
+        "-j".to_string(),
+        jobs.to_string(),
+    ]
 }
 
 /// The one command line the harness writes itself.
@@ -2430,5 +2489,28 @@ int main(void){
     #[test]
     fn no_host_compiler_in_the_environment_says_nothing_rather_than_saying_nothing_twice() {
         assert_eq!(host_cc_assignment(&BTreeMap::new()), None);
+    }
+
+    #[test]
+    fn meson_configures_plain_and_the_level_comes_only_from_cflags() {
+        let mut build = Build {
+            system: BuildSystem::Meson,
+            configure: vec!["-Ddocs=false".to_string()],
+            ..Build::default()
+        };
+        let setup = meson_setup(&build, Level::O2);
+        assert_eq!(&setup[..2], ["setup", "build"]);
+        assert!(setup.contains(&"--buildtype=plain".to_string()));
+        assert!(setup.contains(&"--wrap-mode=nodownload".to_string()));
+        assert_eq!(setup.last().map(String::as_str), Some("-Ddocs=false"));
+        assert!(
+            !setup.iter().any(|arg| arg.starts_with("-Db_lto")),
+            "only the lto level asks meson to link with -flto"
+        );
+        assert!(meson_setup(&build, Level::Lto).contains(&"-Db_lto=true".to_string()));
+
+        assert_eq!(meson_compile(&build), ["compile", "-C", "build", "-j", "1"]);
+        build.parallel = true;
+        assert_eq!(meson_compile(&build), ["compile", "-C", "build", "-j", "4"]);
     }
 }

@@ -6,7 +6,7 @@
 //! that a manifest can satisfy at parse time and still get wrong, so the lint is a separate
 //! pass and `rrc lint` is a gate in CI.
 
-use crate::axes::{BuildSystem, Oracle, SuiteParser};
+use crate::axes::{BuildSystem, Oracle, Requirement, SuiteParser};
 use crate::exclusions::Exclusions;
 use crate::features::Features;
 use crate::localization::{Localization, day_number};
@@ -298,6 +298,18 @@ fn check_build(manifest: &Manifest, say: &mut Vec<String>) {
     if !manifest.build.system.interrogates() && !manifest.build.expect_configure.is_empty() {
         say.push(
             "expects something from configure and has no configure step, so nothing would check it"
+                .into(),
+        );
+    }
+    // The build needs meson before the suite does, and `test.requires` is the only place a
+    // manifest can say what has to be installed. Checked before the build rather than after it,
+    // so a host without meson skips the project. Leave it out and the same host reports the
+    // project as not building, which reads as the compiler failing a build it never got to see.
+    if manifest.build.system == BuildSystem::Meson
+        && !manifest.test.requires.contains(&Requirement::Meson)
+    {
+        say.push(
+            "builds with meson and does not list meson in test.requires, so a host without it would report a build failure instead of a skip"
                 .into(),
         );
     }
@@ -1293,6 +1305,23 @@ kind = "standard"
                 .iter()
                 .any(|f| f.what.contains("no configure step"))
         );
+    }
+
+    #[test]
+    fn a_meson_build_has_to_say_it_needs_meson() {
+        let mut corpus = corpus_of(SAMPLE);
+        let manifest = &mut corpus.manifests[0];
+        manifest.build.system = BuildSystem::Meson;
+        manifest.build.sources.clear();
+        manifest.build.output = None;
+        let says = |corpus: &Corpus| {
+            check(corpus)
+                .iter()
+                .any(|f| f.what.contains("does not list meson"))
+        };
+        assert!(says(&corpus));
+        corpus.manifests[0].test.requires.push(Requirement::Meson);
+        assert!(!says(&corpus));
     }
 
     #[test]

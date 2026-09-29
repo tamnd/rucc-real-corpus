@@ -13,11 +13,11 @@ Weight is what to do next. It is the sum over the held up projects of six minus 
 | feature | kind | demanded by | held up | weight | issue |
 |---|---|---|---|---|---|
 | `pointer-arithmetic` | standard | 16 | 0 | 0 | none open |
-| `bit-manipulation` | standard | 14 | 0 | 0 | none open |
+| `bit-manipulation` | standard | 15 | 0 | 0 | none open |
+| `deep-macros` | preprocessor | 12 | 0 | 0 | none open |
 | `struct-layout` | abi | 12 | 0 | 0 | none open |
 | `switch-dispatch` | standard | 12 | 0 | 0 | none open |
 | `autoconf-probes` | driver | 11 | 0 | 0 | none open |
-| `deep-macros` | preprocessor | 11 | 0 | 0 | none open |
 | `integer-conversion` | standard | 11 | 0 | 0 | none open |
 | `large-switch` | standard | 10 | 0 | 0 | none open |
 | `function-pointers` | standard | 9 | 0 | 0 | none open |
@@ -51,6 +51,7 @@ Weight is what to do next. It is the sum over the held up projects of six minus 
 | `flexible-array-member` | standard | 1 | 0 | 0 | none open |
 | `int128` | gnu-extension | 1 | 0 | 0 | [open](https://github.com/tamnd/rucc/issues/351) |
 | `long-double` | standard | 1 | 0 | 0 | none open |
+| `meson-probes` | driver | 1 | 0 | 0 | none open |
 | `stdckdint` | standard | 1 | 0 | 0 | none open |
 | `visibility-attributes` | gnu-extension | 1 | 0 | 0 | none open |
 
@@ -86,6 +87,7 @@ shifts, masks and bit level packing across byte boundaries
 - `bzip2`, R1, not measured
 - `uzlib`, R1, not measured
 - `brotli`, R2, not measured
+- `fribidi`, R2, not measured
 - `gdbm`, R2, not measured
 - `libsodium`, R2, not measured
 - `libtommath`, R2, not measured
@@ -95,6 +97,23 @@ shifts, masks and bit level packing across byte boundaries
 - `byacc`, R4, not measured
 - `grep`, R4, not measured
 - `gzip`, R4, not measured
+
+### `deep-macros`
+
+macros expanding through several layers, including __VA_ARGS__ forwarding
+
+- `picohttpparser`, R0, not measured
+- `libsir`, R1, not measured
+- `minunit`, R1, not measured
+- `fribidi`, R2, not measured
+- `libcheck`, R2, not measured
+- `libconfig`, R2, not measured
+- `libgmp`, R2, not measured
+- `duktape`, R3, not measured
+- `micropython`, R3, not measured
+- `gzip`, R4, not measured
+- `pdpmake`, R4, not measured
+- `toybox`, R4, not measured
 
 ### `struct-layout`
 
@@ -145,22 +164,6 @@ the compiler answers a generated configure script the way autoconf expects
 - `oniguruma`, R2, not measured
 - `pcre2`, R2, not measured
 - `xz`, R4, not measured
-
-### `deep-macros`
-
-macros expanding through several layers, including __VA_ARGS__ forwarding
-
-- `picohttpparser`, R0, not measured
-- `libsir`, R1, not measured
-- `minunit`, R1, not measured
-- `libcheck`, R2, not measured
-- `libconfig`, R2, not measured
-- `libgmp`, R2, not measured
-- `duktape`, R3, not measured
-- `micropython`, R3, not measured
-- `gzip`, R4, not measured
-- `pdpmake`, R4, not measured
-- `toybox`, R4, not measured
 
 ### `integer-conversion`
 
@@ -441,6 +444,12 @@ long double at the 80 bit x86-64 format
 
 - `libmpfr`, R2, not measured
 
+### `meson-probes`
+
+the compiler is one meson's detection recognises from its --version and predefined macros, and it answers meson's has_function, has_header and compiles probes the way meson expects
+
+- `fribidi`, R2, not measured
+
 ### `stdckdint`
 
 <stdckdint.h> and ckd_add, ckd_sub and ckd_mul
@@ -508,6 +517,7 @@ These rows are why the residue above can be believed. A list that only records w
 - `libm-builtins`: none in the amalgamation, which is the split document 05.5 describes: the shell fails on __builtin_ceil and __builtin_floor while the library fails on atomics
 - `long-double`: no long double and no LDBL_ macros, since the whole value system is double
 - `lto`: nothing in the amalgamation asks for it, because whether the program is built across a translation unit boundary is the builder's decision and the amalgamation is one translation unit, which is exactly why the level is staged rather than run on everything
+- `meson-probes`: same reason again, the amalgamation is compiled with no meson.build or any other build system in front of it
 - `nan-boxing`: sqlite3.c reinterprets a double as a 64 bit integer and back in sixteen places, all of them through memcpy rather than through a union, and a value's type is carried in the flags field of the Mem struct beside the number rather than in the payload of a quiet NaN, so the demand this tag names is one it does not make
 - `rotate-idioms`: no rotate written as a shift pair and no rotate helper
 - `setjmp-longjmp`: no setjmp and no longjmp, since errors are returned as codes all the way up

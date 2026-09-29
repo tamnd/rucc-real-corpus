@@ -34,7 +34,7 @@ A third party file goes to rucc-compat. A third party project goes here.
 |---|---|---|
 | R0 | one file, no build system, self-checking | CoreMark, c4 |
 | R1 | a library with a hand-written Makefile | bzip2, lmdb, zlib |
-| R2 | autoconf and CMake, where the build interrogates the compiler | libjansson, libpng, pcre2 |
+| R2 | autoconf, CMake and Meson, where the build interrogates the compiler | libjansson, libpng, pcre2, fribidi |
 | R3 | a language runtime running its own test suite | Lua, QuickJS, chibi-scheme |
 | R4 | a program with a few hundred shell tests | busybox, git, the GNU tools |
 | R5 | SQLite | SQLite |

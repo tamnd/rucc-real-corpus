@@ -70,7 +70,7 @@ Two build target lists are narrower than `all`. `lmdb` and `monocypher` both lin
 
 Five oracles moved. `zlib`, `lz4` and `xxhash` were down as D3 and are D2, because what their suites report is a round trip they checked themselves rather than a count. `minunit` was down as D2 and is D1, because its example fails six assertions on purpose and its exit status is therefore not an oracle. `linenoise`, `libsir` and `uzlib` moved the other way and document 08.1 calls that an upgrade.
 
-## 5.3 R2: autoconf, CMake, and the interrogation
+## 5.3 R2: autoconf, CMake, Meson, and the interrogation
 
 | project | pin | licence | A | D/E | demands |
 |---|---|---|---|---|---|
@@ -87,6 +87,7 @@ Five oracles moved. `zlib`, `lz4` and `xxhash` were down as D3 and are D2, becau
 | `libuv` | `v1.51.0` | MIT | A4 | D3/E1 | atomics, thread-local storage, and a CMake build that probes hard |
 | `zstd` | `v1.5.7` | BSD-3-Clause | A1 | D3/E1 | the largest hand-Makefile project; heavy `__builtin_expect` and prefetch |
 | `brotli` | `v1.2.0` | MIT | A4 | D3/E1 | large static tables, and a CMake build with no patches in slimcc's script |
+| `fribidi` | `1.0.17` | LGPL-2.1 | A4 | D3/E2 | the first Meson project; Unicode's own bidi conformance files, and tables generated at build time by programs the compiler under test built |
 | `libsodium` | `1.0.20` | ISC | A3 | D3/E1 | more constant-time code, and a build that probes for target features |
 | `libtommath` | `v1.3.0` | Unlicense | A1 | D3/E0 | bignum arithmetic without assembly, so a `libgmp` failure is attributable to the assembly |
 | `gdbm` | `1.26` | GPL-3.0 | A3 | D3/E1 | on-disk format stability across our build and GCC's, which is a D0 differential on a file |

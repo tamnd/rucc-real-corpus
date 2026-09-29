@@ -115,7 +115,9 @@ Some fraction of eighty URLs will be dead within five years. That is not a risk,
 
 ## 6.5 Test-suite dependencies are declared
 
-`test.requires` is a list of external commands the suite needs before it can run at all, drawn from a closed vocabulary: `sh`, `awk`, `perl`, `python3`, `tcl`, `pkg-config`, `autoconf`, `cmake`, `flex`, `bison`, `ruby`, `m4`, `zip`. This is document 03.1's axis E made mechanical.
+`test.requires` is a list of external commands the suite needs before it can run at all, drawn from a closed vocabulary: `sh`, `awk`, `perl`, `python3`, `tcl`, `pkg-config`, `autoconf`, `cmake`, `meson`, `flex`, `bison`, `ruby`, `m4`, `zip`. This is document 03.1's axis E made mechanical.
+
+`meson` is the one entry that is about the build as well as the suite, and the lint insists on it for every `system = "meson"` project. The requirement is checked before the build starts, so a host without meson skips the project. Without it the same host would report a build failure, which reads as the compiler failing a build it never saw. Ninja is not named separately because every usual way of installing meson brings it along.
 
 `m4` is the newest of those and it is worth saying why it is separate from `autoconf`, since m4 is what autoconf is written in. A project that ships no configure needs m4 at build time and declares `autoconf`, which covers it. flex ships a generated configure and a generated parser and needs neither, and still shells out to m4 for every scanner it writes, because expanding the skeleton is how flex generates code. So m4 is a test time dependency of flex's 114 tests on a tree that has no autoconf dependency at all, and folding it into `autoconf` would have said something false about what the row needs.
 

@@ -15,7 +15,7 @@ pub enum Rung {
     R0,
     /// A library with a hand written Makefile.
     R1,
-    /// Autoconf and `CMake`, where the build interrogates the compiler.
+    /// Autoconf, `CMake` and Meson, where the build interrogates the compiler.
     R2,
     /// A language runtime running its own test suite.
     R3,
@@ -214,17 +214,36 @@ pub enum BuildSystem {
     Configure,
     /// A3. Autoconf, libtool and pkg-config.
     Autoconf,
-    /// A4. `CMake` or Meson.
+    /// A4. `CMake`.
     Cmake,
     /// A5. Recursive make with generated sources, or a build time host compiler.
     Recursive,
+    /// A4 as well. Meson, with ninja behind it.
+    ///
+    /// It shares the level with `CMake` because section 3.1 puts them there together: both keep a
+    /// table of compilers they know, both decide what the compiler is before they ask it anything,
+    /// and both then map a language standard onto a flag of their own. It is a variant of its own
+    /// rather than a spelling of `cmake` because the two are driven with different commands and
+    /// report their probes in different words, and it goes after `recursive` so that no existing
+    /// variant changes its place.
+    Meson,
 }
 
 impl BuildSystem {
     /// The axis A level, so that a report can say A3 rather than `autoconf`.
+    ///
+    /// Spelled out rather than read off the discriminant, because two build systems share A4 and
+    /// the order of the variants is no longer the order of the axis.
     #[must_use]
     pub const fn axis(self) -> u8 {
-        self as u8
+        match self {
+            Self::Direct => 0,
+            Self::Make => 1,
+            Self::Configure => 2,
+            Self::Autoconf => 3,
+            Self::Cmake | Self::Meson => 4,
+            Self::Recursive => 5,
+        }
     }
 
     /// Whether this build system interrogates the compiler and can therefore build a different
@@ -242,7 +261,10 @@ impl BuildSystem {
     /// is nothing would put a permanent empty row in the report.
     #[must_use]
     pub const fn interrogates(self) -> bool {
-        matches!(self, Self::Configure | Self::Autoconf | Self::Cmake)
+        matches!(
+            self,
+            Self::Configure | Self::Autoconf | Self::Cmake | Self::Meson
+        )
     }
 }
 
@@ -281,6 +303,8 @@ pub enum SuiteParser {
     Tap,
     /// The `tests passed` line ctest writes.
     Ctest,
+    /// One result line per test from `meson test`, such as ` 1/9 fribidi / BidiTest  OK  1.54s`.
+    Meson,
     /// Lua's trailing `final OK` and its case count.
     Lua,
     /// A regular expression given in the manifest, with one capture group holding the count.
@@ -310,6 +334,9 @@ pub enum Requirement {
     Autoconf,
     /// `CMake`.
     Cmake,
+    /// Meson. The command is the one a build runs, and ninja is not named separately because
+    /// every way of installing meson that a host is likely to use brings ninja with it.
+    Meson,
     /// Flex.
     Flex,
     /// Bison.
@@ -330,7 +357,7 @@ pub enum Requirement {
 
 impl Requirement {
     /// Every requirement in the closed vocabulary.
-    pub const ALL: [Self; 13] = [
+    pub const ALL: [Self; 14] = [
         Self::Sh,
         Self::Awk,
         Self::Perl,
@@ -339,6 +366,7 @@ impl Requirement {
         Self::PkgConfig,
         Self::Autoconf,
         Self::Cmake,
+        Self::Meson,
         Self::Flex,
         Self::Bison,
         Self::Ruby,
@@ -358,6 +386,7 @@ impl Requirement {
             Self::PkgConfig => "pkg-config",
             Self::Autoconf => "autoconf",
             Self::Cmake => "cmake",
+            Self::Meson => "meson",
             Self::Flex => "flex",
             Self::Bison => "bison",
             Self::Ruby => "ruby",
@@ -429,11 +458,35 @@ mod tests {
         assert!(BuildSystem::Configure.interrogates());
         assert!(BuildSystem::Autoconf.interrogates());
         assert!(BuildSystem::Cmake.interrogates());
+        assert!(BuildSystem::Meson.interrogates());
         // Nothing to compare. A direct build is the harness writing the command line, a hand
         // written Makefile asks the compiler nothing, and a recursive make gets no configure step
         // from this harness even when upstream has one.
         assert!(!BuildSystem::Direct.interrogates());
         assert!(!BuildSystem::Make.interrogates());
         assert!(!BuildSystem::Recursive.interrogates());
+    }
+
+    #[test]
+    fn meson_and_cmake_are_both_a4() {
+        assert_eq!(BuildSystem::Cmake.axis(), 4);
+        assert_eq!(BuildSystem::Meson.axis(), 4);
+        // The one that moved when meson went in after it, and would have become A6 had the axis
+        // still been read off the discriminant.
+        assert_eq!(BuildSystem::Recursive.axis(), 5);
+        assert_eq!(BuildSystem::Direct.axis(), 0);
+    }
+
+    #[test]
+    fn meson_is_spelled_meson_in_a_manifest() {
+        #[derive(Deserialize)]
+        struct One {
+            system: BuildSystem,
+            parser: SuiteParser,
+        }
+        let one: One = toml::from_str("system = \"meson\"\nparser = \"meson\"\n").unwrap();
+        assert_eq!(one.system, BuildSystem::Meson);
+        assert_eq!(one.parser, SuiteParser::Meson);
+        assert_eq!(Requirement::Meson.command(), "meson");
     }
 }

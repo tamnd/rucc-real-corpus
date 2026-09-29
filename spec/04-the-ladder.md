@@ -41,13 +41,13 @@ One library, one `make`, one test binary. No `configure`, no CMake, nothing gene
 
 **Exit:** every R1 project passes at the five levels; every project's static archive links against a GCC-built test driver and vice versa, which is the cheapest available ABI cross-check and is document 08.5.
 
-## 4.3 R2: autoconf, CMake, and the interrogation
+## 4.3 R2: autoconf, CMake, Meson, and the interrogation
 
 The rung where the build system asks us questions and builds a different program depending on the answers.
 
 **Axis profile:** A3 to A4, B1 to B3, C2 to C4, D3, E1 to E2, F-medium.
 
-**What it demands:** everything an autoconf `configure` probes. `-fPIC` and `-shared` and libtool's opinion about them. `pkg-config`. `-print-search-dirs` and `-dumpmachine` and `-print-file-name=`, which rucc gained in the tranche recorded in its changelog for exactly this reason. CMake's compiler-ID detection and its standard-flag table. A diagnostic that is present when it should be and absent when it should not, because a probe that compiles when GCC's fails gives the project a feature it then uses wrongly.
+**What it demands:** everything an autoconf `configure` probes. `-fPIC` and `-shared` and libtool's opinion about them. `pkg-config`. `-print-search-dirs` and `-dumpmachine` and `-print-file-name=`, which rucc gained in the tranche recorded in its changelog for exactly this reason. CMake's compiler-ID detection and its standard-flag table, and Meson's, which identifies the compiler from what it prints for `--version` and what it predefines and stops the setup at the first line when it does not recognise it. A diagnostic that is present when it should be and absent when it should not, because a probe that compiles when GCC's fails gives the project a feature it then uses wrongly.
 
 This is the rung where the failure mode changes character. Below it, a failure is `rucc: error:`. Here a failure is a build that succeeded and produced the wrong program, because `configure` concluded we do not have `__builtin_clz` and took the portable path, or concluded we do and took a path we then miscompile. Document 08.8 specifies the configure-log differential that catches this: the `config.h` a rucc configure produces is diffed against the one a GCC configure produces, and a difference is reported even when the build then succeeds.
 
