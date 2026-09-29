@@ -92,7 +92,16 @@ impl Setup {
         let toolchain = Toolchain {
             under_test: found(&options.under_test, "--rucc")?,
             reference: found(&options.reference, "--gcc")?,
+            target: options.target,
         };
+        // Asked before anything is built, because a suite that runs its programs by name gets an
+        // exec format error for every one of them otherwise, and that reads like a broken build.
+        if !env::can_run(options.target) {
+            return Err(format!(
+                "this machine cannot run {} programs, so no suite could be graded. Install wine and register it for MZ binaries with \"echo ':wine:M::MZ::/usr/bin/wine:' > /proc/sys/fs/binfmt_misc/register\" as root, with the path to wine or wine64 on this machine",
+                options.target
+            ));
+        }
         // Discovered once and then both used and recorded, which was the intent from the start and
         // was not what happened. The prefixes were being found by a function nothing called, so
         // every build got `/usr/bin` and the three system directories after it and nothing else,
@@ -188,6 +197,11 @@ fn cache_key(
             setup.privilege.user().map_or("root", |user| &user.name)
         ),
     ];
+    // Only on a cross run, so that every native key stays what it was. The manifest in the key
+    // already differs, since it is the overlay, but a key that says so outright is easier to trust.
+    if !setup.provenance.target.is_empty() {
+        extra.push(format!("target={}", setup.provenance.target));
+    }
     // In the order the manifest names them, which is the order they are built in, so two projects
     // that need the same two libraries in different orders do not share a key.
     for need in &manifest.build.needs {
@@ -262,11 +276,12 @@ pub fn cell(
     // excluded cell that passes and an excluded cell whose failure has changed, and neither can
     // fire against a cell nobody ran. It costs a cell's worth of budget per entry and that is the
     // difference between a register that decays and one that does not.
-    let entry = loaded.corpus.exclusions.find(
+    let entry = loaded.corpus.exclusions.find_for(
         &manifest.project.name,
         &manifest.project.name,
         level,
         &setup.provenance.host,
+        &setup.provenance.target,
     );
 
     // Computed before anything is fetched, because everything it needs is in the manifests and a
@@ -2125,6 +2140,7 @@ oracle = "self-checking"
             rung: Rung::R0,
             level: Level::O2,
             provenance: Provenance {
+                target: String::new(),
                 host: Provenance::host_name(),
                 gcc_version: String::new(),
                 rucc_version: String::new(),

@@ -726,6 +726,7 @@ fn toolchain_for(toolchain: &Toolchain, compiler: Compiler) -> Toolchain {
         Compiler::Reference => Toolchain {
             under_test: toolchain.reference.clone(),
             reference: toolchain.reference.clone(),
+            target: toolchain.target,
         },
     }
 }
@@ -1326,6 +1327,11 @@ pub(crate) fn log(
 #[must_use]
 pub fn provenance(toolchain: &Toolchain) -> Provenance {
     Provenance {
+        target: if toolchain.target.is_cross() {
+            toolchain.target.name().to_string()
+        } else {
+            String::new()
+        },
         host: Provenance::host_name(),
         gcc_version: first_line(&toolchain.reference),
         rucc_version: first_line(&toolchain.under_test),
@@ -1458,8 +1464,10 @@ oracle = "self-checking"
             toolchain: Toolchain {
                 under_test: cc.clone(),
                 reference: cc,
+                target: rrc_manifest::Target::Native,
             },
             provenance: Provenance {
+                target: String::new(),
                 host: Provenance::host_name(),
                 gcc_version: "test".to_string(),
                 rucc_version: "test".to_string(),

@@ -114,6 +114,11 @@ impl Summary {
             } else {
                 format!("  as {}", provenance.as_user)
             };
+            let target = if provenance.target.is_empty() {
+                String::new()
+            } else {
+                format!("  for {}", provenance.target)
+            };
             let commit = if provenance.rucc_commit.is_empty() {
                 String::new()
             } else {
@@ -121,7 +126,7 @@ impl Summary {
             };
             let _ = writeln!(
                 out,
-                "rucc-real-corpus  rucc {}{commit}  gcc {}  {}{user}",
+                "rucc-real-corpus  rucc {}{commit}  gcc {}  {}{target}{user}",
                 provenance.rucc_version, provenance.gcc_version, provenance.host
             );
         }

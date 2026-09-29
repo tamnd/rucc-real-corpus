@@ -35,9 +35,22 @@ impl Exclusions {
     /// rendered somewhere else from where it was measured.
     #[must_use]
     pub fn find(&self, project: &str, case: &str, level: Level, host: &str) -> Option<&Exclusion> {
+        self.find_for(project, case, level, host, "")
+    }
+
+    /// The same, for a run building for a target, where an empty target is the native one.
+    #[must_use]
+    pub fn find_for(
+        &self,
+        project: &str,
+        case: &str,
+        level: Level,
+        host: &str,
+        target: &str,
+    ) -> Option<&Exclusion> {
         self.entries
             .iter()
-            .find(|entry| entry.covers(project, case, level, host))
+            .find(|entry| entry.covers(project, case, level, host) && entry.covers_target(target))
     }
 
     /// Every entry naming a project, at any case and any level.
@@ -73,6 +86,11 @@ pub struct Exclusion {
     /// in the project's own source and travels with it.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub host: Option<String>,
+    /// The target the failure was seen building for, for example `x86_64-windows-gnu`. Absent
+    /// means the native build only, because a Windows failure is almost never a fact about the
+    /// Linux build of the same project and an entry that covered both would hide the Linux one.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub target: Option<String>,
     /// The issue this waits on. Either an issue under `tamnd/rucc`, or one prefixed
     /// `upstream:` when the bug is theirs rather than ours.
     pub issue: String,
@@ -99,6 +117,12 @@ impl Exclusion {
         self.host
             .as_ref()
             .is_none_or(|named| named.eq_ignore_ascii_case(host))
+    }
+
+    /// Whether the entry's target field covers a given target, where empty is the native one.
+    #[must_use]
+    pub fn covers_target(&self, target: &str) -> bool {
+        self.target.as_deref().unwrap_or("") == target
     }
 
     /// Whether the entry's level field covers a given level.

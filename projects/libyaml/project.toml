@@ -37,3 +37,13 @@ requires = ["sh"]
 [limits]
 build-seconds = 900
 test-seconds = 300
+
+# The Windows row. The same configure pointed at the MinGW triple, and the same two tests, which
+# make check runs as .exe files that the kernel hands to Wine. MinGW GCC 13 under Wine 9 scores
+# TOTAL 2, PASS 2.
+[windows]
+why = "configure is told the MinGW triple and nothing else changes"
+configure = ["--host=x86_64-w64-mingw32"]
+levels = ["O2"]
+build-seconds = 1800
+test-seconds = 900

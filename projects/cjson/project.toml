@@ -42,3 +42,24 @@ baseline-tests = 19
 [limits]
 build-seconds = 900
 test-seconds = 600
+
+# The Windows row. cJSON's own compiler flags are switched off, because they include -Werror and
+# -std=c89 and the bundled Unity uses long long, which MinGW GCC then refuses. ctest looks for each
+# test without the .exe, so each one gets a link to its own name first. MinGW GCC 13 under Wine 9
+# passes all 19.
+[windows]
+why = "cmake is told the target is Windows and cJSON's -Werror -std=c89 set is off, since MinGW GCC rejects Unity's long long under it"
+configure = [
+  "-DCMAKE_POLICY_VERSION_MINIMUM=3.5",
+  "-DCMAKE_SYSTEM_NAME=Windows",
+  "-DENABLE_CUSTOM_COMPILER_FLAGS=Off",
+]
+command = [
+  "sh",
+  "-c",
+  "cd build && for f in $(find . -name '*.exe'); do ln -sf \"${f##*/}\" \"${f%.exe}\"; done && exec ctest --output-on-failure",
+]
+requires = ["sh"]
+levels = ["O2"]
+build-seconds = 1800
+test-seconds = 1800

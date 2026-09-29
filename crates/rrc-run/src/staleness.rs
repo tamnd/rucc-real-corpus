@@ -159,6 +159,7 @@ mod tests {
     fn entry(why: &str) -> Exclusions {
         Exclusions {
             entries: vec![Exclusion {
+                target: None,
                 project: "jsmn".into(),
                 case: "jsmn".into(),
                 level: "O2".into(),
@@ -184,6 +185,7 @@ mod tests {
             rung: Rung::R0,
             level: Level::O2,
             provenance: Provenance {
+                target: String::new(),
                 host: "linux-x86_64".into(),
                 gcc_version: "16".into(),
                 rucc_version: "16".into(),

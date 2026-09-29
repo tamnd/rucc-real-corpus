@@ -688,6 +688,7 @@ diagnostic = ["block_addr"]
         // way this report could be made to lie by somebody acting in good faith.
         let exclusions = Exclusions {
             entries: vec![Exclusion {
+                target: None,
                 project: "a".to_string(),
                 case: "a".to_string(),
                 level: "*".to_string(),

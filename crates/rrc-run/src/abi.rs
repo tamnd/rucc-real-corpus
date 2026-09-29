@@ -314,6 +314,7 @@ pub fn cross(job: &Job<'_>, abi: &Abi, pairing: Pairing) -> std::io::Result<Cros
     let toolchain = Toolchain {
         under_test: pairing.driver.path(job.toolchain),
         reference: job.toolchain.reference.clone(),
+        target: job.toolchain.target,
     };
     let (shim, workdir) = prepare(&sandbox, &toolchain, job)?;
     // The same handover the driver does, for the same reason and at the same point: after the
@@ -840,8 +841,10 @@ int main(void) {
             toolchain: Toolchain {
                 under_test: cc.clone(),
                 reference: cc,
+                target: rrc_manifest::Target::Native,
             },
             provenance: Provenance {
+                target: String::new(),
                 host: Provenance::host_name(),
                 gcc_version: "test".to_string(),
                 rucc_version: "test".to_string(),

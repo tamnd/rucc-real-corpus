@@ -219,6 +219,7 @@ mod tests {
             rung: Rung::R4,
             level,
             provenance: Provenance {
+                target: String::new(),
                 host: Provenance::host_name(),
                 gcc_version: String::new(),
                 rucc_version: String::new(),

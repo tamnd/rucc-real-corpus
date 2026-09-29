@@ -93,6 +93,8 @@ There are two pipelines. The one on every commit builds no C at all: it checks f
 
 A red cell in the nightly is the expected state rather than an alarm, because rucc is a compiler under development and most of this corpus does not build under it yet, so an issue on every red cell would be an issue every morning and a muted notification by the end of the week. What opens an issue is the night being worse than the night before, which is the regression rule of `spec/11-reporting.md` section 11.4 applied to the previous night's records, or one of the commands not running at all, or a host that found no rucc to test. The records are kept from one night to the next in the workflow cache for exactly this comparison, since the markdown that gets committed cannot be diffed by a program and the records are deliberately not committed.
 
+There is also a Windows row. `rrc --target x86_64-windows-gnu run` cross builds on Linux with `--target=x86_64-windows-gnu` passed to rucc, uses `x86_64-w64-mingw32-gcc` as the reference, and runs each project's own suite under Wine. A project is in the row only when its manifest has a `[windows]` table, which overrides the few build and test fields that differ and says why in one sentence. The kernel has to hand MZ binaries to Wine through binfmt_misc, and rrc refuses to start the row when it does not. The row runs weekly and on demand in `.github/workflows/windows.yml`, and its last result is in `reports/windows.md`.
+
 ## The specification
 
 Sixteen documents under `spec/`. Start with `spec/00-README.md`.

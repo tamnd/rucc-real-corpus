@@ -263,8 +263,13 @@ fn against(summary: &Summary) -> String {
         } else {
             format!(", as {}", p.as_user)
         };
+        let target = if p.target.is_empty() {
+            String::new()
+        } else {
+            format!(" for {} under Wine", p.target)
+        };
         format!(
-            " Run on {}{user}, with {} against {}.",
+            " Run on {}{target}{user}, with {} against {}.",
             p.host,
             p.rucc_version.trim(),
             p.gcc_version.trim()

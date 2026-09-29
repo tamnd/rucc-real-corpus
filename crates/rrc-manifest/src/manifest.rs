@@ -5,6 +5,7 @@
 //! arbitrary shell" stays true as the schema grows.
 
 use crate::axes::{BuildSystem, Level, Oracle, Requirement, Rung, SuiteParser};
+use crate::target::Windows;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
@@ -31,6 +32,9 @@ pub struct Manifest {
     /// What the harness will not let it exceed.
     #[serde(default)]
     pub limits: Limits,
+    /// How it builds for `x86_64-windows-gnu`, when it has been admitted to the Windows row.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub windows: Option<Windows>,
 }
 
 impl Manifest {
