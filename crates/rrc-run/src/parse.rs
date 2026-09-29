@@ -60,6 +60,7 @@ pub fn counts(parser: SuiteParser, pattern: Option<&str>, text: &str) -> Option<
     match parser {
         SuiteParser::Automake => automake(text),
         SuiteParser::Tap => tap(text),
+        SuiteParser::TapScripts => tap_scripts(text),
         SuiteParser::Ctest => ctest(text),
         SuiteParser::Meson => meson(text),
         SuiteParser::Lua => lua(text),
@@ -155,6 +156,158 @@ fn tap(text: &str) -> Option<Counts> {
     // thousand reports three of three and looks perfect.
     let run = planned.map_or(run, |n| n.max(run));
     Some(Counts::of(run, passed))
+}
+
+/// What `prove` prints about each script, counted one per script and not one per assertion.
+///
+/// Postgres and meson count a TAP test as a file: `t/001_basic.pl` is one test, and it passes when
+/// every assertion in it passed and its plan was met. `tap` above would count the hundreds of `ok`
+/// lines inside it instead, and prove does not print those unless it is asked to be verbose, so this
+/// reads the line prove prints when a script finishes. `t/001_basic.pl .. ok` is a pass, and so is
+/// the same line with the clock in front of it and the time after it that `--timer` adds. `skipped: no ssl` is run and skipped, because the
+/// script said so before it began. `Dubious, test returned 1`, `Failed 2/5 subtests`,
+/// `No subtests run`, `No plan found in TAP output` and `All 3 subtests passed` on its own are
+/// failures, the last one because prove only says it when something else went wrong, which is
+/// what a script that ran its assertions and then died before `done_testing` looks like.
+///
+/// Anything else after the dots is not a verdict. `t/002.pl .. 1/5 # Failed test` is prove showing
+/// where it had got to when a diagnostic came out, and prove prints the name again with the verdict
+/// once the script ends. A script that was named and never got a verdict is a failure, since the
+/// only way that happens is a run that was killed while it was going. A bare `ok` on a line of its
+/// own settles the script named last, because a script that writes to stderr while it runs pushes
+/// prove's `ok` onto the next line.
+///
+/// Postgres runs prove once per directory, `# +++ tap check in src/bin/initdb +++` before each, and
+/// two directories both have a `t/001_basic.pl`. So the scripts are kept per prove run, and a run
+/// ends at its `Result:` line or at the next `+++` banner. `Files=12, Tests=340` is the number of
+/// scripts prove said it ran, and a run with fewer verdicts than that is short in the way a TAP plan
+/// is, with the missing scripts counted as failures.
+fn tap_scripts(text: &str) -> Option<Counts> {
+    static SCRIPT: std::sync::OnceLock<Regex> = std::sync::OnceLock::new();
+    static FILES: std::sync::OnceLock<Regex> = std::sync::OnceLock::new();
+    let script = SCRIPT.get_or_init(|| {
+        Regex::new(r"^(?:\[[\d:]+\]\s+)?(\S+\.(?:pl|t)) \.{2,}(?:\s+(.*))?$").unwrap()
+    });
+    let files = FILES.get_or_init(|| Regex::new(r"^Files=(\d+), Tests=\d+").unwrap());
+
+    let mut total = Counts::of(0, 0);
+    let mut found = false;
+    let mut run = ProveRun::default();
+    for line in text.lines() {
+        let line = strip_colour(line);
+        let line = line.trim_end();
+        if line.starts_with("Result:") || line.contains("+++ tap check in ") {
+            found |= run.close(&mut total);
+            continue;
+        }
+        if let Some(caught) = files.captures(line) {
+            run.planned = caught[1].parse().ok();
+            continue;
+        }
+        if let Some(caught) = script.captures(line) {
+            let name = caught[1].to_string();
+            let verdict = verdict(caught.get(2).map_or("", |m| m.as_str()));
+            run.saw(name, verdict);
+            continue;
+        }
+        if is_bare_ok(line.trim()) {
+            run.settle_last();
+        }
+    }
+    found |= run.close(&mut total);
+    found.then_some(total)
+}
+
+/// What prove said about a script, as far as it has said anything.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Verdict {
+    Passed,
+    Skipped,
+    Failed,
+    /// Named and not finished, which is a failure if nothing more is said.
+    Pending,
+}
+
+/// The scripts one prove run reported on, in the order it named them.
+#[derive(Default)]
+struct ProveRun {
+    scripts: Vec<(String, Verdict)>,
+    planned: Option<u32>,
+}
+
+impl ProveRun {
+    fn saw(&mut self, name: String, verdict: Verdict) {
+        if let Some(entry) = self.scripts.iter_mut().find(|(n, _)| *n == name) {
+            // A progress line never takes back a verdict, and a verdict always replaces a
+            // progress line, which is the order prove prints them in.
+            if verdict != Verdict::Pending {
+                entry.1 = verdict;
+            }
+        } else {
+            self.scripts.push((name, verdict));
+        }
+    }
+
+    fn settle_last(&mut self) {
+        if let Some(last) = self.scripts.last_mut()
+            && last.1 == Verdict::Pending
+        {
+            last.1 = Verdict::Passed;
+        }
+    }
+
+    /// Add this run to the total and start the next one, saying whether there was anything in it.
+    fn close(&mut self, total: &mut Counts) -> bool {
+        let run = std::mem::take(self);
+        if run.scripts.is_empty() {
+            return false;
+        }
+        let mut counts = Counts::of(0, 0);
+        for (_, verdict) in &run.scripts {
+            counts.run += 1;
+            match verdict {
+                Verdict::Passed => counts.passed += 1,
+                Verdict::Skipped => counts.skipped += 1,
+                Verdict::Failed | Verdict::Pending => {}
+            }
+        }
+        counts.run = run.planned.map_or(counts.run, |n| n.max(counts.run));
+        total.run += counts.run;
+        total.passed += counts.passed;
+        total.skipped += counts.skipped;
+        true
+    }
+}
+
+/// The verdict in what prove printed after a script's name and its dots.
+fn verdict(rest: &str) -> Verdict {
+    let rest = rest.trim();
+    if is_bare_ok(rest) {
+        Verdict::Passed
+    } else if rest.starts_with("skipped:") {
+        Verdict::Skipped
+    } else if rest.starts_with("Dubious")
+        || rest.starts_with("Failed ")
+        || rest.starts_with("No subtests run")
+        || rest.starts_with("No plan found")
+        || (rest.starts_with("All ") && rest.contains("subtests passed"))
+    {
+        Verdict::Failed
+    } else {
+        Verdict::Pending
+    }
+}
+
+/// `ok`, or `ok` with the time `prove --timer` puts after it, and not a TAP line such as `ok 3`.
+fn is_bare_ok(text: &str) -> bool {
+    let Some(rest) = text.strip_prefix("ok") else {
+        return false;
+    };
+    let rest = rest.trim_start();
+    rest.is_empty()
+        || rest
+            .split_once(' ')
+            .is_some_and(|(n, unit)| n.parse::<u32>().is_ok() && unit.starts_with("ms"))
 }
 
 /// The line ctest prints after a run, which has two shapes and not one.
@@ -369,6 +522,142 @@ Testsuite summary
         assert!(!counts.all_passed());
     }
 
+    /// A prove run over five scripts with one of each thing that can happen to a script, the shape
+    /// `prove t/` prints when it is not a terminal.
+    const PROVE_RUN: &str = "\
+t/001_basic.pl ......... ok
+t/002_options.pl ....... 1/5 # Failed test 'rejects --bogus'
+#   at t/002_options.pl line 20.
+# Looks like you failed 1 test of 5.
+t/002_options.pl ....... Dubious, test returned 1 (wstat 256, 0x100)
+Failed 1/5 subtests
+t/003_ssl.pl ........... skipped: SSL not supported by this build
+t/004_dies.pl .......... Dubious, test returned 255 (wstat 65280, 0xff00)
+No subtests run
+t/005_late_death.pl .... Dubious, test returned 255 (wstat 65280, 0xff00)
+All 3 subtests passed
+
+Test Summary Report
+t/002_options.pl (Wstat: 256 (exited 1) Tests: 5 Failed: 1)
+  Failed test:  3
+  Non-zero exit status: 1
+t/004_dies.pl (Wstat: 65280 (exited 255) Tests: 0 Failed: 0)
+  Non-zero exit status: 255
+  Parse errors: No plan found in TAP output
+t/005_late_death.pl (Wstat: 65280 (exited 255) Tests: 3 Failed: 0)
+  Non-zero exit status: 255
+  Parse errors: No plan found in TAP output
+Files=5, Tests=13,  4 wallclock secs ( 0.02 usr  0.01 sys +  1.20 cusr  0.40 csys =  1.63 CPU)
+Result: FAIL
+";
+
+    #[test]
+    fn tap_scripts_counts_one_per_script_and_not_one_per_assertion() {
+        let counts = counts(SuiteParser::TapScripts, None, PROVE_RUN).unwrap();
+        assert_eq!(counts.run, 5, "five scripts, whatever Tests= says");
+        assert_eq!(counts.passed, 1);
+        assert_eq!(
+            counts.skipped, 1,
+            "a script that skipped itself is not a failure"
+        );
+        assert!(!counts.all_passed());
+    }
+
+    #[test]
+    fn a_script_that_dies_before_its_plan_is_a_failure() {
+        // Once with nothing run, and once after three assertions that passed, which prove sums up
+        // as all subtests passed and still calls dubious because there was no plan behind them.
+        for script in ["t/004_dies.pl", "t/005_late_death.pl"] {
+            let mut text = String::new();
+            for line in PROVE_RUN.lines() {
+                if line.starts_with(script) || line.starts_with("Result") {
+                    text.push_str(line);
+                    text.push('\n');
+                }
+            }
+            let counts = counts(SuiteParser::TapScripts, None, &text).unwrap();
+            assert_eq!(
+                counts,
+                Counts::of(1, 0),
+                "{script} died and was graded a pass"
+            );
+        }
+    }
+
+    #[test]
+    fn a_clean_prove_run_with_the_timer_on_passes() {
+        let text = "\
+[10:02:11] t/001_basic.pl .... ok      812 ms ( 0.00 usr  0.00 sys +  0.30 cusr  0.10 csys =  0.40 CPU)
+[10:02:12] t/002_more.pl ..... ok     1204 ms ( 0.00 usr  0.00 sys +  0.50 cusr  0.20 csys =  0.70 CPU)
+[10:02:13]
+All tests successful.
+Files=2, Tests=61,  2 wallclock secs ( 0.02 usr  0.00 sys +  0.80 cusr  0.30 csys =  1.12 CPU)
+Result: PASS
+";
+        let counts = counts(SuiteParser::TapScripts, None, text).unwrap();
+        assert_eq!(counts, Counts::of(2, 2));
+    }
+
+    #[test]
+    fn a_script_that_wrote_to_stderr_still_gets_its_ok() {
+        let text = "t/001_basic.pl .. warning: something upstream prints\nok\nFiles=1, Tests=4\nResult: PASS\n";
+        let counts = counts(SuiteParser::TapScripts, None, text).unwrap();
+        assert_eq!(counts, Counts::of(1, 1));
+    }
+
+    #[test]
+    fn a_prove_run_killed_partway_is_short_and_not_perfect() {
+        // The third script was named and the harness killed prove before it finished, so there is
+        // no verdict for it, no summary and no Result line.
+        let text = "t/001_a.pl .. ok\nt/002_b.pl .. ok\nt/003_c.pl .. 2/9 ";
+        let counts = counts(SuiteParser::TapScripts, None, text).unwrap();
+        assert_eq!(counts, Counts::of(3, 2));
+        // And a run whose summary says it ran more scripts than it printed verdicts for.
+        let text = "t/001_a.pl .. ok\nFiles=4, Tests=10\nResult: FAIL\n";
+        let counts = counts(SuiteParser::TapScripts, None, text).unwrap();
+        assert_eq!(counts, Counts::of(4, 1));
+    }
+
+    #[test]
+    fn postgres_make_check_keeps_each_directory_apart() {
+        // prove_check in src/Makefile.global, run by make check under --enable-tap-tests. Two
+        // directories both have a t/001_basic.pl, and they are two scripts and not one.
+        let text = "\
+echo \"# +++ tap check in src/bin/initdb +++\" && rm -rf '/w/src/bin/initdb'/tmp_check && /bin/mkdir -p '/w/src/bin/initdb'/tmp_check && cd . && TESTLOGDIR='/w/src/bin/initdb/tmp_check/log' PATH=\"/w/tmp_install/usr/local/pgsql/bin:$PATH\" /usr/bin/prove -I ../../../src/test/perl/ -I .  t/*.pl
+# +++ tap check in src/bin/initdb +++
+t/001_basic.pl .... ok
+t/001_initdb.pl ... ok
+All tests successful.
+Files=2, Tests=62,  9 wallclock secs ( 0.02 usr  0.01 sys +  2.10 cusr  1.90 csys =  4.03 CPU)
+Result: PASS
+make[2]: Leaving directory '/w/src/bin/initdb'
+# +++ tap check in src/bin/pg_ctl +++
+t/001_basic.pl ...... ok
+t/002_status.pl ..... Dubious, test returned 2 (wstat 512, 0x200)
+Failed 2/3 subtests
+t/003_promote.pl .... skipped: no standby support
+t/004_logrotate.pl .. 
+
+Test Summary Report
+t/002_status.pl (Wstat: 512 (exited 2) Tests: 3 Failed: 2)
+  Failed tests:  2-3
+Files=4, Tests=20, 11 wallclock secs ( 0.03 usr  0.01 sys +  3.00 cusr  2.00 csys =  5.04 CPU)
+Result: FAIL
+";
+        let counts = counts(SuiteParser::TapScripts, None, text).unwrap();
+        assert_eq!(counts.run, 6);
+        assert_eq!(counts.passed, 3);
+        assert_eq!(counts.skipped, 1);
+    }
+
+    #[test]
+    fn tap_scripts_does_not_read_assertions_as_scripts() {
+        // Verbose output has the assertions in it as well, and they are not what is counted.
+        let text = "t/001_basic.pl .. \n1..3\nok 1 - starts\nok 2 - stops\nok 3 - status\nok\nFiles=1, Tests=3\nResult: PASS\n";
+        let counts = counts(SuiteParser::TapScripts, None, text).unwrap();
+        assert_eq!(counts, Counts::of(1, 1));
+    }
+
     #[test]
     fn ctest_reads_its_summary_line() {
         let text = "99% tests passed, 1 tests failed out of 47\n";
@@ -521,6 +810,7 @@ Full log written to /w/a/src/build/meson-logs/testlog.txt
         for parser in [
             SuiteParser::Automake,
             SuiteParser::Tap,
+            SuiteParser::TapScripts,
             SuiteParser::Ctest,
             SuiteParser::Meson,
             SuiteParser::Lua,

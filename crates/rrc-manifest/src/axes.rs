@@ -299,8 +299,14 @@ impl Oracle {
 pub enum SuiteParser {
     /// The `# PASS:` block automake writes.
     Automake,
-    /// Test Anything Protocol.
+    /// Test Anything Protocol, one case per `ok` or `not ok` line.
     Tap,
+    /// Test Anything Protocol run through `prove`, one case per script, such as
+    /// `t/001_basic.pl .. ok`.
+    ///
+    /// Postgres and meson count a TAP test as a file that passes when every assertion in it did
+    /// and its plan was met, and this is that count.
+    TapScripts,
     /// The `tests passed` line ctest writes.
     Ctest,
     /// One result line per test from `meson test`, such as ` 1/9 fribidi / BidiTest  OK  1.54s`.
@@ -488,5 +494,15 @@ mod tests {
         assert_eq!(one.system, BuildSystem::Meson);
         assert_eq!(one.parser, SuiteParser::Meson);
         assert_eq!(Requirement::Meson.command(), "meson");
+    }
+
+    #[test]
+    fn counting_tap_by_script_is_spelled_tap_scripts() {
+        #[derive(Deserialize)]
+        struct One {
+            parser: SuiteParser,
+        }
+        let one: One = toml::from_str("parser = \"tap-scripts\"\n").unwrap();
+        assert_eq!(one.parser, SuiteParser::TapScripts);
     }
 }
