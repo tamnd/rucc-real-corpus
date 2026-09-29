@@ -368,11 +368,29 @@ pub fn cell(
         }
     }
 
+    if record.outcome == Outcome::Passed && std::env::var_os("RRC_KEEP_TREES").is_none() {
+        drop_trees(&workspace, &manifest.project.name, level);
+    }
+
     Ok(Cell {
         record,
         reference: both.reference,
         differences,
     })
+}
+
+/// Remove both halves of a cell that passed, and the project's directory when that was its last.
+///
+/// A tree is kept for someone to look at, and nobody looks at one that passed. Rung 4 left about
+/// twenty gigabytes of them behind on a shared machine, git and sqlite most of it, and the next
+/// cell ran out of disk. A failed cell keeps its tree, and `RRC_KEEP_TREES` keeps every tree.
+fn drop_trees(workspace: &std::path::Path, project: &str, level: Level) {
+    for slot in [Slot::A, Slot::B] {
+        let dir = workspace.join(slot.name()).join(project);
+        let _ = std::fs::remove_dir_all(dir.join(level.name()));
+        // Fails while another level of the project still has a tree there, which is the point.
+        let _ = std::fs::remove_dir(&dir);
+    }
 }
 
 /// Build the same source twice into two roots and compare the products.
@@ -1701,6 +1719,20 @@ mod tests {
     use rrc_manifest::Cores;
     use rrc_manifest::axes::Rung;
     use rrc_run::record::Phase;
+
+    #[test]
+    fn a_passed_cell_takes_its_own_trees_and_leaves_the_other_levels() {
+        let root = std::env::temp_dir().join(format!("rrc-trees-{}", std::process::id()));
+        for tree in ["a/sample/O0", "a/sample/O1", "b/sample/O0"] {
+            std::fs::create_dir_all(root.join(tree).join("logs")).unwrap();
+        }
+        drop_trees(&root, "sample", Level::O0);
+        assert!(!root.join("a/sample/O0").exists());
+        assert!(root.join("a/sample/O1/logs").exists());
+        // O0 was the only level under b, so the project's directory goes with it.
+        assert!(!root.join("b/sample").exists());
+        std::fs::remove_dir_all(&root).unwrap();
+    }
 
     fn manifest_at(rung: Rung) -> Manifest {
         let text = format!(
