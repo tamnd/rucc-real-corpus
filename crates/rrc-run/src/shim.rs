@@ -19,7 +19,16 @@
 //! run `cc` and `gcc` are a script that puts that one flag in front. It says what is being built
 //! rather than how, and MinGW GCC, which is the reference there, is still a symlink because its
 //! name already says the target.
+//!
+//! On a Windows host a symlink is not something a program can be started through and still know
+//! where it lives. rucc looks for its runtime beside its own executable and GCC looks for `cc1`
+//! beside its own, and both would be looking in the shim. So there every entry that is a symlink
+//! elsewhere is a one line `sh` script that execs the same absolute path with `"$@"` and nothing
+//! else, which says exactly what the symlink says. The harness runs every command through MSYS2's
+//! `sh` on that host, see [`crate::host`], so the scripts are found and run the same way the
+//! symlinks are here.
 
+use crate::host;
 use rrc_manifest::Target;
 use rrc_manifest::manifest::HostCc;
 use std::path::{Component, Path, PathBuf};
@@ -289,7 +298,14 @@ fn write_symlink(dir: &Path, entry: &ShimEntry) -> std::io::Result<()> {
     #[cfg(unix)]
     std::os::unix::fs::symlink(&entry.target, &link)?;
     #[cfg(not(unix))]
-    std::fs::copy(&entry.target, &link).map(|_| ())?;
+    {
+        // The module comment says why this is a script on Windows. It adds nothing.
+        let script = format!(
+            "#!/bin/sh\n# The same as a symlink to this path. Nothing is added here.\nexec {} \"$@\"\n",
+            quote(&entry.target)
+        );
+        std::fs::write(&link, script)?;
+    }
     Ok(())
 }
 
@@ -372,8 +388,10 @@ fn plain(path: &Path) -> PathBuf {
 
 /// A path as one single quoted shell word, so that a sandbox under a directory with a space in it
 /// does not turn into two arguments.
+///
+/// Spelled the way the shell spells paths, which only changes anything on a Windows host.
 fn quote(path: &Path) -> String {
-    format!("'{}'", path.display().to_string().replace('\'', r"'\''"))
+    format!("'{}'", host::spelled(path).replace('\'', r"'\''"))
 }
 
 fn write_preprocessor(dir: &Path, entry: &ShimEntry, flag: Option<&str>) -> std::io::Result<()> {
@@ -442,9 +460,7 @@ pub fn locate(compiler: &Path) -> Option<PathBuf> {
 #[must_use]
 pub fn on_path(name: &str) -> Option<PathBuf> {
     let path = std::env::var_os("PATH")?;
-    std::env::split_paths(&path)
-        .map(|dir| dir.join(name))
-        .find(|candidate| candidate.is_file())
+    std::env::split_paths(&path).find_map(|dir| host::find_in(&dir, name))
 }
 
 #[cfg(test)]

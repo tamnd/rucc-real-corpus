@@ -1,0 +1,161 @@
+# The Windows row on Windows: the same projects as windows.yml, built on a Windows runner by a rucc
+# built there, and graded by their own suites running natively against MinGW GCC from MSYS2.
+#
+# windows.yml answers whether rucc cross builds real code for x86_64-windows-gnu and whether that
+# code runs under Wine. This answers the question Wine cannot, which is whether rucc.exe itself
+# builds the same code on the machine it is for and whether the programs pass on a real Windows
+# kernel with the real C runtime DLLs. Both rows read the same [windows] table in each manifest.
+#
+# The harness runs on Windows too. The projects need a POSIX shell, make and cmake, and those are
+# MSYS2's, the same MSYS2 whose MinGW GCC is the reference. On this host rrc starts an .exe as it
+# is and hands anything else to MSYS2's sh, which is what crates/rrc-run/src/host.rs is about. cmake is the
+# MSYS2 one rather than the MinGW one, because the shim entries are sh scripts on Windows and only
+# a program started from the MSYS2 runtime can run one.
+#
+# Weekly and on demand, like the Wine row. Nothing here commits and nothing opens an issue. The
+# records and the rendered report are an artifact, and reports/windows.md is updated by hand from
+# one of them when the row changes.
+
+name: windows native
+
+on:
+  schedule:
+    - cron: "17 9 * * 1"
+  workflow_dispatch:
+    inputs:
+      rucc:
+        description: which rucc ref to build, or nothing for main
+        default: ""
+        required: false
+      projects:
+        description: projects to run, separated by spaces, or nothing for the whole row
+        default: ""
+        required: false
+
+concurrency:
+  group: windows-native
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: 0
+
+jobs:
+  run:
+    name: x86_64-windows-gnu on windows
+    runs-on: windows-2025
+    timeout-minutes: 300
+    defaults:
+      run:
+        shell: bash
+    steps:
+      # The manifests and the lockfile are hashed, so they have to be checked out byte for byte.
+      - name: no line ending conversion
+        run: git config --global core.autocrlf false
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/checkout@v7.0.1
+        with:
+          repository: tamnd/rucc
+          ref: ${{ inputs.rucc || 'main' }}
+          path: rucc
+      - uses: Swatinem/rust-cache@v2.9.2
+        with:
+          key: windows-native
+          workspaces: |
+            .
+            rucc
+
+      - name: the archive cache
+        uses: actions/cache@v6.1.0
+        with:
+          path: ${{ runner.temp }}/rrc/archives
+          key: rrc-archives-windows-native-${{ hashFiles('projects/**/project.toml') }}
+          restore-keys: |
+            rrc-archives-windows-native-
+
+      # MinGW GCC is the reference, and sh, make and cmake are what the projects' own builds run.
+      # diffutils is for the suites that compare their output with cmp or diff.
+      - uses: msys2/setup-msys2@v2
+        id: msys2
+        with:
+          msystem: MINGW64
+          update: false
+          install: >-
+            make
+            cmake
+            diffutils
+            mingw-w64-x86_64-gcc
+
+      - name: cargo build
+        run: cargo build --release -p rrc
+
+      # With no flags, since x86_64-windows-gnu is rucc's default target on Windows. lld is the one
+      # in the LLVM install the image carries, which rucc finds under %ProgramFiles%\LLVM\bin.
+      - name: rucc for x86_64-windows-gnu
+        working-directory: rucc
+        run: |
+          set -euo pipefail
+          cargo build --release --bin rucc
+          ./target/release/rucc.exe --fetch x86_64-windows-gnu
+          cargo xtask builtins --target x86_64-windows-gnu
+          ./target/release/rucc.exe --version | head -1
+          echo "RRC_RUCC_COMMIT=$(git rev-parse --short=8 HEAD)" >> "$GITHUB_ENV"
+
+      # From PowerShell rather than from a POSIX shell, so that nothing rewrites the paths on the
+      # way in. System32 goes first so that the archives are unpacked by Windows' own tar, which
+      # reads a drive letter as a drive, and MSYS2 goes next so that rrc finds its sh.
+      - name: the run
+        shell: pwsh
+        env:
+          MSYS2: ${{ steps.msys2.outputs.msys2-location }}
+          PROJECTS: ${{ inputs.projects }}
+        run: |
+          $env:PATH = "$env:SystemRoot\System32;$env:MSYS2\mingw64\bin;$env:MSYS2\usr\bin;$env:PATH"
+          $env:RRC_CACHE = "$env:RUNNER_TEMP\rrc"
+          & "$env:MSYS2\mingw64\bin\gcc.exe" --version | Select-Object -First 1
+          $select = @("--rung", "0,1,2,3,4,5")
+          if ($env:PROJECTS) {
+            $select = @()
+            foreach ($p in $env:PROJECTS.Split(" ", [System.StringSplitOptions]::RemoveEmptyEntries)) {
+              $select += @("--project", $p)
+            }
+          }
+          & .\target\release\rrc.exe `
+            --rucc "$env:GITHUB_WORKSPACE\rucc\target\release\rucc.exe" `
+            --gcc "$env:MSYS2\mingw64\bin\gcc.exe" `
+            --target x86_64-windows-gnu `
+            run @select --out runs\windows-native --refresh
+          echo "the run exited $LASTEXITCODE"
+          exit 0
+
+      - name: the report
+        if: always()
+        run: |
+          set -euo pipefail
+          mkdir -p out
+          ./target/release/rrc.exe --target x86_64-windows-gnu \
+            report --format markdown --input runs/windows-native/records.jsonl > out/windows-native.md || true
+          cp runs/windows-native/*.jsonl out/ 2>/dev/null || true
+          cat out/windows-native.md >> "$GITHUB_STEP_SUMMARY" || true
+
+      # The logs of every build and suite, because the first runs of a new host are the ones where
+      # somebody has to read them.
+      - name: the logs
+        if: always()
+        run: |
+          mkdir -p out/logs
+          for dir in work/sandbox/*/*/*/logs; do
+            [ -d "$dir" ] || continue
+            dest="out/logs/$(echo "${dir#work/sandbox/}" | tr '/' '_')"
+            cp -r "$dir" "$dest" || true
+          done
+
+      - uses: actions/upload-artifact@v7.0.1
+        if: always()
+        with:
+          name: windows-native
+          path: out
+          retention-days: 30

@@ -10,6 +10,8 @@
 //! - [`sandbox`] is the private tree a build gets, and the copy on write placement of the source.
 //! - [`shim`] is the `bin` directory a build finds first, which adds no flags of its own.
 //! - [`mod@env`] is the constructed environment, which handles both isolation and determinism.
+//! - [`host`] is what changes when the machine running all of this is Windows, which is mostly
+//!   that every command goes through MSYS2's shell.
 //! - [`privilege`] is who the build runs as, because a run started as root grades a different
 //!   program from one started as anybody else and the difference is not the compiler.
 //!
@@ -55,6 +57,7 @@ pub mod diagnostic;
 pub mod driver;
 pub mod env;
 pub mod exec;
+pub mod host;
 pub mod input;
 pub mod interrogate;
 pub mod kconfig;
