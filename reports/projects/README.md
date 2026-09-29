@@ -66,6 +66,7 @@ The `files` and `lines` columns are the size of the pinned source, counted befor
 | [rpmalloc](rpmalloc.md) | R1 | 10 | 6,823 | 4 of 4 | none |
 | [sds](sds.md) | R0 | 4 | 1,701 | 4 of 4 | none |
 | [sed](sed.md) | R4 | 498 | 107,964 | 4 of 4 | none |
+| [sqlite](sqlite.md) | R5 | 354 | 440,935 | 4 of 4 | none |
 | [sqlite-shell](sqlite-shell.md) | R4 | 354 | 440,935 | 4 of 4 | none |
 | [tar](tar.md) | R4 | 547 | 145,397 | 4 of 4 | none |
 | [tcc](tcc.md) | R3 | 353 | 134,171 | 4 of 4 | none |
