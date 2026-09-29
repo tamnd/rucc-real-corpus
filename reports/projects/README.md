@@ -24,6 +24,7 @@ The `files` and `lines` columns are the size of the pinned source, counted befor
 | [femtolisp](femtolisp.md) | R3 | 55 | 19,287 | 4 of 4 | none |
 | [flex](flex.md) | R4 | 46 | 26,145 | 4 of 4 | none |
 | [gdbm](gdbm.md) | R2 | 100 | 28,049 | 4 of 4 | none |
+| [git](git.md) | R4 | 977 | 436,044 | 4 of 4 | none |
 | [grep](grep.md) | R4 | 816 | 183,539 | 4 of 4 | none |
 | [gzip](gzip.md) | R4 | 240 | 60,701 | 4 of 4 | none |
 | [heatshrink](heatshrink.md) | R0 | 11 | 4,458 | 3 of 4 | none |

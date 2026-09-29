@@ -1,6 +1,6 @@
 # The run report
 
-**268 of 280 cells passed.** Run on linux-x86_64, as runner, with rucc 0.11.6 against gcc-16 (GCC) 16.2.0.
+**272 of 284 cells passed.** Run on linux-x86_64, as runner, with rucc 0.11.6 against gcc-16 (GCC) 16.2.0.
 
 Every number on these pages comes from one run of `rrc run`, and every one of them is paired with the same number from a GCC 16 build of the same pinned source on the same machine. Nothing here is averaged across projects, for the reason `spec/11-reporting.md` section 11.3 gives.
 
@@ -18,7 +18,7 @@ Every number on these pages comes from one run of `rrc run`, and every one of th
 
 | outcome | cells | what it means |
 | --- | ---: | --- |
-| passed | 268 | built, linked, ran its own suite, and the oracle agreed |
+| passed | 272 | built, linked, ran its own suite, and the oracle agreed |
 | wrong answer | 4 | it built and ran and produced the wrong answer |
 | excluded | 8 | on the exclusion register, with an issue behind it |
 
@@ -32,7 +32,7 @@ The rungs are the ladder of `spec/05-project-list.md`. A failure low on it is a 
 | R1 | 56 | 56 | 0 |
 | R2 | 80 | 73 | 7 |
 | R3 | 40 | 39 | 1 |
-| R4 | 56 | 56 | 0 |
+| R4 | 60 | 60 | 0 |
 
 ## By optimization level
 
@@ -40,14 +40,14 @@ This run covered 4 levels, `O0`, `O1`, `O2` and `Os`, and each of them is a diff
 
 | level | cells | passed | still to do |
 | --- | ---: | ---: | ---: |
-| O0 | 70 | 68 | 2 |
-| O1 | 70 | 67 | 3 |
-| O2 | 70 | 67 | 3 |
-| Os | 70 | 66 | 4 |
+| O0 | 71 | 69 | 2 |
+| O1 | 71 | 68 | 3 |
+| O2 | 71 | 68 | 3 |
+| Os | 71 | 67 | 4 |
 
 ## The project's own tests
 
-Of the 191 cells whose suite prints a count on both compilers, 182 pass exactly as many of the project's own tests as the GCC 16 build does.
+Of the 195 cells whose suite prints a count on both compilers, 186 pass exactly as many of the project's own tests as the GCC 16 build does.
 
 This is the number that a build outcome cannot show you. A cell that compiles, links, runs the suite and quietly passes forty fewer of the project's own tests than GCC does is a worse result than a cell that failed to build, and it counts as a pass everywhere except here.
 
@@ -75,8 +75,8 @@ It is a denominator and not a score. Four seconds is a slow build of a header on
 | R1 | 14 | 411 | 287,800 | 14.0 MiB |
 | R2 | 20 | 3,728 | 1,307,534 | 43.8 MiB |
 | R3 | 10 | 19,990 | 16,135,329 | 744.8 MiB |
-| R4 | 14 | 5,515 | 1,958,512 | 57.3 MiB |
-| **all** | **70** | **29,722** | **19,717,346** | **860.8 MiB** |
+| R4 | 15 | 6,492 | 2,394,556 | 68.7 MiB |
+| **all** | **71** | **30,699** | **20,153,390** | **872.3 MiB** |
 
 The largest few, since a corpus total is usually a few projects and a long tail.
 
@@ -84,6 +84,7 @@ The largest few, since a corpus total is usually a few projects and a long tail.
 | --- | ---: | ---: | ---: |
 | [micropython](projects/micropython.md) | 18,879 | 15,320,395 | 718.6 MiB |
 | [sqlite-shell](projects/sqlite-shell.md) | 354 | 440,935 | 13.7 MiB |
+| [git](projects/git.md) | 977 | 436,044 | 11.4 MiB |
 | [duktape](projects/duktape.md) | 351 | 426,097 | 14.4 MiB |
 | [busybox](projects/busybox.md) | 776 | 297,293 | 7.9 MiB |
 | [libgmp](projects/libgmp.md) | 1,054 | 212,797 | 6.7 MiB |
@@ -91,7 +92,6 @@ The largest few, since a corpus total is usually a few projects and a long tail.
 | [diffutils](projects/diffutils.md) | 870 | 188,884 | 5.9 MiB |
 | [grep](projects/grep.md) | 816 | 183,539 | 5.8 MiB |
 | [pcre2](projects/pcre2.md) | 85 | 149,512 | 4.8 MiB |
-| [libmpfr](projects/libmpfr.md) | 507 | 147,331 | 4.7 MiB |
 
 ## What the run cost
 
@@ -99,8 +99,8 @@ Added up rather than averaged, and it is a bill rather than a score. A corpus fi
 
 | | compile seconds |
 | --- | ---: |
-| under test | 12840 |
-| gcc 16 | 18860 |
+| under test | 13786 |
+| gcc 16 | 20098 |
 
 ## Every project
 
@@ -120,6 +120,7 @@ Added up rather than averaged, and it is a bill rather than a score. A corpus fi
 - [femtolisp](projects/femtolisp.md)
 - [flex](projects/flex.md)
 - [gdbm](projects/gdbm.md)
+- [git](projects/git.md)
 - [grep](projects/grep.md)
 - [gzip](projects/gzip.md)
 - [heatshrink](projects/heatshrink.md)

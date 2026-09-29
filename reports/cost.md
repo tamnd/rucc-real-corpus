@@ -292,6 +292,10 @@ Read none of it as a quality measurement. These are cheap proxies, collected bec
 | [xz](projects/xz.md) | O1 | 51.57s | 93s | 0.56x | 29.17s | 28.37s | 1.03x | 99.9 MiB | 129.1 MiB | 0.77x |
 | [xz](projects/xz.md) | O2 | 51.60s | 99s | 0.52x | 28.65s | 31.63s | 0.91x | 100.0 MiB | 135.6 MiB | 0.74x |
 | [xz](projects/xz.md) | Os | 51.26s | 94s | 0.54x | 28.59s | 29.20s | 0.98x | 100.0 MiB | 132.3 MiB | 0.76x |
+| [git](projects/git.md) | O0 | 212s | 226s | 0.94x | 1249s | 755s | 1.65x | 102.9 MiB | 101.3 MiB | 1.02x |
+| [git](projects/git.md) | O1 | 270s | 316s | 0.86x | 1127s | 1174s | 0.96x | 102.8 MiB | 111.6 MiB | 0.92x |
+| [git](projects/git.md) | O2 | 244s | 371s | 0.66x | 870s | 515s | 1.69x | 102.0 MiB | 132.3 MiB | 0.77x |
+| [git](projects/git.md) | Os | 219s | 324s | 0.68x | 476s | 511s | 0.93x | 102.9 MiB | 116.0 MiB | 0.89x |
 
 ## Size
 
@@ -579,6 +583,10 @@ Read none of it as a quality measurement. These are cheap proxies, collected bec
 | [xz](projects/xz.md) | O1 | 99.7 KiB | 83.2 KiB | 1.20x | 135.3 KiB | 108.3 KiB | 1.25x |
 | [xz](projects/xz.md) | O2 | 100.1 KiB | 85.5 KiB | 1.17x | 139.3 KiB | 112.0 KiB | 1.24x |
 | [xz](projects/xz.md) | Os | 98.9 KiB | 72.1 KiB | 1.37x | 135.3 KiB | 100.4 KiB | 1.35x |
+| [git](projects/git.md) | O0 | 5.8 MiB | 4.7 MiB | 1.23x | 55.0 MiB | 12.4 MiB | 4.45x |
+| [git](projects/git.md) | O1 | 5.2 MiB | 3.7 MiB | 1.43x | 53.3 MiB | 16.8 MiB | 3.18x |
+| [git](projects/git.md) | O2 | 5.2 MiB | 3.8 MiB | 1.36x | 53.1 MiB | 18.4 MiB | 2.88x |
+| [git](projects/git.md) | Os | 5.2 MiB | 3.0 MiB | 1.76x | 53.4 MiB | 14.9 MiB | 3.58x |
 
 ## The project's own tests
 
@@ -866,3 +874,7 @@ The last column is the one to read. Everything else on this page is a proxy; thi
 | [xz](projects/xz.md) | O1 | 19 | 19 | 19 | same |
 | [xz](projects/xz.md) | O2 | 19 | 19 | 19 | same |
 | [xz](projects/xz.md) | Os | 19 | 19 | 19 | same |
+| [git](projects/git.md) | O0 | 31880 | 31880 | 31880 | same |
+| [git](projects/git.md) | O1 | 31880 | 31880 | 31880 | same |
+| [git](projects/git.md) | O2 | 31880 | 31880 | 31880 | same |
+| [git](projects/git.md) | Os | 31880 | 31880 | 31880 | same |
