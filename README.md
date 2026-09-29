@@ -108,17 +108,16 @@ The harness runs and rungs zero, one and two are all green with rucc. Manifests,
 Everything between the two markers below is written by `rrc report --pages` from the records of the last nightly, and CI checks on every pull request that it still matches. Do not edit it by hand, and do edit everything around it.
 
 <!-- rrc:begin -->
-**276 of 288 cells passed.** Run on linux-x86_64, as runner, with rucc 0.11.6 against gcc-16 (GCC) 16.2.0.
+**280 of 288 cells passed.** Run on linux-x86_64, as runner, with rucc 0.11.6 against gcc-16 (GCC) 16.2.0.
 
 | outcome | cells | what it means |
 | --- | ---: | --- |
-| passed | 276 | built, linked, ran its own suite, and the oracle agreed |
-| wrong answer | 4 | it built and ran and produced the wrong answer |
+| passed | 280 | built, linked, ran its own suite, and the oracle agreed |
 | excluded | 8 | on the exclusion register, with an issue behind it |
 
 That is 20,594,325 lines of C across 31,053 files in the pinned archives, counted before anything is built.
 
-Of the 199 cells whose suite prints a count on both compilers, 190 pass exactly as many of the project's own tests as the GCC 16 build does.
+Of the 199 cells whose suite prints a count on both compilers, 194 pass exactly as many of the project's own tests as the GCC 16 build does.
 
 The full report is under [`reports/`](reports/README.md): [what it cost against GCC 16](reports/cost.md), [what failed and why](reports/failures.md), and [one page per project](reports/projects/README.md).
 <!-- rrc:end -->

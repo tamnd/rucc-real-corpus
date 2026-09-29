@@ -42,7 +42,7 @@ The `files` and `lines` columns are the size of the pinned source, counted befor
 | [libpng](libpng.md) | R2 | 100 | 91,353 | 4 of 4 | none |
 | [libpsl](libpsl.md) | R2 | 14 | 4,236 | 4 of 4 | none |
 | [libsir](libsir.md) | R1 | 73 | 19,927 | 4 of 4 | none |
-| [libsodium](libsodium.md) | R2 | 354 | 60,896 | 1 of 4 | 240 |
+| [libsodium](libsodium.md) | R2 | 354 | 60,896 | 4 of 4 | none |
 | [libtommath](libtommath.md) | R2 | 177 | 30,479 | 4 of 4 | none |
 | [libuv](libuv.md) | R2 | 360 | 109,292 | 4 of 4 | none |
 | [libyaml](libyaml.md) | R2 | 23 | 16,979 | 4 of 4 | none |
@@ -75,7 +75,7 @@ The `files` and `lines` columns are the size of the pinned source, counted befor
 | [tinyexpr](tinyexpr.md) | R0 | 9 | 2,496 | 4 of 4 | none |
 | [toybox](toybox.md) | R4 | 302 | 91,072 | 4 of 4 | none |
 | [uzlib](uzlib.md) | R1 | 14 | 1,954 | 4 of 4 | none |
-| [wren](wren.md) | R3 | 67 | 14,811 | 3 of 4 | 1 |
+| [wren](wren.md) | R3 | 67 | 14,811 | 4 of 4 | none |
 | [xxhash](xxhash.md) | R1 | 44 | 63,655 | 4 of 4 | none |
 | [xz](xz.md) | R4 | 248 | 64,288 | 4 of 4 | none |
 | [zlib](zlib.md) | R1 | 75 | 42,769 | 4 of 4 | none |
