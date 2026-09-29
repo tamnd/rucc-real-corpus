@@ -25,13 +25,10 @@
 # two of its 198 test programs then skip themselves rather than test anything. The issue behind it is
 # where the argument for the deferral is written down, and the entry comes out when the types land.
 #
-# The ninth is also about rucc and is the first on the Windows row. cjson's Unity harness keeps a
-# jmp_buf whose MinGW type rucc aligns to 8 rather than 16, so msvcrt's setjmp faults on it.
-#
 # An entry is as narrow as the failure it describes. The level field says which levels, the host
 # field says which machines, and leaving either off means all of them. The target field says which
 # target, and leaving it off means the native one only, so no older entry covers the Windows row.
-# Five of the nine are scoped to macos-aarch64, and every one of those five passes at every level on
+# Five of the eight are scoped to macos-aarch64, and every one of those five passes at every level on
 # the reference machine.
 #
 # Rechecked on 2026-09-19 against the RC5 exit criterion, which asks for no entry older than RC3
@@ -105,12 +102,3 @@ level = "*"
 issue = "https://github.com/tamnd/rucc/issues/1468"
 why = "The three decimal floating types are deferred past 1.0 in section 7 of rucc's spec/07-types-and-semantics.md, and mpfr is the first thing here to ask for them. Its configure runs 'checking if compiler knows _Decimal64', gets no from rucc and yes from gcc 16.2.0, and turns MPFR_WANT_DECIMAL_FLOATS off for the whole build, after which tget_set_d64 and tget_set_d128 skip themselves at run time rather than test anything. So the cell reads 196 of 198 with two skips against gcc's 198 of 198 and is graded a wrong answer, which is the right grade: rucc covered less than gcc did and the reason is a type it does not have. The other 196 pass at every level, including the ones that assert exact bit patterns at every rounding mode, which is what this project is on the list for. Not scoped to a host, because a deferred type is absent on all of them."
 since = "2026-09-19"
-
-[[exclude]]
-project = "cjson"
-case = "cjson"
-level = "*"
-target = "x86_64-windows-gnu"
-issue = "https://github.com/tamnd/rucc/issues/2151"
-why = "cJSON's tests are built on Unity, which keeps a jmp_buf in a static struct. MinGW declares jmp_buf as an array of a typedef that carries aligned(16), rucc gives that array type an alignment of 8 where gcc gives 16, and msvcrt's setjmp stores xmm6 with movdqa, which faults on an address that is only 8 aligned. So any test program whose jmp_buf happens to land on an address that is only 8 aligned crashes on its first setjmp under Wine, and which ones do moves from build to build: 18 of the 19 in the first trial, then 11 and 13 in two runs at O2. The MinGW gcc build passes all 19 every time. Scoped to the Windows row, because the native jmp_buf has no such typedef and every native cell passes."
-since = "2026-09-29"
