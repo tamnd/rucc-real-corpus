@@ -19,10 +19,10 @@ The pinned archive is 302 files, 91,072 lines, 2.4 MiB, counted before anything 
 
 The first diagnostic only, normalized, which is the one the failure clustering groups on.
 
-- `O0`: `bin/ld: cannot find -lsmack: No such file or directory`
-- `O1`: `bin/ld: cannot find -lselinux: No such file or directory`
-- `O2`: `bin/ld: cannot find -lselinux: No such file or directory`
-- `Os`: `bin/ld: cannot find -llog: No such file or directory`
+- `O0`: `ld.lld: error: unable to find library -lattr`
+- `O1`: `ld.lld: error: unable to find library -llog`
+- `O2`: `ld.lld: error: unable to find library -ltls`
+- `Os`: `ld.lld: error: unable to find library -lselinux`
 
 ## The project's own tests
 
@@ -37,16 +37,16 @@ The first diagnostic only, normalized, which is the one the failure clustering g
 
 | level | compile | gcc 16 | vs gcc | suite | gcc 16 | vs gcc | build memory | gcc 16 | vs gcc |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| O0 | 10.97s | 10.93s | 1.00x | 155s | 155s | 1.00x | 50.4 MiB | 50.0 MiB | 1.01x |
-| O1 | 12.45s | 13.85s | 0.90x | 150s | 150s | 1.00x | 50.4 MiB | 56.1 MiB | 0.90x |
-| O2 | 11.74s | 19.12s | 0.61x | 158s | 189s | 0.84x | 50.0 MiB | 64.0 MiB | 0.78x |
-| Os | 11.62s | 28.15s | 0.41x | 157s | 182s | 0.87x | 50.5 MiB | 59.2 MiB | 0.85x |
+| O0 | 97s | 10.93s | 8.90x | 184s | 155s | 1.19x | 66.2 MiB | 50.0 MiB | 1.33x |
+| O1 | 100s | 13.85s | 7.22x | 183s | 150s | 1.22x | 59.9 MiB | 56.1 MiB | 1.07x |
+| O2 | 74s | 19.12s | 3.89x | 152s | 189s | 0.81x | 63.3 MiB | 64.0 MiB | 0.99x |
+| Os | 73s | 28.15s | 2.61x | 154s | 182s | 0.85x | 65.8 MiB | 59.2 MiB | 1.11x |
 
 ## Size
 
 | level | text and data | gcc 16 | vs gcc | on disk | gcc 16 | vs gcc |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| O0 | 746.5 KiB | 584.9 KiB | 1.28x | 757.5 KiB | 593.6 KiB | 1.28x |
-| O1 | 657.4 KiB | 519.9 KiB | 1.26x | 669.4 KiB | 529.5 KiB | 1.26x |
-| O2 | 670.1 KiB | 555.0 KiB | 1.21x | 681.4 KiB | 565.5 KiB | 1.21x |
-| Os | 653.4 KiB | 446.3 KiB | 1.46x | 665.5 KiB | 453.5 KiB | 1.47x |
+| O0 | 747.0 KiB | 584.9 KiB | 1.28x | 749.6 KiB | 593.6 KiB | 1.26x |
+| O1 | 641.5 KiB | 519.9 KiB | 1.23x | 644.2 KiB | 529.5 KiB | 1.22x |
+| O2 | 653.3 KiB | 555.0 KiB | 1.18x | 656.0 KiB | 565.5 KiB | 1.16x |
+| Os | 637.9 KiB | 446.3 KiB | 1.43x | 640.6 KiB | 453.5 KiB | 1.41x |

@@ -12,8 +12,8 @@ The pinned archive is 47 files, 24,405 lines, 870.1 KiB, counted before anything
 | --- | --- | --- | --- |
 | O0 | passed | tested | suite count |
 | O1 | passed | tested | suite count |
-| Os | passed | tested | suite count |
 | O2 | passed | tested | suite count |
+| Os | passed | tested | suite count |
 
 ## The project's own tests
 
@@ -21,17 +21,17 @@ The pinned archive is 47 files, 24,405 lines, 870.1 KiB, counted before anything
 | --- | ---: | ---: | ---: | ---: |
 | O0 | 1227 | 1227 | 1227 | same |
 | O1 | 1227 | 1227 | 1227 | same |
-| Os | 1227 | 1227 | 1227 | same |
 | O2 | 1227 | 1227 | 1227 | same |
+| Os | 1227 | 1227 | 1227 | same |
 
 ## Time and memory
 
 | level | compile | gcc 16 | vs gcc | suite | gcc 16 | vs gcc | build memory | gcc 16 | vs gcc |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| O0 | 24.80s | 31.36s | 0.79x | 5.78s | 6.60s | 0.88x | 59.3 MiB | 83.5 MiB | 0.71x |
-| O1 | 25.52s | 46.40s | 0.55x | 5.05s | 4.30s | 1.18x | 61.5 MiB | 110.0 MiB | 0.56x |
-| Os | 28.16s | 73s | 0.39x | 5.23s | 7.67s | 0.68x | 59.0 MiB | 133.5 MiB | 0.44x |
-| O2 | 30.46s | 78s | 0.39x | 4.78s | 4.95s | 0.97x | 59.0 MiB | 138.1 MiB | 0.43x |
+| O0 [^cached] | 34.25s | 31.36s | 1.09x | 6.86s | 6.60s | 1.04x | 59.1 MiB | 83.5 MiB | 0.71x |
+| O1 [^cached] | 37.86s | 46.40s | 0.82x | 6.45s | 4.30s | 1.50x | 58.7 MiB | 110.0 MiB | 0.53x |
+| O2 [^cached] | 36.77s | 78s | 0.47x | 5.98s | 4.95s | 1.21x | 58.5 MiB | 138.1 MiB | 0.42x |
+| Os [^cached] | 35.05s | 73s | 0.48x | 6.07s | 7.67s | 0.79x | 60.5 MiB | 133.5 MiB | 0.45x |
 
 ## Size
 
@@ -39,5 +39,5 @@ The pinned archive is 47 files, 24,405 lines, 870.1 KiB, counted before anything
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
 | O0 | not measured | not measured | not measured | not measured | not measured | not measured |
 | O1 | not measured | not measured | not measured | not measured | not measured | not measured |
-| Os | not measured | not measured | not measured | not measured | not measured | not measured |
 | O2 | not measured | not measured | not measured | not measured | not measured | not measured |
+| Os | not measured | not measured | not measured | not measured | not measured | not measured |
