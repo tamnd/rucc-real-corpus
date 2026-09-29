@@ -544,7 +544,20 @@ These rows are why the residue above can be believed. A list that only records w
 
 A tag nothing reaches is either a gap in the list, which is a project worth admitting, or a tag that should not be in the vocabulary. Both are only visible if the empty rows are.
 
+- `acle-crc`
 - `always-inline`
+- `avx512-intrinsics`
+- `builtin-setjmp-coff`
+- `bundle-loader`
+- `dllimport`
 - `driver-print-dirs`
 - `lto`
+- `module-undefined-symbols`
+- `neon-intrinsics`
+- `overflow-builtins-mixed-sign`
+- `returns-twice`
+- `sigsetjmp-volatile`
+- `sse42-intrinsics`
+- `sve-intrinsics`
+- `target-attribute`
 
