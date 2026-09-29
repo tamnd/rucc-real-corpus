@@ -23,11 +23,24 @@ pub enum Rung {
     R4,
     /// SQLite.
     R5,
+    /// PostgreSQL, above the top of the ladder proper.
+    ///
+    /// `spec/14-milestones.md` section 14.6 puts it after the milestone the other six serve, and
+    /// what it adds is a server that loads modules into itself, which nothing below it does.
+    R6,
 }
 
 impl Rung {
     /// Every rung, lowest first.
-    pub const ALL: [Self; 6] = [Self::R0, Self::R1, Self::R2, Self::R3, Self::R4, Self::R5];
+    pub const ALL: [Self; 7] = [
+        Self::R0,
+        Self::R1,
+        Self::R2,
+        Self::R3,
+        Self::R4,
+        Self::R5,
+        Self::R6,
+    ];
 
     /// The rung as the small integer the manifest and the reports use.
     #[must_use]
@@ -76,7 +89,7 @@ impl Rung {
         ];
         match self {
             Self::R0 => WITH_O3,
-            Self::R1 | Self::R2 | Self::R3 | Self::R4 | Self::R5 => WITH_LTO,
+            Self::R1 | Self::R2 | Self::R3 | Self::R4 | Self::R5 | Self::R6 => WITH_LTO,
         }
     }
 }
@@ -85,10 +98,9 @@ impl TryFrom<u8> for Rung {
     type Error = String;
 
     fn try_from(value: u8) -> Result<Self, Self::Error> {
-        Self::ALL
-            .get(value as usize)
-            .copied()
-            .ok_or_else(|| format!("rung {value} does not exist, the ladder has six rungs 0 to 5"))
+        Self::ALL.get(value as usize).copied().ok_or_else(|| {
+            format!("rung {value} does not exist, the ladder has seven rungs 0 to 6")
+        })
     }
 }
 
@@ -111,7 +123,7 @@ impl FromStr for Rung {
         let digits = s.trim_start_matches(['R', 'r']);
         digits
             .parse::<u8>()
-            .map_err(|_| format!("`{s}` is not a rung, write R0 to R5 or 0 to 5"))
+            .map_err(|_| format!("`{s}` is not a rung, write R0 to R6 or 0 to 6"))
             .and_then(Self::try_from)
     }
 }
@@ -416,6 +428,8 @@ mod tests {
     fn rung_parses_both_spellings() {
         assert_eq!("R3".parse::<Rung>().unwrap(), Rung::R3);
         assert_eq!("3".parse::<Rung>().unwrap(), Rung::R3);
+        assert_eq!("R6".parse::<Rung>().unwrap(), Rung::R6);
+        assert!("R7".parse::<Rung>().is_err());
         assert!("R9".parse::<Rung>().is_err());
         assert!("banana".parse::<Rung>().is_err());
     }
@@ -442,7 +456,7 @@ mod tests {
         // the assertion is here to stop it being made uniform by accident.
         assert_eq!(Rung::R0.required_levels().len(), 5);
         assert!(!Rung::R0.required_levels().contains(&Level::Lto));
-        for rung in [Rung::R1, Rung::R2, Rung::R3, Rung::R4, Rung::R5] {
+        for rung in [Rung::R1, Rung::R2, Rung::R3, Rung::R4, Rung::R5, Rung::R6] {
             assert!(
                 rung.required_levels().contains(&Level::Lto),
                 "{rung} is not built at -flto"

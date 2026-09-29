@@ -662,6 +662,38 @@ Result: FAIL
         assert_eq!(counts, Counts::of(1, 1));
     }
 
+    /// The shape of `make check` in PostgreSQL 18, trimmed to six tests. `pg_regress` speaks TAP
+    /// itself since 16, with `-` in front of a test run on its own and `+` in front of one run in
+    /// a parallel group, and it prints its plan at the end because it does not know how many tests
+    /// there will be until the schedule has been read through.
+    const PG_REGRESS: &str = "\
+echo \"# +++ regress check in src/test/regress +++\" && PATH=\"/w/tmp_install/usr/local/pgsql/bin:$PATH\" ../../../src/test/regress/pg_regress --temp-instance=./tmp_check --inputdir=. --bindir=     --schedule=./parallel_schedule
+# +++ regress check in src/test/regress +++
+# initializing database system by copying initdb template
+# using temp instance on port 65312 with PID 40211
+ok 1         - test_setup                                311 ms
+# parallel group (4 tests):  boolean char int2 int4
+ok 2         + boolean                                    80 ms
+ok 3         + char                                       41 ms
+not ok 4     + int2                                       62 ms
+ok 5         + int4                                       66 ms
+ok 6         - tablespace                                412 ms
+1..6
+# 1 of 6 tests failed.
+# The differences that caused some tests to fail can be viewed in the file \"/w/src/test/regress/regression.diffs\".
+";
+
+    #[test]
+    fn tap_reads_pg_regress_with_its_plan_at_the_end() {
+        let failed = counts(SuiteParser::Tap, None, PG_REGRESS).unwrap();
+        assert_eq!(failed, Counts::of(6, 5));
+        let clean = PG_REGRESS
+            .replace("not ok 4", "ok 4    ")
+            .replace("# 1 of 6 tests failed.", "# All 6 tests passed.");
+        let clean = counts(SuiteParser::Tap, None, &clean).unwrap();
+        assert_eq!(clean, Counts::of(6, 6));
+    }
+
     #[test]
     fn ctest_reads_its_summary_line() {
         let text = "99% tests passed, 1 tests failed out of 47\n";

@@ -460,6 +460,14 @@ sha256 = "b7dae81c4dc20019c9e465d055c55e3a2963ada9433fc6e90fe15d1b70d2fa62"
 bytes = 1495
 
 [[project]]
+name = "postgresql"
+url = "https://ftp.postgresql.org/pub/source/v18.6/postgresql-18.6.tar.bz2"
+sha256 = "555610c24d53e4316da5b7d3fc25c279d96856d5e0e23ee308c328c5fa881d9f"
+bytes = 22632314
+licence-sha256 = "3d6af92ff8a4c2cdf69afb1cf44edea727922f5cd0cf8b5f72b11cdecac8fdfd"
+verified = "2026-09-30"
+
+[[project]]
 name = "quickjs"
 url = "https://codeload.github.com/bellard/quickjs/tar.gz/04be246001599f5995fa2f2d8c91a0f198d3f34c"
 sha256 = "2a87ffcca6c870f764ce70a7736351bd7cff3dc1fb95a8fb059c260979f1e01a"

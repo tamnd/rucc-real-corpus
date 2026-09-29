@@ -21,8 +21,8 @@ Weight is what to do next. It is the sum over the held up projects of six minus 
 | `integer-conversion` | standard | 11 | 0 | 0 | none open |
 | `large-switch` | standard | 10 | 0 | 0 | none open |
 | `function-pointers` | standard | 9 | 0 | 0 | none open |
+| `computed-goto` | gnu-extension | 7 | 0 | 0 | [open](https://github.com/tamnd/rucc/issues/353) |
 | `setjmp-longjmp` | standard | 7 | 0 | 0 | none open |
-| `computed-goto` | gnu-extension | 6 | 0 | 0 | [open](https://github.com/tamnd/rucc/issues/353) |
 | `double-formatting` | standard | 5 | 0 | 0 | none open |
 | `atomic-builtins` | gnu-builtin | 4 | 0 | 0 | [open](https://github.com/tamnd/rucc/issues/311) |
 | `bit-builtins` | gnu-builtin | 4 | 0 | 0 | [open](https://github.com/tamnd/rucc/issues/310) |
@@ -52,6 +52,8 @@ Weight is what to do next. It is the sum over the held up projects of six minus 
 | `int128` | gnu-extension | 1 | 0 | 0 | [open](https://github.com/tamnd/rucc/issues/351) |
 | `long-double` | standard | 1 | 0 | 0 | none open |
 | `meson-probes` | driver | 1 | 0 | 0 | none open |
+| `module-undefined-symbols` | driver | 1 | 0 | 0 | [open](https://github.com/tamnd/rucc/issues/2009) |
+| `sigsetjmp-volatile` | standard | 1 | 0 | 0 | [open](https://github.com/tamnd/rucc/issues/652) |
 | `stdckdint` | standard | 1 | 0 | 0 | none open |
 | `visibility-attributes` | gnu-extension | 1 | 0 | 0 | none open |
 
@@ -210,6 +212,18 @@ calls through a pointer, including pointers to library functions
 - `oniguruma`, R2, not measured
 - `wren`, R3, not measured
 
+### `computed-goto`
+
+labels as values, goto *
+
+- `femtolisp`, R3, not measured
+- `janet`, R3, not measured
+- `lua`, R3, not measured
+- `micropython`, R3, not measured
+- `quickjs`, R3, not measured
+- `wren`, R3, not measured
+- `postgresql`, R6, not measured
+
 ### `setjmp-longjmp`
 
 setjmp and longjmp as an error mechanism, which constrains what the optimizer may keep in a register
@@ -221,17 +235,6 @@ setjmp and longjmp as an error mechanism, which constrains what the optimizer ma
 - `lua-nojumptable`, R3, not measured
 - `bash`, R4, not measured
 - `mawk`, R4, not measured
-
-### `computed-goto`
-
-labels as values, goto *
-
-- `femtolisp`, R3, not measured
-- `janet`, R3, not measured
-- `lua`, R3, not measured
-- `micropython`, R3, not measured
-- `quickjs`, R3, not measured
-- `wren`, R3, not measured
 
 ### `double-formatting`
 
@@ -450,6 +453,18 @@ the compiler is one meson's detection recognises from its --version and predefin
 
 - `fribidi`, R2, not measured
 
+### `module-undefined-symbols`
+
+a loadable module that calls back into the executable that loaded it, linked the way each platform does it
+
+- `postgresql`, R6, not measured
+
+### `sigsetjmp-volatile`
+
+volatile locals written between sigsetjmp and siglongjmp keep their new values, which is every PG_TRY block
+
+- `postgresql`, R6, not measured
+
 ### `stdckdint`
 
 <stdckdint.h> and ckd_add, ckd_sub and ckd_mul
@@ -552,11 +567,9 @@ A tag nothing reaches is either a gap in the list, which is a project worth admi
 - `dllimport`
 - `driver-print-dirs`
 - `lto`
-- `module-undefined-symbols`
 - `neon-intrinsics`
 - `overflow-builtins-mixed-sign`
 - `returns-twice`
-- `sigsetjmp-volatile`
 - `sse42-intrinsics`
 - `sve-intrinsics`
 - `target-attribute`

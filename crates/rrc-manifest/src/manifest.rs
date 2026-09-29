@@ -865,7 +865,7 @@ oracle = "self-checking"
     fn a_rung_off_the_end_of_the_ladder_is_an_error() {
         let text = SAMPLE.replace("rung = 0", "rung = 7");
         let error = parse(&text).unwrap_err();
-        assert!(error.to_string().contains("six rungs"));
+        assert!(error.to_string().contains("seven rungs"));
     }
 
     #[test]

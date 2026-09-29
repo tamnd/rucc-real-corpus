@@ -27,7 +27,7 @@ So this repository is the missing half of the ladder: **the rungs between rung 0
 
 ## What it is, in one paragraph
 
-A manifest of about eighty third-party C projects, pinned by URL and SHA-256, graded into six rungs by what they demand of the compiler rather than by how many lines they have. A Rust harness that fetches them, builds each one with `CC=rucc` and its own unmodified build system, runs its own test suite, and reports one of a fixed set of outcomes per project per optimization level. No source patches, ever, for any reason, which is the rule that makes the result mean something and is also the rule that costs the most. A report that says what failed, what it cost, and how the generated code compares against a GCC 16 build of the same project.
+A manifest of about eighty third-party C projects, pinned by URL and SHA-256, graded into six rungs, and PostgreSQL on a seventh above them, by what they demand of the compiler rather than by how many lines they have. A Rust harness that fetches them, builds each one with `CC=rucc` and its own unmodified build system, runs its own test suite, and reports one of a fixed set of outcomes per project per optimization level. No source patches, ever, for any reason, which is the rule that makes the result mean something and is also the rule that costs the most. A report that says what failed, what it cost, and how the generated code compares against a GCC 16 build of the same project.
 
 ## Why a third repository
 
@@ -67,7 +67,7 @@ The counterargument, which is real, is in document 15: two repositories with a `
 | 01 | `01-research-2026.md` | what kefir, slimcc, chibicc, cproc and the Anthropic compiler actually did, and what each forces |
 | 02 | `02-the-goal.md` | the four claims, how each is falsified, and what this is not |
 | 03 | `03-selection.md` | the six demand axes, the entry criteria, and the smallest-reacher principle |
-| 04 | `04-the-ladder.md` | rungs R0 to R5, their exit criteria, promotion and demotion |
+| 04 | `04-the-ladder.md` | rungs R0 to R5 and R6 above them, their exit criteria, promotion and demotion |
 | 05 | `05-the-projects.md` | the project table, per rung, with licence, build, suite and demand |
 | 06 | `06-manifest.md` | `project.toml`, pinning, fetching, licences, mirrors |
 | 07 | `07-harness.md` | the crates, the commands, isolation, determinism, the driver shim |

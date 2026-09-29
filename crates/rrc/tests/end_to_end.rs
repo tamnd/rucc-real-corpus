@@ -317,5 +317,5 @@ fn a_command_line_that_makes_no_sense_is_told_apart_from_a_run_that_failed() {
         "exit 1 means the run happened and something in it wants a person, and this run never \
          happened at all"
     );
-    assert!(out.stderr.contains("six rungs"), "{}", out.stderr);
+    assert!(out.stderr.contains("seven rungs"), "{}", out.stderr);
 }
