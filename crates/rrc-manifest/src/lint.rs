@@ -533,6 +533,18 @@ fn check_test(manifest: &Manifest, say: &mut Vec<String>) {
             "a regex is given and the parser is not custom-regex, so it would be ignored".into(),
         );
     }
+    // prove is a perl program and so is every script it runs, so a host without perl cannot
+    // produce the lines this parser reads. Without the requirement that host would report a suite
+    // that printed nothing, which is `not compared` for a reason that has nothing to do with the
+    // compiler and says so nowhere.
+    if manifest.test.parser == SuiteParser::TapScripts
+        && !manifest.test.requires.contains(&Requirement::Perl)
+    {
+        say.push(
+            "the parser is tap-scripts, which reads what prove prints, and perl is not in test.requires"
+                .into(),
+        );
+    }
     if manifest.test.oracle == Oracle::Suite {
         if manifest.test.parser == SuiteParser::ExitStatus {
             say.push("a suite oracle with an exit-status parser produces no count, so it is a self-checking oracle wearing a suite label".into());
@@ -1305,6 +1317,20 @@ kind = "standard"
                 .iter()
                 .any(|f| f.what.contains("no configure step"))
         );
+    }
+
+    #[test]
+    fn counting_prove_scripts_needs_perl() {
+        let mut corpus = corpus_of(SAMPLE);
+        corpus.manifests[0].test.parser = SuiteParser::TapScripts;
+        let says = |corpus: &Corpus| {
+            check(corpus)
+                .iter()
+                .any(|f| f.what.contains("perl is not in test.requires"))
+        };
+        assert!(says(&corpus));
+        corpus.manifests[0].test.requires.push(Requirement::Perl);
+        assert!(!says(&corpus));
     }
 
     #[test]
