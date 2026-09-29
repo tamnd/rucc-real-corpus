@@ -662,9 +662,9 @@ Result: FAIL
         assert_eq!(counts, Counts::of(1, 1));
     }
 
-    /// The shape of `make check` in PostgreSQL 18, trimmed to six tests. pg_regress speaks TAP
-    /// itself since 16, with `-` in front of a test run on its own and `+` in front of one run in a
-    /// parallel group, and it prints its plan at the end because it does not know how many tests
+    /// The shape of `make check` in PostgreSQL 18, trimmed to six tests. `pg_regress` speaks TAP
+    /// itself since 16, with `-` in front of a test run on its own and `+` in front of one run in
+    /// a parallel group, and it prints its plan at the end because it does not know how many tests
     /// there will be until the schedule has been read through.
     const PG_REGRESS: &str = "\
 echo \"# +++ regress check in src/test/regress +++\" && PATH=\"/w/tmp_install/usr/local/pgsql/bin:$PATH\" ../../../src/test/regress/pg_regress --temp-instance=./tmp_check --inputdir=. --bindir=     --schedule=./parallel_schedule
