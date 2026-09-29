@@ -296,6 +296,10 @@ Read none of it as a quality measurement. These are cheap proxies, collected bec
 | [git](projects/git.md) | O1 | 270s | 316s | 0.86x | 1127s | 1174s | 0.96x | 102.8 MiB | 111.6 MiB | 0.92x |
 | [git](projects/git.md) | O2 | 244s | 371s | 0.66x | 870s | 515s | 1.69x | 102.0 MiB | 132.3 MiB | 0.77x |
 | [git](projects/git.md) | Os | 219s | 324s | 0.68x | 476s | 511s | 0.93x | 102.9 MiB | 116.0 MiB | 0.89x |
+| [sqlite](projects/sqlite.md) | O1 | 66s | 141s | 0.47x | 486s | 501s | 0.97x | 302.5 MiB | 366.3 MiB | 0.83x |
+| [sqlite](projects/sqlite.md) | O0 | 43.22s | 64s | 0.68x | 529s | 625s | 0.85x | 317.4 MiB | 333.0 MiB | 0.95x |
+| [sqlite](projects/sqlite.md) | O2 | 85s | 430s | 0.20x | 551s | 556s | 0.99x | 322.9 MiB | 437.1 MiB | 0.74x |
+| [sqlite](projects/sqlite.md) | Os | 79s | 349s | 0.23x | 557s | 583s | 0.96x | 305.7 MiB | 436.0 MiB | 0.70x |
 
 ## Size
 
@@ -587,6 +591,10 @@ Read none of it as a quality measurement. These are cheap proxies, collected bec
 | [git](projects/git.md) | O1 | 5.2 MiB | 3.7 MiB | 1.43x | 53.3 MiB | 16.8 MiB | 3.18x |
 | [git](projects/git.md) | O2 | 5.2 MiB | 3.8 MiB | 1.36x | 53.1 MiB | 18.4 MiB | 2.88x |
 | [git](projects/git.md) | Os | 5.2 MiB | 3.0 MiB | 1.76x | 53.4 MiB | 14.9 MiB | 3.58x |
+| [sqlite](projects/sqlite.md) | O1 | 2.2 MiB | 1.6 MiB | 1.33x | 2.5 MiB | 1.8 MiB | 1.40x |
+| [sqlite](projects/sqlite.md) | O0 | 2.5 MiB | 2.1 MiB | 1.19x | 2.8 MiB | 2.3 MiB | 1.24x |
+| [sqlite](projects/sqlite.md) | O2 | 2.2 MiB | 1.9 MiB | 1.16x | 2.5 MiB | 2.0 MiB | 1.24x |
+| [sqlite](projects/sqlite.md) | Os | 2.2 MiB | 1.3 MiB | 1.67x | 2.5 MiB | 1.5 MiB | 1.72x |
 
 ## The project's own tests
 
@@ -878,3 +886,7 @@ The last column is the one to read. Everything else on this page is a proxy; thi
 | [git](projects/git.md) | O1 | 31880 | 31880 | 31880 | same |
 | [git](projects/git.md) | O2 | 31880 | 31880 | 31880 | same |
 | [git](projects/git.md) | Os | 31880 | 31880 | 31880 | same |
+| [sqlite](projects/sqlite.md) | O1 | 394784 | 394786 | 394784 | same |
+| [sqlite](projects/sqlite.md) | O0 | 394784 | 394786 | 394784 | same |
+| [sqlite](projects/sqlite.md) | O2 | 394784 | 394786 | 394784 | same |
+| [sqlite](projects/sqlite.md) | Os | 394784 | 394786 | 394784 | same |
