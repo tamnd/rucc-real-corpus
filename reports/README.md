@@ -1,6 +1,6 @@
 # The run report
 
-**280 of 288 cells passed.** Run on linux-x86_64, as runner, with rucc 0.15.1 against gcc-16 (GCC) 16.2.0.
+**284 of 288 cells passed.** Run on linux-x86_64, as runner, with rucc 0.15.1 against gcc-16 (GCC) 16.2.0.
 
 Every number on these pages comes from one run of `rrc run`, and every one of them is paired with the same number from a GCC 16 build of the same pinned source on the same machine. Nothing here is averaged across projects, for the reason `spec/11-reporting.md` section 11.3 gives.
 
@@ -18,8 +18,8 @@ Every number on these pages comes from one run of `rrc run`, and every one of th
 
 | outcome | cells | what it means |
 | --- | ---: | --- |
-| passed | 280 | built, linked, ran its own suite, and the oracle agreed |
-| excluded | 8 | on the exclusion register, with an issue behind it |
+| passed | 284 | built, linked, ran its own suite, and the oracle agreed |
+| excluded | 4 | on the exclusion register, with an issue behind it |
 
 ## By rung
 
@@ -29,7 +29,7 @@ The rungs are the ladder of `spec/05-project-list.md`. A failure low on it is a 
 | --- | ---: | ---: | ---: |
 | R0 | 48 | 44 | 4 |
 | R1 | 56 | 56 | 0 |
-| R2 | 80 | 76 | 4 |
+| R2 | 80 | 80 | 0 |
 | R3 | 40 | 40 | 0 |
 | R4 | 60 | 60 | 0 |
 | R5 | 4 | 4 | 0 |
@@ -40,10 +40,10 @@ This run covered 4 levels, `O0`, `O1`, `O2` and `Os`, and each of them is a diff
 
 | level | cells | passed | still to do |
 | --- | ---: | ---: | ---: |
-| O0 | 72 | 70 | 2 |
-| O1 | 72 | 70 | 2 |
-| O2 | 72 | 70 | 2 |
-| Os | 72 | 70 | 2 |
+| O0 | 72 | 71 | 1 |
+| O1 | 72 | 71 | 1 |
+| O2 | 72 | 71 | 1 |
+| Os | 72 | 71 | 1 |
 
 ## The project's own tests
 

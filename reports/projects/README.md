@@ -38,7 +38,7 @@ The `files` and `lines` columns are the size of the pinned source, counted befor
 | [libgmp](libgmp.md) | R2 | 1,054 | 212,797 | 4 of 4 | none |
 | [libjansson](libjansson.md) | R2 | 49 | 18,654 | 4 of 4 | none |
 | [libjpeg](libjpeg.md) | R2 | 84 | 51,338 | 4 of 4 | none |
-| [libmpfr](libmpfr.md) | R2 | 507 | 147,331 | 0 of 4 | none |
+| [libmpfr](libmpfr.md) | R2 | 507 | 147,331 | 4 of 4 | none |
 | [libpng](libpng.md) | R2 | 100 | 91,353 | 4 of 4 | none |
 | [libpsl](libpsl.md) | R2 | 14 | 4,236 | 4 of 4 | none |
 | [libsir](libsir.md) | R1 | 73 | 19,927 | 4 of 4 | none |
