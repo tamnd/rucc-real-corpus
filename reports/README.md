@@ -1,6 +1,6 @@
 # The run report
 
-**284 of 288 cells passed.** Run on linux-x86_64, as runner, with rucc 0.15.1 against gcc-16 (GCC) 16.2.0.
+**288 of 292 cells passed.** Run on linux-x86_64, as runner, with rucc 0.15.1 against gcc-16 (GCC) 16.2.0.
 
 Every number on these pages comes from one run of `rrc run`, and every one of them is paired with the same number from a GCC 16 build of the same pinned source on the same machine. Nothing here is averaged across projects, for the reason `spec/11-reporting.md` section 11.3 gives.
 
@@ -18,7 +18,7 @@ Every number on these pages comes from one run of `rrc run`, and every one of th
 
 | outcome | cells | what it means |
 | --- | ---: | --- |
-| passed | 284 | built, linked, ran its own suite, and the oracle agreed |
+| passed | 288 | built, linked, ran its own suite, and the oracle agreed |
 | excluded | 4 | on the exclusion register, with an issue behind it |
 
 ## By rung
@@ -29,7 +29,7 @@ The rungs are the ladder of `spec/05-project-list.md`. A failure low on it is a 
 | --- | ---: | ---: | ---: |
 | R0 | 48 | 44 | 4 |
 | R1 | 56 | 56 | 0 |
-| R2 | 80 | 80 | 0 |
+| R2 | 84 | 84 | 0 |
 | R3 | 40 | 40 | 0 |
 | R4 | 60 | 60 | 0 |
 | R5 | 4 | 4 | 0 |
@@ -40,14 +40,14 @@ This run covered 4 levels, `O0`, `O1`, `O2` and `Os`, and each of them is a diff
 
 | level | cells | passed | still to do |
 | --- | ---: | ---: | ---: |
-| O0 | 72 | 71 | 1 |
-| O1 | 72 | 71 | 1 |
-| O2 | 72 | 71 | 1 |
-| Os | 72 | 71 | 1 |
+| O0 | 73 | 72 | 1 |
+| O1 | 73 | 72 | 1 |
+| O2 | 73 | 72 | 1 |
+| Os | 73 | 72 | 1 |
 
 ## The project's own tests
 
-Of the 199 cells whose suite prints a count on both compilers, 199 pass exactly as many of the project's own tests as the GCC 16 build does.
+Of the 203 cells whose suite prints a count on both compilers, 203 pass exactly as many of the project's own tests as the GCC 16 build does.
 
 This is the number that a build outcome cannot show you. A cell that compiles, links, runs the suite and quietly passes forty fewer of the project's own tests than GCC does is a worse result than a cell that failed to build, and it counts as a pass everywhere except here.
 
@@ -63,11 +63,11 @@ It is a denominator and not a score. Four seconds is a slow build of a header on
 | --- | ---: | ---: | ---: | ---: |
 | R0 | 12 | 78 | 28,171 | 936.7 KiB |
 | R1 | 14 | 411 | 287,800 | 14.0 MiB |
-| R2 | 20 | 3,728 | 1,307,534 | 43.8 MiB |
+| R2 | 21 | 3,799 | 1,321,882 | 44.2 MiB |
 | R3 | 10 | 19,990 | 16,135,329 | 744.8 MiB |
 | R4 | 15 | 6,492 | 2,394,556 | 68.7 MiB |
 | R5 | 1 | 354 | 440,935 | 13.7 MiB |
-| **all** | **72** | **31,053** | **20,594,325** | **886.0 MiB** |
+| **all** | **73** | **31,124** | **20,608,673** | **886.3 MiB** |
 
 The largest few, since a corpus total is usually a few projects and a long tail.
 
@@ -90,8 +90,8 @@ Added up rather than averaged, and it is a bill rather than a score. A corpus fi
 
 | | compile seconds |
 | --- | ---: |
-| under test | 15550 |
-| gcc 16 | 21629 |
+| under test | 15616 |
+| gcc 16 | 21714 |
 
 ## Every project
 
@@ -110,6 +110,7 @@ Added up rather than averaged, and it is a bill rather than a score. A corpus fi
 - [duktape](projects/duktape.md)
 - [femtolisp](projects/femtolisp.md)
 - [flex](projects/flex.md)
+- [fribidi](projects/fribidi.md)
 - [gdbm](projects/gdbm.md)
 - [git](projects/git.md)
 - [grep](projects/grep.md)

@@ -300,6 +300,10 @@ Read none of it as a quality measurement. These are cheap proxies, collected bec
 | [zstd](projects/zstd.md) | O1 | 169s | 114s | 1.48x | 123s | 119s | 1.03x | 99.6 MiB | 167.9 MiB | 0.59x |
 | [zstd](projects/zstd.md) | O2 | 127s | 206s | 0.62x | 121s | 171s | 0.70x | 81.4 MiB | 210.5 MiB | 0.39x |
 | [zstd](projects/zstd.md) | Os | 113s | 152s | 0.74x | 110s | 151s | 0.73x | 99.6 MiB | 163.6 MiB | 0.61x |
+| [fribidi](projects/fribidi.md) | O0 | 16.08s | 18.82s | 0.85x | 4.00s | 3.47s | 1.15x | 63.6 MiB | 38.7 MiB | 1.64x |
+| [fribidi](projects/fribidi.md) | O1 | 15.96s | 21.25s | 0.75x | 3.50s | 2.85s | 1.23x | 62.7 MiB | 38.7 MiB | 1.62x |
+| [fribidi](projects/fribidi.md) | Os | 15.92s | 21.77s | 0.73x | 3.61s | 3.05s | 1.19x | 60.1 MiB | 38.7 MiB | 1.55x |
+| [fribidi](projects/fribidi.md) | O2 | 17.59s | 23.30s | 0.75x | 3.93s | 2.17s | 1.81x | 63.0 MiB | 38.6 MiB | 1.63x |
 
 ## Size
 
@@ -595,6 +599,10 @@ Read none of it as a quality measurement. These are cheap proxies, collected bec
 | [zstd](projects/zstd.md) | O1 | not measured | not measured | not measured | not measured | not measured | not measured |
 | [zstd](projects/zstd.md) | O2 | not measured | not measured | not measured | not measured | not measured | not measured |
 | [zstd](projects/zstd.md) | Os | not measured | not measured | not measured | not measured | not measured | not measured |
+| [fribidi](projects/fribidi.md) | O0 | not measured | not measured | not measured | not measured | not measured | not measured |
+| [fribidi](projects/fribidi.md) | O1 | not measured | not measured | not measured | not measured | not measured | not measured |
+| [fribidi](projects/fribidi.md) | Os | not measured | not measured | not measured | not measured | not measured | not measured |
+| [fribidi](projects/fribidi.md) | O2 | not measured | not measured | not measured | not measured | not measured | not measured |
 
 ## The project's own tests
 
@@ -890,3 +898,7 @@ The last column is the one to read. Everything else on this page is a proxy; thi
 | [zstd](projects/zstd.md) | O1 | not counted | not counted | not counted | not comparable |
 | [zstd](projects/zstd.md) | O2 | not counted | not counted | not counted | not comparable |
 | [zstd](projects/zstd.md) | Os | not counted | not counted | not counted | not comparable |
+| [fribidi](projects/fribidi.md) | O0 | 9 | 9 | 9 | same |
+| [fribidi](projects/fribidi.md) | O1 | 9 | 9 | 9 | same |
+| [fribidi](projects/fribidi.md) | Os | 9 | 9 | 9 | same |
+| [fribidi](projects/fribidi.md) | O2 | 9 | 9 | 9 | same |

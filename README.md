@@ -104,23 +104,23 @@ Sixteen documents under `spec/`. Start with `spec/00-README.md`.
 
 ## Status
 
-Rungs zero to five are all green with rucc, which is the RC5 exit in `spec/14-milestones.md`. The corpus holds seventy two projects: twelve on rung zero, fourteen on rung one, twenty on rung two, ten on rung three, fifteen on rung four and SQLite on rung five. That is two hundred and eighty eight cells, seventy two projects at four levels, and one run of all of them on a single rucc commit passed every cell that is not on the exclusion register, with nothing failing for any other reason. The four excluded cells on linux x86-64 are ones GCC 16 fails on its own, heatshrink at O0 and incbin above it, and each has an issue behind it. Every cell whose suite prints a count passes exactly as many of the project's own tests as the GCC 16 build does in the same run. RC2 was a deliberate decision point, in case the ladder did not reach what SQLite needs, and it did. The next rung is PostgreSQL, which comes with rucc's M9.
+Rungs zero to five are all green with rucc, which is the RC5 exit in `spec/14-milestones.md`. The corpus holds seventy three projects: twelve on rung zero, fourteen on rung one, twenty one on rung two, ten on rung three, fifteen on rung four and SQLite on rung five. That is two hundred and ninety two cells, seventy three projects at four levels. One run of seventy two of them on a single rucc commit passed every cell that is not on the exclusion register, with nothing failing for any other reason, and fribidi, which was admitted while that run was going, passes all four of its cells on a later rucc. The four excluded cells on linux x86-64 are ones GCC 16 fails on its own, heatshrink at O0 and incbin above it, and each has an issue behind it. Every cell whose suite prints a count passes exactly as many of the project's own tests as the GCC 16 build does in the same run. RC2 was a deliberate decision point, in case the ladder did not reach what SQLite needs, and it did. The next rung is PostgreSQL, which comes with rucc's M9.
 
 ## Where it stands
 
 Everything between the two markers below is written by `rrc report --pages` from the records of the last nightly, and CI checks on every pull request that it still matches. Do not edit it by hand, and do edit everything around it.
 
 <!-- rrc:begin -->
-**284 of 288 cells passed.** Run on linux-x86_64, as runner, with rucc 0.15.1 against gcc-16 (GCC) 16.2.0.
+**288 of 292 cells passed.** Run on linux-x86_64, as runner, with rucc 0.15.1 against gcc-16 (GCC) 16.2.0.
 
 | outcome | cells | what it means |
 | --- | ---: | --- |
-| passed | 284 | built, linked, ran its own suite, and the oracle agreed |
+| passed | 288 | built, linked, ran its own suite, and the oracle agreed |
 | excluded | 4 | on the exclusion register, with an issue behind it |
 
-That is 20,594,325 lines of C across 31,053 files in the pinned archives, counted before anything is built.
+That is 20,608,673 lines of C across 31,124 files in the pinned archives, counted before anything is built.
 
-Of the 199 cells whose suite prints a count on both compilers, 199 pass exactly as many of the project's own tests as the GCC 16 build does.
+Of the 203 cells whose suite prints a count on both compilers, 203 pass exactly as many of the project's own tests as the GCC 16 build does.
 
 The full report is under [`reports/`](reports/README.md): [what it cost against GCC 16](reports/cost.md), [what failed and why](reports/failures.md), and [one page per project](reports/projects/README.md).
 <!-- rrc:end -->
