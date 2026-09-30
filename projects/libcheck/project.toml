@@ -28,8 +28,15 @@ system = "configure"
 # miscompile shows up as 9 of 10 rather than as a count that moved, and the log is where the detail
 # is. The run takes about six minutes because a good part of what libcheck has to prove is about
 # timeouts, and a timeout test is slow on purpose.
+#
+# Two jobs, because almost all of those six minutes are two programs sleeping. check_check_export
+# and check_check each take about 180 seconds on the reference machine and the other eight take a
+# few seconds between them, so `make check` one after another took 367 seconds there and `-j2`
+# takes 182. It stays at two rather than a job per core, because the slow part is timeout tests
+# measuring wall clock, and two sleeping programs side by side is not load that can make one of
+# them late. The count is the same either way, since automake adds up the same result files.
 [test]
-command = ["make", "check"]
+command = ["make", "-j2", "check"]
 oracle = "suite"
 parser = "automake"
 baseline-tests = 10
