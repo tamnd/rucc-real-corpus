@@ -20,8 +20,8 @@ The pinned archive is 302 files, 91,072 lines, 2.4 MiB, counted before anything 
 The first diagnostic only, normalized, which is the one the failure clustering groups on.
 
 - `O0`: `ld.lld: error: unable to find library -lattr`
-- `O1`: `ld.lld: error: unable to find library -llog`
-- `O2`: `ld.lld: error: unable to find library -ltls`
+- `O1`: `ld.lld: error: unable to find library -lsmack`
+- `O2`: `ld.lld: error: unable to find library -lselinux`
 - `Os`: `ld.lld: error: unable to find library -lselinux`
 
 ## The project's own tests
@@ -37,10 +37,10 @@ The first diagnostic only, normalized, which is the one the failure clustering g
 
 | level | compile | gcc 16 | vs gcc | suite | gcc 16 | vs gcc | build memory | gcc 16 | vs gcc |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| O0 | 97s | 10.93s | 8.90x | 184s | 155s | 1.19x | 66.2 MiB | 50.0 MiB | 1.33x |
-| O1 | 100s | 13.85s | 7.22x | 183s | 150s | 1.22x | 59.9 MiB | 56.1 MiB | 1.07x |
-| O2 | 74s | 19.12s | 3.89x | 152s | 189s | 0.81x | 63.3 MiB | 64.0 MiB | 0.99x |
-| Os | 73s | 28.15s | 2.61x | 154s | 182s | 0.85x | 65.8 MiB | 59.2 MiB | 1.11x |
+| O0 | 36.92s | 38.46s | 0.96x | 83s | 84s | 0.99x | 71.5 MiB | 50.1 MiB | 1.43x |
+| O1 | 36.84s | 43.96s | 0.84x | 83s | 77s | 1.08x | 70.5 MiB | 56.0 MiB | 1.26x |
+| O2 | 38.20s | 69s | 0.55x | 84s | 87s | 0.97x | 65.7 MiB | 64.2 MiB | 1.02x |
+| Os | 38.47s | 66s | 0.58x | 82s | 88s | 0.93x | 63.0 MiB | 59.1 MiB | 1.06x |
 
 ## Size
 

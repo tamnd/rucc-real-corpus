@@ -1,6 +1,6 @@
 # The run report
 
-**280 of 288 cells passed.** Run on linux-x86_64, as runner, with rucc 0.13.0 against gcc-16 (GCC) 16.2.0.
+**280 of 288 cells passed.** Run on linux-x86_64, as runner, with rucc 0.15.1 against gcc-16 (GCC) 16.2.0.
 
 Every number on these pages comes from one run of `rrc run`, and every one of them is paired with the same number from a GCC 16 build of the same pinned source on the same machine. Nothing here is averaged across projects, for the reason `spec/11-reporting.md` section 11.3 gives.
 
@@ -47,16 +47,11 @@ This run covered 4 levels, `O0`, `O1`, `O2` and `Os`, and each of them is a diff
 
 ## The project's own tests
 
-Of the 199 cells whose suite prints a count on both compilers, 195 pass exactly as many of the project's own tests as the GCC 16 build does.
+Of the 199 cells whose suite prints a count on both compilers, 199 pass exactly as many of the project's own tests as the GCC 16 build does.
 
 This is the number that a build outcome cannot show you. A cell that compiles, links, runs the suite and quietly passes forty fewer of the project's own tests than GCC does is a worse result than a cell that failed to build, and it counts as a pass everywhere except here.
 
-| project | level | passed | gcc 16 passed |
-| --- | --- | ---: | ---: |
-| [libuv](projects/libuv.md) | O0 | 446 | 444 |
-| [libuv](projects/libuv.md) | O1 | 446 | 444 |
-| [libuv](projects/libuv.md) | O2 | 446 | 444 |
-| [libuv](projects/libuv.md) | Os | 446 | 444 |
+No cell passes a different number of the project's own tests than the GCC 16 build of the same pin does.
 
 ## How much code this is
 
@@ -95,10 +90,8 @@ Added up rather than averaged, and it is a bill rather than a score. A corpus fi
 
 | | compile seconds |
 | --- | ---: |
-| under test | 17293 |
-| gcc 16 | 20891 |
-
-130 of the 288 cells were answered from the cache rather than built, so the seconds above are not all from the same sitting. The outcomes are unaffected: a cached cell is only reused when the source, both compilers, the manifest and the machine all hash to what they hashed before. Run with `--refresh` for a set of timings that were all measured together.
+| under test | 15550 |
+| gcc 16 | 21629 |
 
 ## Every project
 
