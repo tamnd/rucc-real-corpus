@@ -104,19 +104,19 @@ Sixteen documents under `spec/`. Start with `spec/00-README.md`.
 
 ## Status
 
-The harness runs and rungs zero, one and two are all green with rucc. Manifests, pinned fetching, the sandbox, the driver, the report and the `rrc` binary are all in, and the corpus holds forty six projects: twelve on rung zero, fourteen on rung one and the twenty autoconf and CMake projects that make up rung two. That is a hundred and eighty four cells, forty six projects at four levels, and rucc passes all hundred and seventy six of them that are not on the exclusion register, with nothing failing for any other reason. The eight excluded cells are four that GCC 16 fails on its own and four for libmpfr, which asks for the decimal floating point types that rucc has deferred, and every one of them has an issue behind it. The four cells that pass fewer of a project's own tests than the GCC 16 build does are those same four libmpfr cells. The milestones are RC0 to RC5 in `spec/14-milestones.md`, tracked as issues, and RC5's exit criterion is the compiler's own M5 exit criterion. RC2 is a deliberate decision point: if the ladder turns out not to reach what SQLite needs, it gets cut there and the remaining effort goes straight at the amalgamation.
+Rungs zero to five are all green with rucc, which is the RC5 exit in `spec/14-milestones.md`. The corpus holds seventy two projects: twelve on rung zero, fourteen on rung one, twenty on rung two, ten on rung three, fifteen on rung four and SQLite on rung five. That is two hundred and eighty eight cells, seventy two projects at four levels, and one run of all of them on a single rucc commit passed every cell that is not on the exclusion register, with nothing failing for any other reason. The four excluded cells on linux x86-64 are ones GCC 16 fails on its own, heatshrink at O0 and incbin above it, and each has an issue behind it. Every cell whose suite prints a count passes exactly as many of the project's own tests as the GCC 16 build does in the same run. RC2 was a deliberate decision point, in case the ladder did not reach what SQLite needs, and it did. The next rung is PostgreSQL, which comes with rucc's M9.
 
 ## Where it stands
 
 Everything between the two markers below is written by `rrc report --pages` from the records of the last nightly, and CI checks on every pull request that it still matches. Do not edit it by hand, and do edit everything around it.
 
 <!-- rrc:begin -->
-**280 of 288 cells passed.** Run on linux-x86_64, as runner, with rucc 0.15.1 against gcc-16 (GCC) 16.2.0.
+**284 of 288 cells passed.** Run on linux-x86_64, as runner, with rucc 0.15.1 against gcc-16 (GCC) 16.2.0.
 
 | outcome | cells | what it means |
 | --- | ---: | --- |
-| passed | 280 | built, linked, ran its own suite, and the oracle agreed |
-| excluded | 8 | on the exclusion register, with an issue behind it |
+| passed | 284 | built, linked, ran its own suite, and the oracle agreed |
+| excluded | 4 | on the exclusion register, with an issue behind it |
 
 That is 20,594,325 lines of C across 31,053 files in the pinned archives, counted before anything is built.
 

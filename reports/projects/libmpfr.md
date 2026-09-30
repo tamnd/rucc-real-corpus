@@ -10,10 +10,10 @@ The pinned archive is 507 files, 147,331 lines, 4.7 MiB, counted before anything
 
 | level | outcome | reached | graded by |
 | --- | --- | --- | --- |
-| O0 | excluded | tested | suite count |
-| O1 | excluded | tested | suite count |
-| O2 | excluded | tested | suite count |
-| Os | excluded | tested | suite count |
+| O0 | passed | tested | suite count |
+| O1 | passed | tested | suite count |
+| O2 | passed | tested | suite count |
+| Os | passed | tested | suite count |
 
 ## The project's own tests
 
