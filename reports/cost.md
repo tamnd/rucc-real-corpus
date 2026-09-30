@@ -304,6 +304,10 @@ Read none of it as a quality measurement. These are cheap proxies, collected bec
 | [fribidi](projects/fribidi.md) | O1 | 15.96s | 21.25s | 0.75x | 3.50s | 2.85s | 1.23x | 62.7 MiB | 38.7 MiB | 1.62x |
 | [fribidi](projects/fribidi.md) | Os | 15.92s | 21.77s | 0.73x | 3.61s | 3.05s | 1.19x | 60.1 MiB | 38.7 MiB | 1.55x |
 | [fribidi](projects/fribidi.md) | O2 | 17.59s | 23.30s | 0.75x | 3.93s | 2.17s | 1.81x | 63.0 MiB | 38.6 MiB | 1.63x |
+| [postgresql](projects/postgresql.md) | O0 | 325s | 413s | 0.79x | 69s | 79s | 0.87x | 487.5 MiB | 152.9 MiB | 3.19x |
+| [postgresql](projects/postgresql.md) | O2 | 386s | 943s | 0.41x | 69s | 39.93s | 1.73x | 462.6 MiB | 218.7 MiB | 2.11x |
+| [postgresql](projects/postgresql.md) | Os | 323s | 786s | 0.41x | 41.78s | 43.42s | 0.96x | 429.7 MiB | 209.3 MiB | 2.05x |
+| [postgresql](projects/postgresql.md) | O1 | 370s | 629s | 0.59x | 57.70s | 52.88s | 1.09x | 457.6 MiB | 177.0 MiB | 2.59x |
 
 ## Size
 
@@ -603,6 +607,10 @@ Read none of it as a quality measurement. These are cheap proxies, collected bec
 | [fribidi](projects/fribidi.md) | O1 | not measured | not measured | not measured | not measured | not measured | not measured |
 | [fribidi](projects/fribidi.md) | Os | not measured | not measured | not measured | not measured | not measured | not measured |
 | [fribidi](projects/fribidi.md) | O2 | not measured | not measured | not measured | not measured | not measured | not measured |
+| [postgresql](projects/postgresql.md) | O0 | 13.9 MiB | 11.7 MiB | 1.19x | 123.3 MiB | 32.8 MiB | 3.76x |
+| [postgresql](projects/postgresql.md) | O2 | 11.7 MiB | 9.6 MiB | 1.22x | 117.2 MiB | 48.6 MiB | 2.41x |
+| [postgresql](projects/postgresql.md) | Os | 11.6 MiB | 7.8 MiB | 1.48x | 118.4 MiB | 40.8 MiB | 2.90x |
+| [postgresql](projects/postgresql.md) | O1 | 11.7 MiB | 9.3 MiB | 1.26x | 117.9 MiB | 44.5 MiB | 2.65x |
 
 ## The project's own tests
 
@@ -902,3 +910,7 @@ The last column is the one to read. Everything else on this page is a proxy; thi
 | [fribidi](projects/fribidi.md) | O1 | 9 | 9 | 9 | same |
 | [fribidi](projects/fribidi.md) | Os | 9 | 9 | 9 | same |
 | [fribidi](projects/fribidi.md) | O2 | 9 | 9 | 9 | same |
+| [postgresql](projects/postgresql.md) | O0 | 231 | 231 | 231 | same |
+| [postgresql](projects/postgresql.md) | O2 | 231 | 231 | 231 | same |
+| [postgresql](projects/postgresql.md) | Os | 231 | 231 | 231 | same |
+| [postgresql](projects/postgresql.md) | O1 | 231 | 231 | 231 | same |

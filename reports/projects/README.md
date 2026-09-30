@@ -63,6 +63,7 @@ The `files` and `lines` columns are the size of the pinned source, counted befor
 | [pcre2](pcre2.md) | R2 | 85 | 149,512 | 4 of 4 | none |
 | [pdpmake](pdpmake.md) | R4 | 10 | 4,297 | 4 of 4 | none |
 | [picohttpparser](picohttpparser.md) | R0 | 6 | 1,538 | 4 of 4 | none |
+| [postgresql](postgresql.md) | R6 | 2,470 | 1,726,168 | 4 of 4 | none |
 | [quickjs](quickjs.md) | R3 | 35 | 91,003 | 4 of 4 | none |
 | [rpmalloc](rpmalloc.md) | R1 | 10 | 6,823 | 4 of 4 | none |
 | [sds](sds.md) | R0 | 4 | 1,701 | 4 of 4 | none |
