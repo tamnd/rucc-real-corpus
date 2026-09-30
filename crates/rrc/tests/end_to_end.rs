@@ -268,6 +268,39 @@ fn asking_for_two_builds_gets_a_determinism_section_and_a_verdict() {
     let records =
         std::fs::read_to_string(corpus.root.join("runs/three/records.jsonl")).expect("the records");
     assert!(records.contains(r#""outcome":"passed""#), "{records}");
+
+    // The two determinism builds stop at the build. They wrote their logs, and none of them is the
+    // suite's, because running it again twice over only cost time.
+    let mut logs = Vec::new();
+    files_under(&corpus.root, &mut logs);
+    let twice: Vec<_> = logs
+        .iter()
+        .filter(|path| path.components().any(|part| part.as_os_str() == "twice"))
+        .filter(|path| path.extension().is_some_and(|ext| ext == "log"))
+        .collect();
+    assert!(
+        !twice.is_empty(),
+        "the two builds kept no logs at all: {logs:?}"
+    );
+    assert!(
+        twice.iter().all(|path| !path.ends_with("logs/test.log")),
+        "a determinism build ran the suite: {twice:?}"
+    );
+}
+
+/// Every file below a directory, however deep.
+fn files_under(dir: &Path, into: &mut Vec<PathBuf>) {
+    let Ok(entries) = std::fs::read_dir(dir) else {
+        return;
+    };
+    for entry in entries.flatten() {
+        let path = entry.path();
+        if path.is_dir() {
+            files_under(&path, into);
+        } else {
+            into.push(path);
+        }
+    }
 }
 
 #[test]
