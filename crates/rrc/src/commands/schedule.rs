@@ -400,6 +400,12 @@ fn drop_trees(workspace: &std::path::Path, project: &str, level: Level) {
 /// exactly the kind of difference this is looking for, and the graded run's tree is already
 /// spoken for by the differential oracle's reference half. One extra build per cell is the price
 /// and it is only paid when `--twice` is asked for.
+///
+/// Neither build runs the suite. What is compared is the objects and binaries the build wrote, and
+/// a suite adds nothing to that, but it did add its whole run time twice over to every cell. On
+/// the linux nightly that was libcheck's timeout tests four times a cell, and the job ran into
+/// its limit before rung 2 was done. A test program that only `make check` builds is therefore
+/// not compared, which is the same line `rrc build` draws.
 fn compare_two_builds(
     setup: &Setup,
     manifest: &Manifest,
@@ -409,7 +415,9 @@ fn compare_two_builds(
     needs: &[Prepared<'_>],
 ) -> Result<Vec<Difference>, String> {
     let paired = workspace.join("twice");
-    let job = job_for(setup, manifest, level, extracted, &paired, needs);
+    let mut without_suite = manifest.clone();
+    without_suite.test.command.clear();
+    let job = job_for(setup, &without_suite, level, extracted, &paired, needs);
     let first = driver::attempt(&job, Slot::A, Compiler::UnderTest)
         .map_err(|why| format!("{} first build: {why}", manifest.project.name))?;
     let second = driver::attempt(&job, Slot::B, Compiler::UnderTest)
