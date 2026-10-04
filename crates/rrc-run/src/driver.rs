@@ -486,7 +486,7 @@ fn attempt_upto(
 
     let workdir = build_dir(&trial.sandbox, job.manifest);
     let normalizer = Normalizer::rooted_at(trial.sandbox.root());
-    for step in steps_upto(build_steps(job, &trial.sandbox, &env, &workdir), extent) {
+    for step in steps_upto(build_steps(job, &trial.sandbox, &env), extent) {
         let completed = exec::run(&step.invocation)?;
         trial.build_seconds += completed.seconds;
         trial.peak_rss = trial.peak_rss.max(completed.peak_rss);
@@ -785,13 +785,10 @@ fn make_output_dirs(manifest: &Manifest, workdir: &Path) -> std::io::Result<()> 
 /// A0 is the harness invoking the compiler itself, which is why the twelve rung zero projects
 /// prove something about the compiler and nothing about anything else. Everything above it hands
 /// the work to somebody else's build system and lets `CC` and `CFLAGS` carry the decision.
-fn build_steps(
-    job: &Job<'_>,
-    sandbox: &Sandbox,
-    env: &BTreeMap<String, String>,
-    workdir: &Path,
-) -> Vec<Step> {
+fn build_steps(job: &Job<'_>, sandbox: &Sandbox, env: &BTreeMap<String, String>) -> Vec<Step> {
     let build = &job.manifest.build;
+    let workdir = &build_dir(sandbox, job.manifest);
+    let rules = crate::host::WINDOWS.then(|| cmake_rules(sandbox));
     let limit = exec::limit(job.manifest.limits.build_seconds);
     let make = || -> Vec<String> {
         let mut args = build.targets.clone();
@@ -881,12 +878,7 @@ fn build_steps(
                 "cmake",
                 Phase::Configured,
                 "cmake",
-                cmake_configure(
-                    build,
-                    crate::host::WINDOWS
-                        .then(|| cmake_rules(sandbox))
-                        .as_deref(),
-                ),
+                cmake_configure(build, rules.as_deref()),
             ),
             at(
                 "build",
