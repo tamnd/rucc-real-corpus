@@ -379,6 +379,9 @@ fn hand_over(job: &Job<'_>, sandbox: &Sandbox, prefix: Option<&Path>) -> std::io
         std::fs::create_dir_all(prefix)?;
     }
     make_output_dirs(job.manifest, &build_dir(sandbox, job.manifest))?;
+    if crate::host::WINDOWS && job.manifest.build.system == BuildSystem::Cmake {
+        std::fs::write(cmake_rules(sandbox), CMAKE_RULES)?;
+    }
     for need in job.needs {
         let root = need_root(sandbox, &need.manifest.project.name);
         if root.exists() {
@@ -483,7 +486,7 @@ fn attempt_upto(
 
     let workdir = build_dir(&trial.sandbox, job.manifest);
     let normalizer = Normalizer::rooted_at(trial.sandbox.root());
-    for step in steps_upto(build_steps(job, &env, &workdir), extent) {
+    for step in steps_upto(build_steps(job, &trial.sandbox, &env, &workdir), extent) {
         let completed = exec::run(&step.invocation)?;
         trial.build_seconds += completed.seconds;
         trial.peak_rss = trial.peak_rss.max(completed.peak_rss);
@@ -782,7 +785,12 @@ fn make_output_dirs(manifest: &Manifest, workdir: &Path) -> std::io::Result<()> 
 /// A0 is the harness invoking the compiler itself, which is why the twelve rung zero projects
 /// prove something about the compiler and nothing about anything else. Everything above it hands
 /// the work to somebody else's build system and lets `CC` and `CFLAGS` carry the decision.
-fn build_steps(job: &Job<'_>, env: &BTreeMap<String, String>, workdir: &Path) -> Vec<Step> {
+fn build_steps(
+    job: &Job<'_>,
+    sandbox: &Sandbox,
+    env: &BTreeMap<String, String>,
+    workdir: &Path,
+) -> Vec<Step> {
     let build = &job.manifest.build;
     let limit = exec::limit(job.manifest.limits.build_seconds);
     let make = || -> Vec<String> {
@@ -869,7 +877,17 @@ fn build_steps(job: &Job<'_>, env: &BTreeMap<String, String>, workdir: &Path) ->
             at("make", Phase::Linked, "make", make()),
         ],
         BuildSystem::Cmake => vec![
-            at("cmake", Phase::Configured, "cmake", cmake_configure(build)),
+            at(
+                "cmake",
+                Phase::Configured,
+                "cmake",
+                cmake_configure(
+                    build,
+                    crate::host::WINDOWS
+                        .then(|| cmake_rules(sandbox))
+                        .as_deref(),
+                ),
+            ),
             at(
                 "build",
                 Phase::Linked,
@@ -890,10 +908,43 @@ fn build_steps(job: &Job<'_>, env: &BTreeMap<String, String>, workdir: &Path) ->
 }
 
 /// The arguments to the `cmake` configure step, which puts the build tree in `build`.
-fn cmake_configure(build: &Build) -> Vec<String> {
+///
+/// On a Windows host cmake is also handed [`CMAKE_RULES`], ahead of the manifest's own arguments so
+/// that a manifest could still say otherwise.
+fn cmake_configure(build: &Build, rules: Option<&Path>) -> Vec<String> {
     let mut args = strings(&["-S", ".", "-B", "build"]);
+    if let Some(rules) = rules {
+        args.push(format!(
+            "-DCMAKE_USER_MAKE_RULES_OVERRIDE={}",
+            crate::host::spelled(rules)
+        ));
+    }
     args.extend(build.configure.iter().cloned());
     args
+}
+
+/// What cmake reads on a Windows host after its own platform files, which is the one place a
+/// setting of theirs can be changed.
+///
+/// cmake puts the include directories of every target into a response file for any GNU compiler on
+/// Windows, and the cmake here is MSYS2's, which writes them there as MSYS2 paths such as
+/// `-I"/d/a/.../build"`. A native compiler cannot open a path spelled that way. On a command line
+/// the MSYS2 runtime rewrites it to `D:/a/.../build` on the way to the compiler, but nothing
+/// rewrites the inside of a file. That cost zlib its build under rucc, since its `zconf.h` is
+/// generated into that directory, and it only built under MinGW GCC because MSYS2 ships a `zconf.h`
+/// of its own that GCC found instead. With the response file off the directories go on the command
+/// line and both compilers see the same tree.
+///
+/// A `-D` on the command line is not enough, because the platform file sets a normal variable and
+/// that hides a cache entry of the same name.
+const CMAKE_RULES: &str = "\
+set(CMAKE_C_USE_RESPONSE_FILE_FOR_INCLUDES 0)
+set(CMAKE_CXX_USE_RESPONSE_FILE_FOR_INCLUDES 0)
+";
+
+/// Where [`CMAKE_RULES`] is written, beside the source rather than in it.
+fn cmake_rules(sandbox: &Sandbox) -> PathBuf {
+    sandbox.root().join("rules.cmake")
 }
 
 /// Owned copies of a fixed argument list.
@@ -2511,5 +2562,22 @@ int main(void){
         assert_eq!(meson_compile(&build), ["compile", "-C", "build", "-j", "1"]);
         build.parallel = true;
         assert_eq!(meson_compile(&build), ["compile", "-C", "build", "-j", "4"]);
+    }
+
+    #[test]
+    fn cmake_reads_the_rules_only_when_there_are_some_and_before_the_manifest() {
+        let build = Build {
+            system: BuildSystem::Cmake,
+            configure: vec!["-DZLIB_BUILD_EXAMPLES=ON".to_string()],
+            ..Build::default()
+        };
+        assert_eq!(
+            cmake_configure(&build, None),
+            ["-S", ".", "-B", "build", "-DZLIB_BUILD_EXAMPLES=ON"]
+        );
+        let configure = cmake_configure(&build, Some(Path::new("rules.cmake")));
+        assert_eq!(configure[4], "-DCMAKE_USER_MAKE_RULES_OVERRIDE=rules.cmake");
+        assert_eq!(configure[5], "-DZLIB_BUILD_EXAMPLES=ON");
+        assert!(CMAKE_RULES.contains("set(CMAKE_C_USE_RESPONSE_FILE_FOR_INCLUDES 0)"));
     }
 }
