@@ -379,8 +379,10 @@ fn hand_over(job: &Job<'_>, sandbox: &Sandbox, prefix: Option<&Path>) -> std::io
         std::fs::create_dir_all(prefix)?;
     }
     make_output_dirs(job.manifest, &build_dir(sandbox, job.manifest))?;
-    if crate::host::WINDOWS && job.manifest.build.system == BuildSystem::Cmake {
-        std::fs::write(cmake_rules(sandbox), CMAKE_RULES)?;
+    if let Some(rules) = cmake_rules(sandbox)
+        && job.manifest.build.system == BuildSystem::Cmake
+    {
+        std::fs::write(rules, CMAKE_RULES)?;
     }
     for need in job.needs {
         let root = need_root(sandbox, &need.manifest.project.name);
@@ -787,8 +789,8 @@ fn make_output_dirs(manifest: &Manifest, workdir: &Path) -> std::io::Result<()> 
 /// the work to somebody else's build system and lets `CC` and `CFLAGS` carry the decision.
 fn build_steps(job: &Job<'_>, sandbox: &Sandbox, env: &BTreeMap<String, String>) -> Vec<Step> {
     let build = &job.manifest.build;
-    let workdir = &build_dir(sandbox, job.manifest);
-    let rules = crate::host::WINDOWS.then(|| cmake_rules(sandbox));
+    let workdir = build_dir(sandbox, job.manifest);
+    let cmake = cmake_configure(build, cmake_rules(sandbox).as_deref());
     let limit = exec::limit(job.manifest.limits.build_seconds);
     let make = || -> Vec<String> {
         let mut args = build.targets.clone();
@@ -805,9 +807,9 @@ fn build_steps(job: &Job<'_>, sandbox: &Sandbox, env: &BTreeMap<String, String>)
         name: name.to_string(),
         reaches,
         invocation: Invocation {
-            program: resolve(program, env, workdir),
+            program: resolve(program, env, &workdir),
             args,
-            cwd: workdir.to_path_buf(),
+            cwd: workdir.clone(),
             env: env.clone(),
             timeout: limit,
             as_user: job.privilege.ids(),
@@ -874,12 +876,7 @@ fn build_steps(job: &Job<'_>, sandbox: &Sandbox, env: &BTreeMap<String, String>)
             at("make", Phase::Linked, "make", make()),
         ],
         BuildSystem::Cmake => vec![
-            at(
-                "cmake",
-                Phase::Configured,
-                "cmake",
-                cmake_configure(build, rules.as_deref()),
-            ),
+            at("cmake", Phase::Configured, "cmake", cmake),
             at(
                 "build",
                 Phase::Linked,
@@ -934,9 +931,9 @@ set(CMAKE_C_USE_RESPONSE_FILE_FOR_INCLUDES 0)
 set(CMAKE_CXX_USE_RESPONSE_FILE_FOR_INCLUDES 0)
 ";
 
-/// Where [`CMAKE_RULES`] is written, beside the source rather than in it.
-fn cmake_rules(sandbox: &Sandbox) -> PathBuf {
-    sandbox.root().join("rules.cmake")
+/// Where [`CMAKE_RULES`] is written on a Windows host, beside the source rather than in it.
+fn cmake_rules(sandbox: &Sandbox) -> Option<PathBuf> {
+    crate::host::WINDOWS.then(|| sandbox.root().join("rules.cmake"))
 }
 
 /// Owned copies of a fixed argument list.
