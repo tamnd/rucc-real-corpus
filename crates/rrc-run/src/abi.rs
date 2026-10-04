@@ -21,7 +21,6 @@ use rrc_manifest::manifest::Abi;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
-use std::time::Duration;
 
 use crate::diagnostic::Normalizer;
 use crate::driver::{Compiler, Job};
@@ -371,7 +370,7 @@ pub fn cross(job: &Job<'_>, abi: &Abi, pairing: Pairing) -> std::io::Result<Cros
         args: Vec::new(),
         cwd: workdir.clone(),
         env,
-        timeout: Duration::from_secs(job.manifest.limits.test_seconds),
+        timeout: exec::limit(job.manifest.limits.test_seconds),
         as_user: job.privilege.ids(),
     };
     let completed = exec::run(&invocation)?;
@@ -449,7 +448,7 @@ fn steps(
     env: &BTreeMap<String, String>,
     workdir: &Path,
 ) -> Vec<Step> {
-    let limit = Duration::from_secs(job.manifest.limits.build_seconds);
+    let limit = exec::limit(job.manifest.limits.build_seconds);
     let at = |name: String, reaches: Phase, program: PathBuf, args: Vec<String>| Step {
         name,
         reaches,

@@ -14,7 +14,6 @@ use rrc_manifest::manifest::{Build, Manifest, Program};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
-use std::time::Duration;
 
 use crate::diagnostic::Normalizer;
 use crate::env::{EnvPlan, environment};
@@ -695,7 +694,7 @@ fn need_steps(
     prefix: &Path,
     as_user: Option<(u32, u32)>,
 ) -> Vec<Step> {
-    let limit = Duration::from_secs(need.manifest.limits.build_seconds);
+    let limit = exec::limit(need.manifest.limits.build_seconds);
     let at = |name: &str, program: &str, args: Vec<String>| Step {
         name: name.to_string(),
         reaches: Phase::Fetched,
@@ -785,7 +784,7 @@ fn make_output_dirs(manifest: &Manifest, workdir: &Path) -> std::io::Result<()> 
 /// the work to somebody else's build system and lets `CC` and `CFLAGS` carry the decision.
 fn build_steps(job: &Job<'_>, env: &BTreeMap<String, String>, workdir: &Path) -> Vec<Step> {
     let build = &job.manifest.build;
-    let limit = Duration::from_secs(job.manifest.limits.build_seconds);
+    let limit = exec::limit(job.manifest.limits.build_seconds);
     let make = || -> Vec<String> {
         let mut args = build.targets.clone();
         args.extend(host_cc_assignment(env));
@@ -1033,7 +1032,7 @@ fn test_invocation(
         args,
         cwd: workdir.to_path_buf(),
         env: env.clone(),
-        timeout: Duration::from_secs(job.manifest.limits.test_seconds),
+        timeout: exec::limit(job.manifest.limits.test_seconds),
         as_user: job.privilege.ids(),
     })
 }

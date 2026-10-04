@@ -481,9 +481,45 @@ pub fn exists_on(path: &str, command: &str) -> bool {
     host::find_on(path, command).is_some()
 }
 
+/// How long a step whose manifest gives it `seconds` may run.
+///
+/// The manifest's number, stretched by `RRC_TIME_SCALE` when that is set to a number above zero.
+/// A limit is written for a machine with nothing else on it, and a shared one under three times
+/// its cores in load runs every suite slower by about that much, so a cell that would pass comes
+/// back as timed out for both compilers and says nothing about either. The scale is not part of
+/// the record cache key, which is safe because a cell that timed out is never kept and a cell
+/// that passed under a longer limit passed.
+#[must_use]
+pub fn limit(seconds: u64) -> Duration {
+    scaled(seconds, std::env::var("RRC_TIME_SCALE").ok().as_deref())
+}
+
+/// [`limit`] with the setting handed in, so it can be tested without touching the environment.
+fn scaled(seconds: u64, scale: Option<&str>) -> Duration {
+    let scale = scale
+        .and_then(|text| text.trim().parse::<f64>().ok())
+        .filter(|scale| scale.is_finite() && *scale > 0.0)
+        .unwrap_or(1.0);
+    Duration::from_secs(seconds).mul_f64(scale)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_limit_is_the_manifest_number_unless_a_scale_says_otherwise() {
+        assert_eq!(scaled(300, None), Duration::from_mins(5));
+        assert_eq!(scaled(300, Some("3")), Duration::from_mins(15));
+        assert_eq!(scaled(300, Some(" 1.5 ")), Duration::from_secs(450));
+    }
+
+    #[test]
+    fn a_scale_that_is_not_a_positive_number_is_ignored() {
+        for text in ["", "fast", "0", "-2", "inf", "NaN"] {
+            assert_eq!(scaled(300, Some(text)), Duration::from_mins(5), "{text}");
+        }
+    }
 
     fn shell(script: &str, timeout_seconds: u64) -> Invocation {
         Invocation {
