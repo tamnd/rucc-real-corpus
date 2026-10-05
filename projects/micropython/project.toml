@@ -61,9 +61,18 @@ clears-environment = true
 # performed moved with it, because two of the family are feature checks whose result decides whether
 # two others are skipped at all. Neither number is a measurement while they are in.
 #
-# With them out both numbers stand still: 988 performed, 988 passed, 55 skipped and an exit status
-# of zero, twice in a row on the reference machine. Those 55 are skipped for reasons that are the
-# port's rather than the compiler's and are outside both numbers.
+# A second --exclude takes out ten more for the same reason, found on server3 with the load near
+# fifty. thread/stress_schedule, select_poll_eintr, time_time_ns and seven asyncio cases decide
+# what to print by how much wall clock time passed, a sleep of a few hundred milliseconds or a
+# deadline, so on a busy machine they print something else. GCC 16.2.0 lost two of them run on its
+# own and between them all ten across eight suites run four at a time, which is what a rung does,
+# and every gcc cell of the R3 run on that host graded below 988 for it while the rucc cells beside
+# them did no worse. The asyncio cases that never failed stay in. See tamnd/rucc#943.
+#
+# With both lists out both numbers stand still: 978 performed, 978 passed, 55 skipped and an exit
+# status of zero, twice in a row on server3 under that load. Before the second list it was 988 on
+# the reference machine. Those 55 are skipped for reasons that are the port's rather than the
+# compiler's and are outside both numbers.
 #
 # The suite is measured on what it runs and not on a ratio, so a build that runs fewer cases and
 # passes all of them still comes in under the baseline and still fails.
@@ -71,12 +80,12 @@ clears-environment = true
 command = [
     "sh",
     "-c",
-    "cd ../../tests && MICROPY_MICROPYTHON=../ports/unix/build-standard/micropython ./run-tests.py --exclude 'cmdline/repl_' > rrc-suite-output.log 2>&1; status=$?; cat rrc-suite-output.log; awk '/tests performed/ { run = $1 } /tests passed/ { passed = $1 } END { printf \"micropython: %d of %d tests passed\\n\", passed, run }' rrc-suite-output.log; exit $status",
+    "cd ../../tests && MICROPY_MICROPYTHON=../ports/unix/build-standard/micropython ./run-tests.py --exclude 'cmdline/repl_' --exclude '(thread/stress_schedule|extmod/asyncio_(fair|basic|lock|wait_task|iterator_event|event|gather_notimpl)|extmod/select_poll_eintr|extmod/time_time_ns)\\.py' > rrc-suite-output.log 2>&1; status=$?; cat rrc-suite-output.log; awk '/tests performed/ { run = $1 } /tests passed/ { passed = $1 } END { printf \"micropython: %d of %d tests passed\\n\", passed, run }' rrc-suite-output.log; exit $status",
 ]
 oracle = "suite"
 parser = "custom-regex"
 regex = "micropython: (\\d+) of (\\d+) tests passed"
-baseline-tests = 988
+baseline-tests = 978
 requires = ["sh", "awk", "python3"]
 
 # Four hundred files and a hundred and thirty six thousand lines, and python3 is needed to build it
