@@ -89,8 +89,16 @@ why = "the api tests include test.h from the directory above them"
 # compares what the interpreter printed against what the comment said, line by line, so a wrong
 # answer is caught rather than a crash being the only thing that shows. That is the strongest
 # oracle shape on the ladder and it is why this project is worth its build.
+#
+# test.py kills any one program after five seconds, and that limit is about the machine rather
+# than the compiler. many_reallocations.wren takes about a second and a half under either compiler
+# on server3, and with the load near fifty it went over five and was killed under rucc at Os in
+# both runs, while gcc beside it came out short at O0, O1 and O2 with counts of 863 and 865 rather
+# than 866. The command runs test.py unchanged with its Timer given at least sixty seconds, so a
+# slow box still finishes every program and a real hang still ends. With that, rucc at Os passes
+# all 866 there. See tamnd/rucc#943.
 [test]
-command = ["python3", "util/test.py"]
+command = ["python3", "-c", "import runpy, threading; short = threading.Timer; threading.Timer = lambda seconds, *rest: short(max(seconds, 60), *rest); runpy.run_path('util/test.py', run_name='__main__')"]
 oracle = "suite"
 # The count is coloured. test.py wraps every number it prints in an ANSI escape unless it is on
 # Windows, so the count arrives with a colour code in front of it and a reset immediately after,
