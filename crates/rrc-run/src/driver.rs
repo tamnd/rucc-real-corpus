@@ -266,7 +266,26 @@ pub fn run(job: &Job<'_>, slot: Slot, baseline: Baseline) -> std::io::Result<Bot
 /// is asked the one question they were standing in for, which is whether every case it ran passed.
 /// A reference half that fails a case is then a reference half that fails a case, on this machine
 /// and today, and document 11.1's section for exactly that says so.
+///
+/// The one exception is a manifest that sets `baseline-total`, which is a manifest saying GCC does
+/// not get a clean run and naming the cases it fails. sqlite fails sessionnoact-4.3 and zipfile-25.0
+/// under every compiler, so the reference half scores 394784 of 394786 at every level and graded
+/// alone it was a wrong answer on every row of R5. A reference half that lands on both recorded
+/// numbers exactly has reproduced the known failures and nothing else, so it is graded against
+/// them. Any other count still comes off the numbers and has to pass every case it ran.
 fn grade_reference(manifest: &Manifest, trial: &Trial) -> Graded {
+    let recorded = manifest
+        .test
+        .baseline_tests
+        .zip(manifest.test.baseline_total);
+    let reproduced = recorded.is_some_and(|(passed, total)| {
+        trial
+            .counts
+            .is_some_and(|counts| counts.passed == passed && counts.run == total)
+    });
+    if reproduced {
+        return grade(manifest, trial, None);
+    }
     let mut alone = manifest.clone();
     alone.test.baseline_tests = None;
     alone.test.baseline_total = None;
@@ -2001,6 +2020,35 @@ int main(void){ fprintf(stderr, "error: the thing went wrong\n"); return 1; }
             reference.tests_baseline, None,
             "a reference row is where the baseline comes from and cannot miss one"
         );
+    }
+
+    #[test]
+    fn a_reference_half_that_reproduces_the_recorded_failures_passes() {
+        // sqlite on server2. gcc fails the same two cases at every level and the manifest records
+        // 394784 of 394786, so a reference half on exactly those numbers is the known state.
+        let Some(f) = fixture("reference-recorded", &summary(175, 173)) else {
+            return;
+        };
+        let manifest = manifest(&format!(
+            "{AUTOMAKE}baseline-tests = 173\nbaseline-total = 175\n"
+        ));
+        let both = run(&job(&f, &manifest), Slot::A, Baseline::Measure).unwrap();
+        assert_eq!(both.under_test.outcome, Outcome::Passed);
+        let reference = both.reference.expect("a reference half was asked for");
+        assert_eq!(reference.outcome, Outcome::Passed);
+    }
+
+    #[test]
+    fn a_reference_half_that_fails_other_cases_than_the_recorded_ones_is_a_wrong_answer() {
+        let Some(f) = fixture("reference-recorded-other", &summary(178, 176)) else {
+            return;
+        };
+        let manifest = manifest(&format!(
+            "{AUTOMAKE}baseline-tests = 173\nbaseline-total = 175\n"
+        ));
+        let both = run(&job(&f, &manifest), Slot::A, Baseline::Measure).unwrap();
+        let reference = both.reference.expect("a reference half was asked for");
+        assert_eq!(reference.outcome, Outcome::WrongAnswer);
     }
 
     #[test]
