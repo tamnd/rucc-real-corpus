@@ -210,14 +210,24 @@ pub fn run(job: &Job<'_>, slot: Slot, baseline: Baseline) -> std::io::Result<Bot
     // nothing to grade against without one. Everything else builds it only for the numbers.
     let graded_against_it =
         job.manifest.test.oracle == Oracle::Differential && trial.test.is_some();
-    let reference = if baseline == Baseline::Measure || graded_against_it {
+    let mut reference = if baseline == Baseline::Measure || graded_against_it {
         Some(attempt(job, reference_slot(slot), Compiler::Reference)?)
     } else {
         None
     };
+    // The reference half gets its second run first, because the half under test is held to what
+    // the reference scored, and a reference that lost one timing case to a busy machine would
+    // otherwise hold it to one fewer.
+    let mut reference_graded = None;
+    if let Some(trial) = reference.as_mut() {
+        let graded = grade_reference(job.manifest, trial);
+        let judge = |trial: &Trial| grade_reference(job.manifest, trial);
+        reference_graded = Some(again(job, trial, graded, judge)?);
+    }
     let mut trial = trial;
     let graded = grade(job.manifest, &trial, reference.as_ref());
-    let (graded, flaked) = again(job, &mut trial, graded, reference.as_ref())?;
+    let judge = |trial: &Trial| grade(job.manifest, trial, reference.as_ref());
+    let (graded, flaked) = again(job, &mut trial, graded, judge)?;
     let mut under_test = record(job, &trial, graded);
     under_test.flaked = flaked;
     // What the cell was actually held to, so the report's baseline column says the number the
@@ -230,14 +240,18 @@ pub fn run(job: &Job<'_>, slot: Slot, baseline: Baseline) -> std::io::Result<Bot
         // Graded on its own rather than against itself. What the reference half is for is its
         // seconds, its bytes and its test counts, and a project whose oracle is the differential
         // has no second reference to hold this one up to.
-        reference: reference.as_ref().map(|trial| {
-            let mut record = record(job, trial, grade_reference(job.manifest, trial));
-            // Nothing, rather than the number recorded at admission, because the column says what
-            // the row was held to and this row was held to its own output. A reference row is where
-            // the baseline comes from and is not a thing that can miss one.
-            record.tests_baseline = None;
-            record
-        }),
+        reference: reference
+            .as_ref()
+            .zip(reference_graded)
+            .map(|(trial, (graded, flaked))| {
+                let mut record = record(job, trial, graded);
+                record.flaked = flaked;
+                // Nothing, rather than the number recorded at admission, because the column says what
+                // the row was held to and this row was held to its own output. A reference row is where
+                // the baseline comes from and is not a thing that can miss one.
+                record.tests_baseline = None;
+                record
+            }),
     })
 }
 
@@ -561,18 +575,19 @@ fn suite(
     Ok(())
 }
 
-/// Run the suite a second time over the same build, for a half under test that failed it.
+/// Run the suite a second time over the same build, for a half that failed it.
 ///
 /// Document 08.7 says two consecutive failures or it did not happen, and a suite is the part of a
 /// cell that races: a shell reaping a child, a timer, a port. Only a wrong answer or a crash is
 /// tried again, since a timeout already spent the whole limit once and a build that failed has no
 /// suite to run. The second run is what the cell is graded on either way, and a pass there marks
-/// the record as a flake so the report can count them.
+/// the record as a flake so the report can count them. `judge` is how the half is graded, which
+/// differs between the two halves and is why it is handed in.
 fn again(
     job: &Job<'_>,
     trial: &mut Trial,
     graded: Graded,
-    reference: Option<&Trial>,
+    judge: impl Fn(&Trial) -> Graded,
 ) -> std::io::Result<(Graded, bool)> {
     if !matches!(graded.outcome, Outcome::WrongAnswer | Outcome::Crashed) {
         return Ok((graded, false));
@@ -583,7 +598,7 @@ fn again(
     let completed = exec::run(&invocation)?;
     trial.first_diagnostic = diagnostic;
     suite(job, trial, "test-again", &invocation, completed)?;
-    let second = grade(job.manifest, trial, reference);
+    let second = judge(trial);
     let flaked = second.outcome == Outcome::Passed;
     Ok((second, flaked))
 }
