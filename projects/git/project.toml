@@ -128,6 +128,13 @@ requires = ["sh", "awk", "perl"]
 # machine does not turn a slow run into a red one. The reference builds git in 225 seconds at -O0
 # and 1080 at lto, which is the longest build in the corpus and the one the budget is sized from,
 # and it runs the suite in between 435 and 656 with the cores it has.
+#
+# The suite is make test -j with the core count, so a cell wants the whole machine and says so. R4 on
+# an eight core host ran four git cells beside each other, each one starting eight test scripts, and
+# the -O0 cell was cut off at the scaled limit of 6300 seconds in the middle of the t75xx scripts with
+# none of them failing. That is the rpmalloc record in the rrc Cores docs again, and the fix is the
+# same one libuv and postgresql already carry.
 [limits]
 build-seconds = 3000
 test-seconds = 2100
+cores = "all"
