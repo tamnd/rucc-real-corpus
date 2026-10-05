@@ -412,6 +412,58 @@ fn signal_group(pid: u32, signal: &str) {
 #[cfg(not(unix))]
 fn signal_group(_pid: u32, _signal: &str) {}
 
+/// Kill whatever a finished suite left running inside its sandbox.
+///
+/// The process group only reaches what stayed in it. git's t7527 starts `git fsmonitor--daemon
+/// run --detach`, which calls setsid on its way out of the group, so the suite exits cleanly and
+/// the daemons do not: R4 on server3 had three per git cell still running after the cell had
+/// passed and its tree was gone. So after a suite, anything whose program or working directory is
+/// under the sandbox is killed. Another cell's sandbox is a different directory and is not
+/// touched, and neither is the harness, whose program lives outside every sandbox.
+///
+/// Linux only, because /proc is how a process says where it is running from, and the hosts that
+/// run the ladder are Linux.
+#[cfg(target_os = "linux")]
+pub fn sweep(root: &std::path::Path) {
+    let Ok(root) = root.canonicalize() else {
+        return;
+    };
+    let Ok(entries) = std::fs::read_dir("/proc") else {
+        return;
+    };
+    let me = std::process::id();
+    for entry in entries.flatten() {
+        let Some(pid) = entry
+            .file_name()
+            .to_str()
+            .and_then(|name| name.parse().ok())
+        else {
+            continue;
+        };
+        let inside = |link: &str| {
+            std::fs::read_link(entry.path().join(link)).is_ok_and(|path| path.starts_with(&root))
+        };
+        if pid != me && (inside("exe") || inside("cwd")) {
+            signal(pid, "KILL");
+        }
+    }
+}
+
+#[cfg(not(target_os = "linux"))]
+pub fn sweep(_root: &std::path::Path) {}
+
+/// Signal one process, by the shell's builtin for the reason `signal_group` gives.
+#[cfg(target_os = "linux")]
+fn signal(pid: u32, signal: &str) {
+    Command::new("/bin/sh")
+        .arg("-c")
+        .arg(format!("kill -{signal} {pid}"))
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .status()
+        .ok();
+}
+
 #[cfg(unix)]
 fn ending_of(status: std::process::ExitStatus) -> Ending {
     use std::os::unix::process::ExitStatusExt;
@@ -634,6 +686,36 @@ mod tests {
         invocation.env = env;
         let out = run(&invocation).unwrap();
         assert_eq!(out.stdout.trim(), "[yes][]");
+    }
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn a_sweep_kills_what_is_left_running_in_the_sandbox_and_nothing_else() {
+        let base = std::env::temp_dir().join("rrc-exec-test-sweep");
+        std::fs::remove_dir_all(&base).ok();
+        let inside = base.join("sandbox");
+        let outside = base.join("elsewhere");
+        std::fs::create_dir_all(&inside).unwrap();
+        std::fs::create_dir_all(&outside).unwrap();
+        let start = |cwd: &std::path::Path| {
+            Command::new("sleep")
+                .arg("300")
+                .current_dir(cwd)
+                .spawn()
+                .unwrap()
+        };
+        let mut left = start(&inside);
+        let mut other = start(&outside);
+        sweep(&inside);
+        let status = left.wait().unwrap();
+        assert!(matches!(ending_of(status), Ending::Signalled(9)));
+        assert!(
+            other.try_wait().unwrap().is_none(),
+            "a process outside was killed"
+        );
+        other.kill().ok();
+        other.wait().ok();
+        std::fs::remove_dir_all(&base).ok();
     }
 
     #[test]

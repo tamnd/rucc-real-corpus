@@ -571,6 +571,7 @@ fn suite(
     invocation: &Invocation,
     completed: Completed,
 ) -> std::io::Result<()> {
+    exec::sweep(trial.sandbox.root());
     let normalizer = Normalizer::rooted_at(trial.sandbox.root());
     trial.test_seconds = completed.seconds;
     log(&trial.sandbox, name, invocation, &completed)?;
