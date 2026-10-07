@@ -128,7 +128,9 @@ for project in "$@"; do
     accepted "$project" > "$out/rucc/$project.accepted"
     if diff "$out/gcc/$project.txt" "$out/rucc/$project.accepted" > "$out/$project.diff"; then
         more=$(diff "$out/rucc/$project.txt" "$out/rucc/$project.accepted" | grep -c '^<' || true)
-        if [ "$more" -gt 0 ]; then
+        if [ "$more" -eq 1 ]; then
+            echo "$project: the same for $files files, with 1 line where rucc keeps each check of the gcc build"
+        elif [ "$more" -gt 1 ]; then
             echo "$project: the same for $files files, with $more lines where rucc keeps each check of the gcc build"
         else
             echo "$project: the same for $files files"
