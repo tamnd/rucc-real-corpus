@@ -18,7 +18,7 @@
 #
 # A program has the same result from both compilers when each line of hardening-check is the
 # same. A line that says "unknown" counts as a result, because the two compilers should not
-# disagree about what can be known either. There are two exceptions, and in both of them the rucc
+# disagree about what can be known either. There are three exceptions, and in each of them the rucc
 # build keeps every check that the gcc build has.
 #
 # The first is the fortify line. hardening-check reads the names of the libc functions that the
@@ -31,6 +31,12 @@
 # The second is the stack protector line, when rucc says "yes" and gcc says "no". gcc decides which
 # functions get a canary after it removes the locals that it does not need, and rucc decides it
 # before (tamnd/rucc#3361). So rucc puts a canary in a few functions where gcc puts none.
+#
+# The third is the stack clash line, when rucc says "yes" and gcc says "unknown". hardening-check
+# looks for one order of instructions: the compare, the jump out, the step and the touch. gcc
+# sometimes moves the loop of a variable length array out of line, and then writes the step and
+# the touch before the compare. The loop is there, but the script does not find it. rucc writes the
+# loop in the order that the script reads.
 #
 # The summary line says how many lines of each project were counted as the same in this way.
 
@@ -110,6 +116,7 @@ accepted() {
         FILENAME == theirs { have[$1] = $2; next }
         $2 == "Fortify Source functions" && ($1 FS $2) in gcc && ($1 in want) && kept(want[$1], have[$1]) { print gcc[$1 FS $2]; next }
         $2 == "Stack protected" && $3 == "yes" && answer[$1 FS $2] == "no, not found!" { print gcc[$1 FS $2]; next }
+        $2 == "Stack clash protection" && $3 == "yes" && answer[$1 FS $2] ~ /^unknown/ { print gcc[$1 FS $2]; next }
         { print }' "$out/gcc/$1.txt" "$out/gcc/$1.chk" "$out/rucc/$1.chk" "$out/rucc/$1.txt"
 }
 
