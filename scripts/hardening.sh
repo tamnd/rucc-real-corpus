@@ -19,10 +19,12 @@
 # A program has the same result from both compilers when each line of hardening-check is the
 # same. A line that says "unknown" counts as a result, because the two compilers should not
 # disagree about what can be known either. There is one exception. gcc removes a fortify check
-# when the range of the length proves that the copy fits, and rucc does not do this yet
-# (tamnd/rucc#3355). So when gcc says that a program has only unprotected functions and rucc
-# says that it has protected ones, the rucc build has more checks and not fewer. This is
-# counted as the same, and the summary line says how many files it was.
+# when it can prove that the copy fits, from the range of the length or because the length is the
+# size that was given to malloc, and rucc does not do this yet (tamnd/rucc#3355). So when the
+# fortify line of rucc is a step above the line of gcc, the rucc build has more checks and not
+# fewer. The steps are "no, only unprotected functions found!", then "yes (some protected
+# functions found)", then "yes". This is counted as the same, and the summary line says how many
+# files it was.
 
 set -eu
 
@@ -80,10 +82,17 @@ build() {
     done
 }
 
-# The rucc result, with the one fortify difference of the header put back to what gcc said.
+# The rucc result, with a fortify line that is a step above the line of gcc put back to what gcc
+# said.
 accepted() {
-    awk -F': ' 'NR == FNR { gcc[$1 FS $2] = $0; next }
-        $2 == "Fortify Source functions" && $3 ~ /^yes/ && gcc[$1 FS $2] ~ /: no, only unprotected functions found!$/ { print gcc[$1 FS $2]; next }
+    awk -F': ' 'function step(answer) {
+            if (answer == "no, only unprotected functions found!") return 1
+            if (answer == "yes (some protected functions found)") return 2
+            if (answer == "yes") return 3
+            return 0
+        }
+        NR == FNR { gcc[$1 FS $2] = $0; answer[$1 FS $2] = $3; next }
+        $2 == "Fortify Source functions" && step(answer[$1 FS $2]) > 0 && step($3) > step(answer[$1 FS $2]) { print gcc[$1 FS $2]; next }
         { print }' "$out/gcc/$1.txt" "$out/rucc/$1.txt"
 }
 
