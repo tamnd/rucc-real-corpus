@@ -18,13 +18,21 @@
 #
 # A program has the same result from both compilers when each line of hardening-check is the
 # same. A line that says "unknown" counts as a result, because the two compilers should not
-# disagree about what can be known either. There is one exception. gcc removes a fortify check
-# when it can prove that the copy fits, from the range of the length or because the length is the
-# size that was given to malloc, and rucc does not do this yet (tamnd/rucc#3355). So when the
-# fortify line of rucc is a step above the line of gcc, the rucc build has more checks and not
-# fewer. The steps are "no, only unprotected functions found!", then "yes (some protected
-# functions found)", then "yes". This is counted as the same, and the summary line says how many
-# files it was.
+# disagree about what can be known either. There are two exceptions, and in both of them the rucc
+# build keeps every check that the gcc build has.
+#
+# The first is the fortify line. hardening-check reads the names of the libc functions that the
+# file calls. The answer changes when one compiler writes a copy or a fill with a known length as
+# moves and the other calls memcpy or memset for it (tamnd/rucc#3360), or when gcc removes a check
+# because it can prove that the copy fits (tamnd/rucc#3355). So the script also writes the set of
+# _chk functions that each file calls. When each _chk function of the gcc build is also in the
+# rucc build, the fortify line counts as the same.
+#
+# The second is the stack protector line, when rucc says "yes" and gcc says "no". gcc decides which
+# functions get a canary after it removes the locals that it does not need, and rucc decides it
+# before (tamnd/rucc#3361). So rucc puts a canary in a few functions where gcc puts none.
+#
+# The summary line says how many lines of each project were counted as the same in this way.
 
 set -eu
 
@@ -71,7 +79,9 @@ build() {
     project=$1
     name=$2
     result="$out/$name/$project.txt"
+    checks="$out/$name/$project.chk"
     : > "$result"
+    : > "$checks"
     if ! "$rrc" --rucc "$out/bin/$name" build "$project" --level O2 > "$out/$name/$project.log" 2>&1; then
         echo "build failed" > "$result"
         return
@@ -79,21 +89,28 @@ build() {
     tree=$(awk '$1 == "tree" { print $2 }' "$out/$name/$project.log")
     linked "$tree" | while IFS= read -r file; do
         "$check" "$tree/$file" 2>&1 | sed -n 's/^ \(.*\): \(.*\)$/\1: \2/p' | sed "s|^|$file: |" >> "$result"
+        called=$(readelf -sW "$tree/$file" | awk '$7 == "UND" { sub(/@.*/, "", $8); print $8 }' | grep -E '^__.+_chk$' | sort -u | tr '\n' ' ')
+        echo "$file: $called" >> "$checks"
     done
 }
 
-# The rucc result, with a fortify line that is a step above the line of gcc put back to what gcc
-# said.
+# The rucc result, with each line that keeps every check of the gcc build put back to what gcc
+# said. See the top of this file.
 accepted() {
-    awk -F': ' 'function step(answer) {
-            if (answer == "no, only unprotected functions found!") return 1
-            if (answer == "yes (some protected functions found)") return 2
-            if (answer == "yes") return 3
-            return 0
+    awk -F': ' -v text="$out/gcc/$1.txt" -v ours="$out/gcc/$1.chk" -v theirs="$out/rucc/$1.chk" '
+        function kept(want, have,   n, i, w, got) {
+            n = split(have, w, " ")
+            for (i = 1; i <= n; i++) got[w[i]] = 1
+            n = split(want, w, " ")
+            for (i = 1; i <= n; i++) if (!(w[i] in got)) return 0
+            return 1
         }
-        NR == FNR { gcc[$1 FS $2] = $0; answer[$1 FS $2] = $3; next }
-        $2 == "Fortify Source functions" && step(answer[$1 FS $2]) > 0 && step($3) > step(answer[$1 FS $2]) { print gcc[$1 FS $2]; next }
-        { print }' "$out/gcc/$1.txt" "$out/rucc/$1.txt"
+        FILENAME == text { gcc[$1 FS $2] = $0; answer[$1 FS $2] = $3; next }
+        FILENAME == ours { want[$1] = $2; next }
+        FILENAME == theirs { have[$1] = $2; next }
+        $2 == "Fortify Source functions" && ($1 FS $2) in gcc && ($1 in want) && kept(want[$1], have[$1]) { print gcc[$1 FS $2]; next }
+        $2 == "Stack protected" && $3 == "yes" && answer[$1 FS $2] == "no, not found!" { print gcc[$1 FS $2]; next }
+        { print }' "$out/gcc/$1.txt" "$out/gcc/$1.chk" "$out/rucc/$1.chk" "$out/rucc/$1.txt"
 }
 
 same=0
@@ -112,7 +129,7 @@ for project in "$@"; do
     if diff "$out/gcc/$project.txt" "$out/rucc/$project.accepted" > "$out/$project.diff"; then
         more=$(diff "$out/rucc/$project.txt" "$out/rucc/$project.accepted" | grep -c '^<' || true)
         if [ "$more" -gt 0 ]; then
-            echo "$project: the same for $files files, and in $more of them rucc keeps a fortify check that gcc removed"
+            echo "$project: the same for $files files, with $more lines where rucc keeps each check of the gcc build"
         else
             echo "$project: the same for $files files"
         fi
