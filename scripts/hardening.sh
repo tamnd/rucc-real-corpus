@@ -18,7 +18,11 @@
 #
 # A program has the same result from both compilers when each line of hardening-check is the
 # same. A line that says "unknown" counts as a result, because the two compilers should not
-# disagree about what can be known either.
+# disagree about what can be known either. There is one exception. gcc removes a fortify check
+# when the range of the length proves that the copy fits, and rucc does not do this yet
+# (tamnd/rucc#3355). So when gcc says that a program has only unprotected functions and rucc
+# says that it has protected ones, the rucc build has more checks and not fewer. This is
+# counted as the same, and the summary line says how many files it was.
 
 set -eu
 
@@ -76,6 +80,13 @@ build() {
     done
 }
 
+# The rucc result, with the one fortify difference of the header put back to what gcc said.
+accepted() {
+    awk -F': ' 'NR == FNR { gcc[$1 FS $2] = $0; next }
+        $2 == "Fortify Source functions" && $3 ~ /^yes/ && gcc[$1 FS $2] ~ /: no, only unprotected functions found!$/ { print gcc[$1 FS $2]; next }
+        { print }' "$out/gcc/$1.txt" "$out/rucc/$1.txt"
+}
+
 same=0
 differ=0
 failed=0
@@ -85,8 +96,17 @@ for project in "$@"; do
     if grep -q "^build failed" "$out/rucc/$project.txt" "$out/gcc/$project.txt"; then
         echo "$project: the build failed with $(grep -l "^build failed" "$out/rucc/$project.txt" "$out/gcc/$project.txt" | xargs -n1 dirname | xargs -n1 basename | paste -sd' ' -)"
         failed=$((failed + 1))
-    elif diff "$out/gcc/$project.txt" "$out/rucc/$project.txt" > "$out/$project.diff"; then
-        echo "$project: the same for $(cut -d: -f1 "$out/rucc/$project.txt" | sort -u | wc -l) files"
+        continue
+    fi
+    files=$(cut -d: -f1 "$out/rucc/$project.txt" | sort -u | wc -l | tr -d ' ')
+    accepted "$project" > "$out/rucc/$project.accepted"
+    if diff "$out/gcc/$project.txt" "$out/rucc/$project.accepted" > "$out/$project.diff"; then
+        more=$(diff "$out/rucc/$project.txt" "$out/rucc/$project.accepted" | grep -c '^<' || true)
+        if [ "$more" -gt 0 ]; then
+            echo "$project: the same for $files files, and in $more of them rucc keeps a fortify check that gcc removed"
+        else
+            echo "$project: the same for $files files"
+        fi
         rm -f "$out/$project.diff"
         same=$((same + 1))
     else
