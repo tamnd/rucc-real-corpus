@@ -26,7 +26,10 @@
 # moves and the other calls memcpy or memset for it (tamnd/rucc#3360), or when gcc removes a check
 # because it can prove that the copy fits (tamnd/rucc#3355). So the script also writes the set of
 # _chk functions that each file calls. When each _chk function of the gcc build is also in the
-# rucc build, the fortify line counts as the same.
+# rucc build, the fortify line counts as the same. gcc also writes some strcpy and strcat calls as
+# strlen and memcpy, so it calls __memcpy_chk where rucc calls __strcpy_chk. So the fortify line
+# also counts as the same when rucc says a plain "yes" and gcc says "yes" with more words. A plain
+# "yes" means that each call to a function that has a _chk form goes to the _chk form.
 #
 # The second is the stack protector line, when rucc says "yes" and gcc says "no". gcc decides which
 # functions get a canary after it removes the locals that it does not need, and rucc decides it
@@ -115,6 +118,7 @@ accepted() {
         FILENAME == ours { want[$1] = $2; next }
         FILENAME == theirs { have[$1] = $2; next }
         $2 == "Fortify Source functions" && ($1 FS $2) in gcc && ($1 in want) && kept(want[$1], have[$1]) { print gcc[$1 FS $2]; next }
+        $2 == "Fortify Source functions" && $3 == "yes" && answer[$1 FS $2] ~ /^yes / { print gcc[$1 FS $2]; next }
         $2 == "Stack protected" && $3 == "yes" && answer[$1 FS $2] == "no, not found!" { print gcc[$1 FS $2]; next }
         $2 == "Stack clash protection" && $3 == "yes" && answer[$1 FS $2] ~ /^unknown/ { print gcc[$1 FS $2]; next }
         { print }' "$out/gcc/$1.txt" "$out/gcc/$1.chk" "$out/rucc/$1.chk" "$out/rucc/$1.txt"
