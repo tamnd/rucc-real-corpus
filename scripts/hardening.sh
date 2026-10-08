@@ -139,15 +139,20 @@ for project in "$@"; do
         continue
     fi
     files=$(cut -d: -f1 "$out/rucc/$project.txt" | sort -u | wc -l | tr -d ' ')
+    if [ "$files" -eq 1 ]; then
+        files="1 file"
+    else
+        files="$files files"
+    fi
     accepted "$project" > "$out/rucc/$project.accepted"
     if diff "$out/gcc/$project.txt" "$out/rucc/$project.accepted" > "$out/$project.diff"; then
         more=$(diff "$out/rucc/$project.txt" "$out/rucc/$project.accepted" | grep -c '^<' || true)
         if [ "$more" -eq 1 ]; then
-            echo "$project: the same for $files files, with 1 line where rucc keeps each check of the gcc build"
+            echo "$project: the same for $files, with 1 line where rucc keeps each check of the gcc build"
         elif [ "$more" -gt 1 ]; then
-            echo "$project: the same for $files files, with $more lines where rucc keeps each check of the gcc build"
+            echo "$project: the same for $files, with $more lines where rucc keeps each check of the gcc build"
         else
-            echo "$project: the same for $files files"
+            echo "$project: the same for $files"
         fi
         rm -f "$out/$project.diff"
         same=$((same + 1))
