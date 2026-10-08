@@ -97,9 +97,12 @@ build() {
     fi
     tree=$(awk '$1 == "tree" { print $2 }' "$out/$name/$project.log")
     linked "$tree" | while IFS= read -r file; do
-        "$check" "$tree/$file" 2>&1 | sed -n 's/^ \(.*\): \(.*\)$/\1: \2/p' | sed "s|^|$file: |" >> "$result"
+        # zstd puts its objects in a directory named by a hash of the flags and the compiler, so
+        # that part of the name is not the same in the two builds.
+        shown=$(echo "$file" | sed 's/conf_[0-9a-f]\{32\}/conf_hash/')
+        "$check" "$tree/$file" 2>&1 | sed -n 's/^ \(.*\): \(.*\)$/\1: \2/p' | sed "s|^|$shown: |" >> "$result"
         called=$(readelf -sW "$tree/$file" | awk '$7 == "UND" { sub(/@.*/, "", $8); print $8 }' | grep -E '^__.+_chk$' | sort -u | tr '\n' ' ')
-        echo "$file: $called" >> "$checks"
+        echo "$shown: $called" >> "$checks"
     done
 }
 
