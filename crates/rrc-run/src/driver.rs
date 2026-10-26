@@ -870,22 +870,7 @@ fn build_steps(job: &Job<'_>, sandbox: &Sandbox, env: &BTreeMap<String, String>)
                 })
                 .collect()
         }
-        BuildSystem::Make | BuildSystem::Recursive => {
-            // A project that writes its own configuration gets two make invocations rather than
-            // one, because the symbols the manifest turns off live in a file that does not exist
-            // until the first of them has finished. Everywhere else the targets go on one command
-            // line, which is what `toybox` does with `defconfig toybox`, and that stays the right
-            // answer for a project with nothing to change in what defconfig wrote.
-            let Some(config) = &build.config else {
-                return vec![at("make", Phase::Linked, "make", make())];
-            };
-            let mut configure = vec![config.target.clone()];
-            configure.extend(host_cc_assignment(env));
-            vec![
-                at("configure", Phase::Configured, "make", configure),
-                at("make", Phase::Linked, "make", make()),
-            ]
-        }
+        BuildSystem::Make | BuildSystem::Recursive => make_steps(build, sandbox, env, &at, make()),
         BuildSystem::Configure => vec![
             at(
                 "configure",
@@ -929,6 +914,46 @@ fn build_steps(job: &Job<'_>, sandbox: &Sandbox, env: &BTreeMap<String, String>)
             at("build", Phase::Linked, "meson", meson_compile(build)),
         ],
     }
+}
+
+/// What turns a step name, the phase it reaches, a program and its arguments into a step.
+type StepAt<'a> = dyn Fn(&str, Phase, &str, Vec<String>) -> Step + 'a;
+
+/// The make invocations for a project built with make, at the top of its tree or below it.
+fn make_steps(
+    build: &Build,
+    sandbox: &Sandbox,
+    env: &BTreeMap<String, String>,
+    at: &StepAt<'_>,
+    make: Vec<String>,
+) -> Vec<Step> {
+    // A project that writes its own configuration gets two make invocations rather than
+    // one, because the symbols the manifest turns off live in a file that does not exist
+    // until the first of them has finished. Everywhere else the targets go on one command
+    // line, which is what `toybox` does with `defconfig toybox`, and that stays the right
+    // answer for a project with nothing to change in what defconfig wrote.
+    //
+    // A build in a subdirectory that reads what the top of the tree generates gets a make
+    // at the root ahead of everything else, which is the kernel's selftests reading the
+    // headers `make headers` installs into `usr/include`.
+    let mut steps: Vec<Step> = build
+        .prepare
+        .iter()
+        .map(|prepare| {
+            let mut args = prepare.targets.clone();
+            args.extend(host_cc_assignment(env));
+            let mut step = at("prepare", Phase::Fetched, "make", args);
+            step.invocation.cwd = sandbox.source();
+            step
+        })
+        .collect();
+    if let Some(config) = &build.config {
+        let mut configure = vec![config.target.clone()];
+        configure.extend(host_cc_assignment(env));
+        steps.push(at("configure", Phase::Configured, "make", configure));
+    }
+    steps.push(at("make", Phase::Linked, "make", make));
+    steps
 }
 
 /// The arguments to the `cmake` configure step, which puts the build tree in `build`.
@@ -2569,6 +2594,37 @@ int main(void){
             Path::new("test/project.toml"),
         )
         .unwrap();
+        let record = graded(&job(&f, &manifest), Slot::A).unwrap();
+        assert_eq!(record.outcome, Outcome::Passed);
+    }
+
+    /// The kernel's selftests in miniature. The program is built in a subdirectory and includes a
+    /// header that only exists once a target at the root of the tree has run, so it builds only if
+    /// that target ran first and ran at the root.
+    #[test]
+    fn a_subdirectory_build_runs_the_preparing_target_at_the_root_first() {
+        let Some(f) = fixture(
+            "prepare",
+            "#include <answer.h>\nint main(void){ return ANSWER; }\n",
+        ) else {
+            return;
+        };
+        std::fs::write(
+            f.extracted.join("Makefile"),
+            "headers:\n\tmkdir -p usr/include\n\techo '#define ANSWER 0' > usr/include/answer.h\n",
+        )
+        .unwrap();
+        std::fs::create_dir_all(f.extracted.join("sub")).unwrap();
+        std::fs::write(
+            f.extracted.join("sub/Makefile"),
+            "sample: ../main.c\n\t$(CC) $(CFLAGS) -I../usr/include -o sample ../main.c\n",
+        )
+        .unwrap();
+        let text = MANIFEST.replace(
+            "system = \"direct\"\nsources = [\"main.c\"]\noutput = \"sample\"\n",
+            "system = \"make\"\nsubdir = \"sub\"\n\n[build.prepare]\ntargets = [\"headers\"]\nwhy = \"the program reads a generated header\"\n",
+        );
+        let manifest = Manifest::from_str_named(&text, Path::new("test/project.toml")).unwrap();
         let record = graded(&job(&f, &manifest), Slot::A).unwrap();
         assert_eq!(record.outcome, Outcome::Passed);
     }

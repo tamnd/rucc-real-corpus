@@ -21,13 +21,14 @@ Weight is what to do next. It is the sum over the held up projects of six minus 
 | `integer-conversion` | standard | 11 | 0 | 0 | none open |
 | `large-switch` | standard | 10 | 0 | 0 | none open |
 | `function-pointers` | standard | 9 | 0 | 0 | none open |
-| `setjmp-longjmp` | standard | 8 | 0 | 0 | none open |
+| `setjmp-longjmp` | standard | 9 | 0 | 0 | none open |
 | `computed-goto` | gnu-extension | 7 | 0 | 0 | [open](https://github.com/tamnd/rucc/issues/353) |
 | `double-formatting` | standard | 5 | 0 | 0 | none open |
+| `inline-asm` | gnu-extension | 5 | 0 | 0 | none open |
 | `atomic-builtins` | gnu-builtin | 4 | 0 | 0 | [open](https://github.com/tamnd/rucc/issues/311) |
 | `bit-builtins` | gnu-builtin | 4 | 0 | 0 | [open](https://github.com/tamnd/rucc/issues/310) |
-| `inline-asm` | gnu-extension | 4 | 0 | 0 | none open |
 | `k-and-r-idioms` | standard | 4 | 0 | 0 | none open |
+| `thread-local` | standard | 4 | 0 | 0 | none open |
 | `varargs-depth` | standard | 4 | 0 | 0 | none open |
 | `cmake-probes` | driver | 3 | 0 | 0 | none open |
 | `feature-test-macros` | preprocessor | 3 | 0 | 0 | [open](https://github.com/tamnd/rucc/issues/757) |
@@ -36,7 +37,6 @@ Weight is what to do next. It is the sum over the held up projects of six minus 
 | `memcpy-idioms` | gnu-builtin | 3 | 0 | 0 | none open |
 | `overflow-builtins` | gnu-builtin | 3 | 0 | 0 | [open](https://github.com/tamnd/rucc/issues/836) |
 | `rotate-idioms` | standard | 3 | 0 | 0 | none open |
-| `thread-local` | standard | 3 | 0 | 0 | none open |
 | `unaligned-access` | standard | 3 | 0 | 0 | none open |
 | `constant-time` | standard | 2 | 0 | 0 | none open |
 | `driver-stdin-input` | driver | 2 | 0 | 0 | [open](https://github.com/tamnd/rucc/issues/812) |
@@ -223,6 +223,7 @@ setjmp and longjmp as an error mechanism, which constrains what the optimizer ma
 - `lua`, R3, not measured
 - `lua-nojumptable`, R3, not measured
 - `bash`, R4, not measured
+- `kselftest`, R4, not measured
 - `ltp`, R4, not measured
 - `mawk`, R4, not measured
 
@@ -248,6 +249,16 @@ printf and strtod round tripping a double without losing a digit
 - `duktape`, R3, not measured
 - `mawk`, R4, not measured
 
+### `inline-asm`
+
+__asm__ at file scope, including .incbin and hand written section directives
+
+- `incbin`, R0, not measured
+- `libgmp`, R2, not measured
+- `busybox`, R4, not measured
+- `kselftest`, R4, not measured
+- `ltp`, R4, not measured
+
 ### `atomic-builtins`
 
 __atomic_load_n and __atomic_store_n at relaxed ordering
@@ -266,15 +277,6 @@ __builtin_clz, __builtin_ctz, __builtin_popcount and their l and ll forms
 - `quickjs`, R3, not measured
 - `xz`, R4, not measured
 
-### `inline-asm`
-
-__asm__ at file scope, including .incbin and hand written section directives
-
-- `incbin`, R0, not measured
-- `libgmp`, R2, not measured
-- `busybox`, R4, not measured
-- `ltp`, R4, not measured
-
 ### `k-and-r-idioms`
 
 declarations and calls in the shape C had before it was standardised, which a compiler defaulting to C23 rejects
@@ -283,6 +285,15 @@ declarations and calls in the shape C had before it was standardised, which a co
 - `libjpeg`, R2, not measured
 - `byacc`, R4, not measured
 - `flex`, R4, not measured
+
+### `thread-local`
+
+_Thread_local and __thread
+
+- `libsir`, R1, not measured
+- `tinycthread`, R1, not measured
+- `libuv`, R2, not measured
+- `kselftest`, R4, not measured
 
 ### `varargs-depth`
 
@@ -348,14 +359,6 @@ a shift left or-ed with a shift right recognised as one rotate instruction
 - `blake2`, R1, not measured
 - `xxhash`, R1, not measured
 - `git`, R4, not measured
-
-### `thread-local`
-
-_Thread_local and __thread
-
-- `libsir`, R1, not measured
-- `tinycthread`, R1, not measured
-- `libuv`, R2, not measured
 
 ### `unaligned-access`
 

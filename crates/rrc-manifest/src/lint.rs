@@ -295,6 +295,7 @@ fn check_build(manifest: &Manifest, say: &mut Vec<String>) {
     check_programs(manifest, say);
     check_binary(manifest, say);
     check_config(manifest, say);
+    check_prepare(manifest, say);
     if !manifest.build.system.interrogates() && !manifest.build.expect_configure.is_empty() {
         say.push(
             "expects something from configure and has no configure step, so nothing would check it"
@@ -449,6 +450,45 @@ fn check_config(manifest: &Manifest, say: &mut Vec<String>) {
             "runs `{}` as a build target as well as the step that writes its configuration, which would run it again and undo the symbols in between",
             config.target
         ));
+    }
+}
+
+/// The make run at the root of the tree before a build in a subdirectory of it.
+///
+/// Held to the same standard as `build.config`, for the same reason: it is a make target and
+/// nothing else, so it only exists on a build with a make in it, and it says why. It also needs a
+/// subdirectory, because a build at the root that wants a target first puts it in `targets`.
+fn check_prepare(manifest: &Manifest, say: &mut Vec<String>) {
+    let Some(prepare) = &manifest.build.prepare else {
+        return;
+    };
+    if !matches!(
+        manifest.build.system,
+        BuildSystem::Make | BuildSystem::Recursive
+    ) {
+        say.push(
+            "prepares the tree with a make target and has no make in its build, so nothing would run it"
+                .into(),
+        );
+    }
+    if manifest.build.subdir.is_none() {
+        say.push(
+            "prepares the root of a tree it also builds at the root, which is what `targets` is for"
+                .into(),
+        );
+    }
+    if prepare.targets.is_empty() {
+        say.push("prepares the tree with no make target".into());
+    }
+    if prepare
+        .targets
+        .iter()
+        .any(|target| target.trim().is_empty())
+    {
+        say.push("prepares the tree with an empty make target".into());
+    }
+    if prepare.why.trim().is_empty() {
+        say.push("prepares the tree with no reason, and a step with no reason is a hook".into());
     }
 }
 
@@ -1087,6 +1127,36 @@ kind = "standard"
             "\n[build.config]\ntarget = \"defconfig\"\nfile = \".config\"\ndisable = [\"CONFIG_TC\"]\nwhy = \"tc has not compiled against a current kernel header in years\"\n",
         );
         assert_eq!(check(&corpus_of(&text)), Vec::new());
+    }
+
+    #[test]
+    fn a_subdirectory_that_prepares_the_root_and_says_why_is_quiet() {
+        let text = with_config(
+            "subdir = \"tools\"\n\n[build.prepare]\ntargets = [\"headers\"]\nwhy = \"the tools read the headers the root installs\"\n",
+        );
+        assert_eq!(check(&corpus_of(&text)), Vec::new());
+    }
+
+    #[test]
+    fn preparing_the_root_of_a_build_at_the_root_or_without_a_reason_is_caught() {
+        let text = with_config(
+            "\n[build.prepare]\ntargets = [\"headers\"]\nwhy = \"the tools read the headers\"\n",
+        );
+        let findings = check(&corpus_of(&text));
+        assert!(
+            findings
+                .iter()
+                .any(|f| f.what.contains("what `targets` is for"))
+        );
+        let text =
+            with_config("subdir = \"tools\"\n\n[build.prepare]\ntargets = [\"\"]\nwhy = \" \"\n");
+        let findings = check(&corpus_of(&text));
+        assert!(
+            findings
+                .iter()
+                .any(|f| f.what.contains("an empty make target"))
+        );
+        assert!(findings.iter().any(|f| f.what.contains("is a hook")));
     }
 
     #[test]
