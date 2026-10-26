@@ -250,6 +250,10 @@ pub struct Build {
     /// symbols we turn off in what it wrote. `spec/07-harness.md` section 7.13.
     #[serde(default)]
     pub config: Option<Config>,
+    /// For a build in a subdirectory, the make targets run first at the root of the tree, which is
+    /// where the files the subdirectory reads are generated. `spec/07-harness.md` section 7.14.
+    #[serde(default)]
+    pub prepare: Option<Prepare>,
 }
 
 impl Build {
@@ -486,6 +490,16 @@ pub struct Config {
     /// The symbols turned off in that file before the build proper starts.
     pub disable: Vec<String>,
     /// Why each of them is off, in a sentence somebody can check against the project.
+    pub why: String,
+}
+
+/// Make targets run at the root of the tree before a build in a subdirectory of it.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Prepare {
+    /// The targets, in order, which is `headers` for the kernel's selftests.
+    pub targets: Vec<String>,
+    /// Why the subdirectory cannot build without them, in a sentence somebody can check.
     pub why: String,
 }
 

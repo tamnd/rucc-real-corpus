@@ -202,6 +202,14 @@ licence-sha256 = "c2b829605ee9c0b05c5c3708f308fc9b0954fb6ad1e0ab1add85f740a88274
 verified = "2026-09-08"
 
 [[project]]
+name = "kselftest"
+url = "https://cdn.kernel.org/pub/linux/kernel/v7.x/linux-7.3.tar.xz"
+sha256 = "87363c24f10e06321eb362765521094e94471f6bff8bce2d6b3e40f39f004953"
+bytes = 162399360
+licence-sha256 = "fb5a425bd3b3cd6071a3a9aff9909a859e7c1158d54d32e07658398cd67eb6a0"
+verified = "2026-10-26"
+
+[[project]]
 name = "libcheck"
 url = "https://github.com/libcheck/check/releases/download/0.15.2/check-0.15.2.tar.gz"
 sha256 = "a8de4e0bacfb4d76dd1c618ded263523b53b85d92a146d8835eb1a52932fa20a"

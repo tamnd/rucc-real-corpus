@@ -1,0 +1,90 @@
+[project]
+name = "kselftest"
+rung = 4
+upstream = "https://docs.kernel.org/dev-tools/kselftest.html"
+licence = "GPL-2.0-only"
+licence-file = "COPYING"
+description = "the kernel's own selftests, seventeen collections built as user programs and run as an ordinary user"
+# kselftest is here for rucc-kernel, for the same reason LTP is (its plan, section 14.4). The
+# kernel's harness builds the selftests with rucc and runs them inside a kernel rucc built, and a
+# test that fails there could be the kernel or the test program. This row builds the same programs
+# as ordinary user programs next to gcc and runs them on the host's kernel, which answers the
+# second question on its own.
+#
+# `inline-asm` because 65 of the files use it, most of them in rseq and x86, where the tests issue
+# system calls, read segment registers and build their own signal frames by hand. `setjmp-longjmp`
+# because 14 x86 tests use sigsetjmp to come back from a fault they caused on purpose.
+# `thread-local` because rseq registers a thread local area with the kernel and the kernel writes
+# into it.
+demands = ["inline-asm", "setjmp-longjmp", "thread-local"]
+
+# The release rucc-kernel builds first, so the two repositories build the same tree.
+[source]
+url = "https://cdn.kernel.org/pub/linux/kernel/v7.x/linux-7.3.tar.xz"
+sha256 = "87363c24f10e06321eb362765521094e94471f6bff8bce2d6b3e40f39f004953"
+strip-components = 1
+
+# A5. The selftests are hand written Makefiles under tools/testing/selftests, built through the
+# top one there, which hands TARGETS to a sub make per collection.
+#
+# `CC:=$(CC)` because lib.mk says `CC := $(CROSS_COMPILE)gcc`, which beats the environment, so
+# without it every collection is built by whatever gcc is on the path. A command line assignment
+# that reads the environment's CC puts the compiler under test back.
+#
+# `CAN_BUILD_I386=0` because the x86 Makefile builds a 32 bit copy of most of its tests when a
+# `-m32` probe links. rucc passes that probe on any x86 host and gcc passes it only where a 32 bit
+# libc is installed, so on a machine without one the two compilers build different sets of
+# programs and the counts stop being comparable. With the probe answered for both, each builds
+# the same 64 bit programs. rucc-kernel covers the 32 bit ones inside its own kernels.
+#
+# The seventeen collections are the ones of rucc-kernel's X64 row that build and run on a stock
+# machine. Seven of the others need libcap, libcap-ng, popt or libnuma, which a stock machine does
+# not have, and fail to build there under both compilers. vDSO has a test that gcc cannot compile
+# against the headers of its own release, and sigaltstack is no longer a collection in 7.3.
+[build]
+system = "recursive"
+subdir = "tools/testing/selftests"
+targets = [
+    "CC:=$(CC)",
+    "CAN_BUILD_I386=0",
+    "TARGETS=breakpoints core futex kcmp membarrier pidfd proc rseq size timens timers ptrace syscall_user_dispatch splice sync user_events x86",
+]
+parallel = true
+
+# Every collection reads the kernel's own UAPI headers from usr/include at the top of the tree,
+# which lib.mk names in KHDR_INCLUDES, and only `make headers` there writes that directory.
+[build.prepare]
+targets = ["headers"]
+why = "lib.mk includes the UAPI headers from usr/include, which only `make headers` at the top of the tree installs"
+
+# A Makefile like x86's says `CFLAGS := -O2 -g ...` and so ignores the level in the environment.
+# lib.mk appends USERCFLAGS to CFLAGS after every collection's own assignment, which is the hook
+# upstream provides for this, so the level goes there and lands last.
+[build.level-flags]
+variable = "USERCFLAGS"
+why = "x86/Makefile and others assign CFLAGS with := and lib.mk appends USERCFLAGS after them"
+
+# `make run_tests` runs each collection's programs through kselftest's runner, which prints one
+# TAP line per program, `ok 3 selftests: proc: proc-loadavg-001` or `not ok`. The run count leaves
+# out a line marked `# SKIP`, which is the program deciding the machine lacks what it needs, for
+# the reason LTP leaves out TCONF.
+[test]
+command = [
+    "sh",
+    "-c",
+    "make 'CC:=$(CC)' CAN_BUILD_I386=0 'TARGETS=breakpoints core futex kcmp membarrier pidfd proc rseq size timens timers ptrace syscall_user_dispatch splice sync user_events x86' run_tests > rrc-suite-output.log 2>&1; status=$?; cat rrc-suite-output.log; awk '/^ok [0-9]+ selftests:/ && !/# SKIP/ { passed++; total++ } /^not ok [0-9]+ selftests:/ && !/# SKIP/ { total++ } END { printf \"kselftest: %d of %d tests passed\\n\", passed, total }' rrc-suite-output.log; exit $status",
+]
+oracle = "suite"
+parser = "custom-regex"
+regex = "kselftest: (\\d+) of (\\d+) tests passed"
+# gcc 16.2.0 passes all 114 as an ordinary user on the reference machine, and so does rucc, 25 of
+# them from x86. These tests ask the running kernel for things, so a machine with another kernel
+# can skip or fail a different few under both compilers, which is why this is a baseline.
+baseline-tests = 114
+requires = ["sh", "awk"]
+
+# Both compilers take about a minute to install the headers and build the seventeen collections
+# with four jobs on the reference machine, and the tests take a few seconds.
+[limits]
+build-seconds = 3600
+test-seconds = 900
