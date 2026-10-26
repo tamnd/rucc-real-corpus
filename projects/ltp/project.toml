@@ -1,0 +1,78 @@
+[project]
+name = "ltp"
+rung = 4
+upstream = "https://linux-test-project.readthedocs.io/"
+licence = "GPL-2.0-or-later"
+licence-file = "COPYING"
+description = "the Linux Test Project, two thousand test programs built as user programs, graded by the tests of its own library"
+# LTP is here for rucc-kernel (its plan, section 14.4). The kernel's own harness builds LTP with
+# rucc and runs it inside a kernel rucc built, and when a test fails there it has to know whether
+# the kernel or the test program is wrong. This row answers the second question on its own: the
+# whole tree is built as an ordinary user program, next to gcc, with nothing about a kernel in it.
+#
+# `autoconf-probes` because LTP's configure asks about the compiler in ways no other row does.
+# Two probes came out differently the first time rucc ran it. `-T` on a link, which decides
+# whether the seven KVM tests are built at all, and `-ffixed-ebp`, which the i386 KVM guest is
+# built with. Both answer as gcc does since tamnd/rucc#3872, and a probe that drifts shows up as
+# programs missing from the tree before it shows up anywhere else.
+#
+# `inline-asm` because 54 files use it, from the KVM guest library to the tests that read a
+# register or issue a system call by hand. `setjmp-longjmp` because 20 files use sigsetjmp or
+# setjmp to come back from a signal the test provoked on purpose, which is the shape where an
+# optimizer that keeps a local in a register gets it wrong.
+demands = ["autoconf-probes", "inline-asm", "setjmp-longjmp"]
+
+# The release rucc-kernel pins in its own ltp.toml, so the two repositories build the same tree.
+[source]
+url = "https://github.com/linux-test-project/ltp/releases/download/20260529/ltp-full-20260529.tar.xz"
+sha256 = "685d83c6e370ac09201fb79593412f868fe031ee2890e204b5727fedcf51fb47"
+strip-components = 1
+
+# A3. configure takes CC and CFLAGS from the environment and writes them into
+# include/mk/config.mk, which every leaf Makefile includes, so the level needs no carrier.
+#
+# `make` builds 5434 C files into 2159 programs on the reference machine. The kernel modules under
+# testcases/kernel/device-drivers are tried against the host's kernel build directory and fail on
+# it under both compilers, 43 errors each, and the Makefiles ignore that on purpose. They are
+# modules, not user programs, so they are not this row's subject either.
+#
+# The library is the one thing every test links, so it is the size that gets recorded.
+[build]
+system = "configure"
+binary = "lib/libltp.a"
+parallel = true
+
+# Not the tests in testcases, which want root, a scratch block device and often a kernel built
+# for them, and which are what rucc-kernel runs inside its own kernels. `make test-c` runs the
+# tests of the library itself, lib/newlib_tests/runtest.sh, as an ordinary user: the checkpoint,
+# timer, fuzzy sync, kconfig parser and result printing code that every test in the tree goes
+# through. Each prints a TPASS, TFAIL, TBROK, TWARN or TCONF line, and runtest.sh adds them up as
+# `23x TPASS:` and so on at the end.
+#
+# The run count is everything but TCONF. TCONF is the test deciding before it starts that the
+# machine does not have what it needs, which says nothing about a compiler, for the reason busybox
+# leaves out UNTESTED.
+[test]
+command = [
+    "sh",
+    "-c",
+    "make test-c > rrc-suite-output.log 2>&1; status=$?; cat rrc-suite-output.log; awk '/TINFO: [0-9]+x T(PASS|FAIL|BROK|WARN):/ { n = $3; sub(/x$/, \"\", n); if ($4 == \"TPASS:\") passed += n; total += n } END { printf \"ltp: %d of %d tests passed\\n\", passed, total }' rrc-suite-output.log; exit $status",
+]
+oracle = "suite"
+parser = "custom-regex"
+regex = "ltp: (\\d+) of (\\d+) tests passed"
+# gcc 16.2.0 gives 23 of 25 as an ordinary user, and so does rucc. Neither of the two is about a
+# compiler. test20 opens /proc/sys/vm/drop_caches for writing, which only root may do, and is
+# TBROK. tst_needs_cmds08 checks that LTP has no parser for the version of mkfs.xfs, and it finds
+# one when the host has xfsprogs, so it is TFAIL. A machine without xfsprogs scores one more for
+# both compilers, which is why the pair is a baseline and not a floor.
+baseline-tests = 23
+baseline-total = 25
+requires = ["sh", "awk"]
+
+# gcc takes 706 seconds to configure and build the tree with four jobs on the reference machine
+# and rucc 328. The library tests take about two minutes, most of it the fuzzy sync tests, which
+# race two threads on purpose until they have seen enough interleavings.
+[limits]
+build-seconds = 3600
+test-seconds = 900

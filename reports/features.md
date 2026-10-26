@@ -14,24 +14,24 @@ Weight is what to do next. It is the sum over the held up projects of six minus 
 |---|---|---|---|---|---|
 | `pointer-arithmetic` | standard | 16 | 0 | 0 | none open |
 | `bit-manipulation` | standard | 15 | 0 | 0 | none open |
+| `autoconf-probes` | driver | 12 | 0 | 0 | none open |
 | `deep-macros` | preprocessor | 12 | 0 | 0 | none open |
 | `struct-layout` | abi | 12 | 0 | 0 | none open |
 | `switch-dispatch` | standard | 12 | 0 | 0 | none open |
-| `autoconf-probes` | driver | 11 | 0 | 0 | none open |
 | `integer-conversion` | standard | 11 | 0 | 0 | none open |
 | `large-switch` | standard | 10 | 0 | 0 | none open |
 | `function-pointers` | standard | 9 | 0 | 0 | none open |
+| `setjmp-longjmp` | standard | 8 | 0 | 0 | none open |
 | `computed-goto` | gnu-extension | 7 | 0 | 0 | [open](https://github.com/tamnd/rucc/issues/353) |
-| `setjmp-longjmp` | standard | 7 | 0 | 0 | none open |
 | `double-formatting` | standard | 5 | 0 | 0 | none open |
 | `atomic-builtins` | gnu-builtin | 4 | 0 | 0 | [open](https://github.com/tamnd/rucc/issues/311) |
 | `bit-builtins` | gnu-builtin | 4 | 0 | 0 | [open](https://github.com/tamnd/rucc/issues/310) |
+| `inline-asm` | gnu-extension | 4 | 0 | 0 | none open |
 | `k-and-r-idioms` | standard | 4 | 0 | 0 | none open |
 | `varargs-depth` | standard | 4 | 0 | 0 | none open |
 | `cmake-probes` | driver | 3 | 0 | 0 | none open |
 | `feature-test-macros` | preprocessor | 3 | 0 | 0 | [open](https://github.com/tamnd/rucc/issues/757) |
 | `float-arithmetic` | standard | 3 | 0 | 0 | none open |
-| `inline-asm` | gnu-extension | 3 | 0 | 0 | none open |
 | `libm-builtins` | gnu-builtin | 3 | 0 | 0 | [open](https://github.com/tamnd/rucc/issues/226) |
 | `memcpy-idioms` | gnu-builtin | 3 | 0 | 0 | none open |
 | `overflow-builtins` | gnu-builtin | 3 | 0 | 0 | [open](https://github.com/tamnd/rucc/issues/836) |
@@ -100,6 +100,23 @@ shifts, masks and bit level packing across byte boundaries
 - `grep`, R4, not measured
 - `gzip`, R4, not measured
 
+### `autoconf-probes`
+
+the compiler answers a generated configure script the way autoconf expects
+
+- `gdbm`, R2, not measured
+- `libcheck`, R2, not measured
+- `libexpat`, R2, not measured
+- `libjpeg`, R2, not measured
+- `libpng`, R2, not measured
+- `libpsl`, R2, not measured
+- `libsodium`, R2, not measured
+- `libyaml`, R2, not measured
+- `oniguruma`, R2, not measured
+- `pcre2`, R2, not measured
+- `ltp`, R4, not measured
+- `xz`, R4, not measured
+
 ### `deep-macros`
 
 macros expanding through several layers, including __VA_ARGS__ forwarding
@@ -151,22 +168,6 @@ a state machine written as a switch, with deliberate fall through between cases
 - `flex`, R4, not measured
 - `grep`, R4, not measured
 
-### `autoconf-probes`
-
-the compiler answers a generated configure script the way autoconf expects
-
-- `gdbm`, R2, not measured
-- `libcheck`, R2, not measured
-- `libexpat`, R2, not measured
-- `libjpeg`, R2, not measured
-- `libpng`, R2, not measured
-- `libpsl`, R2, not measured
-- `libsodium`, R2, not measured
-- `libyaml`, R2, not measured
-- `oniguruma`, R2, not measured
-- `pcre2`, R2, not measured
-- `xz`, R4, not measured
-
 ### `integer-conversion`
 
 the integer types are the widths the standard says they are, and conversions between them keep their values
@@ -212,6 +213,19 @@ calls through a pointer, including pointers to library functions
 - `oniguruma`, R2, not measured
 - `wren`, R3, not measured
 
+### `setjmp-longjmp`
+
+setjmp and longjmp as an error mechanism, which constrains what the optimizer may keep in a register
+
+- `cmocka`, R2, not measured
+- `libpng`, R2, not measured
+- `femtolisp`, R3, not measured
+- `lua`, R3, not measured
+- `lua-nojumptable`, R3, not measured
+- `bash`, R4, not measured
+- `ltp`, R4, not measured
+- `mawk`, R4, not measured
+
 ### `computed-goto`
 
 labels as values, goto *
@@ -223,18 +237,6 @@ labels as values, goto *
 - `quickjs`, R3, not measured
 - `wren`, R3, not measured
 - `postgresql`, R6, not measured
-
-### `setjmp-longjmp`
-
-setjmp and longjmp as an error mechanism, which constrains what the optimizer may keep in a register
-
-- `cmocka`, R2, not measured
-- `libpng`, R2, not measured
-- `femtolisp`, R3, not measured
-- `lua`, R3, not measured
-- `lua-nojumptable`, R3, not measured
-- `bash`, R4, not measured
-- `mawk`, R4, not measured
 
 ### `double-formatting`
 
@@ -263,6 +265,15 @@ __builtin_clz, __builtin_ctz, __builtin_popcount and their l and ll forms
 - `micropython`, R3, not measured
 - `quickjs`, R3, not measured
 - `xz`, R4, not measured
+
+### `inline-asm`
+
+__asm__ at file scope, including .incbin and hand written section directives
+
+- `incbin`, R0, not measured
+- `libgmp`, R2, not measured
+- `busybox`, R4, not measured
+- `ltp`, R4, not measured
 
 ### `k-and-r-idioms`
 
@@ -305,14 +316,6 @@ float and double arithmetic in volume, without contraction changing the answer
 - `llama2.c`, R0, not measured
 - `minunit`, R1, not measured
 - `libmpfr`, R2, not measured
-
-### `inline-asm`
-
-__asm__ at file scope, including .incbin and hand written section directives
-
-- `incbin`, R0, not measured
-- `libgmp`, R2, not measured
-- `busybox`, R4, not measured
 
 ### `libm-builtins`
 
